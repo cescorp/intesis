@@ -1,0 +1,19 @@
+{
+    "fecha": "2026-06-01 16:37:24",
+    "modo": "simulacion",
+    "ambiente": "1",
+    "tipo": "01",
+    "clave_acceso": "0106202601179001234500110010010000000011234567811",
+    "recepcion": {
+        "estado": "RECIBIDA",
+        "claveAcceso": "0106202601179001234500110010010000000011234567811",
+        "mensaje": "SIMULACION: RECIBIDA"
+    },
+    "autorizacion": {
+        "estado": "AUTORIZADO",
+        "numeroAutorizacion": "0106202601179001234500110010010000000011234567811",
+        "fechaAutorizacion": "2026-06-01 16:37:24",
+        "ambiente": "SIMULACION",
+        "comprobante": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<factura id=\"comprobante\" version=\"1.1.0\">\n  <infoTributaria>\n    <ambiente>1<\/ambiente>\n    <tipoEmision>1<\/tipoEmision>\n    <razonSocial>EMPRESA DEMO S.A.<\/razonSocial>\n    <nombreComercial>EMPRESA DEMO<\/nombreComercial>\n    <ruc>1790012345001<\/ruc>\n    <claveAcceso>0106202601179001234500110010010000000011234567811<\/claveAcceso>\n    <codDoc>01<\/codDoc>\n    <estab>001<\/estab>\n    <ptoEmi>001<\/ptoEmi>\n    <secuencial>000000001<\/secuencial>\n    <dirMatriz>AV. DEMO 123<\/dirMatriz>\n  <\/infoTributaria>\n  <infoFactura>\n    <fechaEmision>01\/06\/2026<\/fechaEmision>\n    <dirEstablecimiento>SUCURSAL DEMO<\/dirEstablecimiento>\n    <obligadoContabilidad>SI<\/obligadoContabilidad>\n    <tipoIdentificacionComprador>05<\/tipoIdentificacionComprador>\n    <razonSocialComprador>CLIENTE DEMO<\/razonSocialComprador>\n    <identificacionComprador>0912345678<\/identificacionComprador>\n    <direccionComprador>DIRECCION CLIENTE<\/direccionComprador>\n    <totalSinImpuestos>100.00<\/totalSinImpuestos>\n    <totalDescuento>0.00<\/totalDescuento>\n    <totalConImpuestos>\n      <totalImpuesto>\n        <codigo>2<\/codigo>\n        <codigoPorcentaje>4<\/codigoPorcentaje>\n        <baseImponible>100.00<\/baseImponible>\n        <valor>15.00<\/valor>\n      <\/totalImpuesto>\n    <\/totalConImpuestos>\n    <propina>0.00<\/propina>\n    <importeTotal>115.00<\/importeTotal>\n    <moneda>DOLAR<\/moneda>\n    <pagos>\n      <pago>\n        <formaPago>20<\/formaPago>\n        <total>115.00<\/total>\n        <plazo>0<\/plazo>\n        <unidadTiempo>DIAS<\/unidadTiempo>\n      <\/pago>\n    <\/pagos>\n  <\/infoFactura>\n  <detalles>\n    <detalle>\n      <codigoPrincipal>ITEM001<\/codigoPrincipal>\n      <codigoAuxiliar>AUX001<\/codigoAuxiliar>\n      <descripcion>ITEM DEMO<\/descripcion>\n      <cantidad>1.00<\/cantidad>\n      <precioUnitario>100.00<\/precioUnitario>\n      <descuento>0.00<\/descuento>\n      <precioTotalSinImpuesto>100.00<\/precioTotalSinImpuesto>\n      <impuestos>\n        <impuesto>\n          <codigo>2<\/codigo>\n          <codigoPorcentaje>4<\/codigoPorcentaje>\n          <tarifa>15.00<\/tarifa>\n          <baseImponible>100.00<\/baseImponible>\n          <valor>15.00<\/valor>\n        <\/impuesto>\n      <\/impuestos>\n    <\/detalle>\n    <detalle>\n      <codigoPrincipal>ITEM001<\/codigoPrincipal>\n      <codigoAuxiliar>AUX001<\/codigoAuxiliar>\n      <descripcion>ITEM DEMO<\/descripcion>\n      <cantidad>1.00<\/cantidad>\n      <precioUnitario>100.00<\/precioUnitario>\n      <descuento>0.00<\/descuento>\n      <precioTotalSinImpuesto>100.00<\/precioTotalSinImpuesto>\n      <impuestos>\n        <impuesto>\n          <codigo>2<\/codigo>\n          <codigoPorcentaje>4<\/codigoPorcentaje>\n          <tarifa>15.00<\/tarifa>\n          <baseImponible>100.00<\/baseImponible>\n          <valor>15.00<\/valor>\n        <\/impuesto>\n      <\/impuestos>\n    <\/detalle>\n  <\/detalles>\n  <infoAdicional>\n    <campoAdicional nombre=\"Direccion\">DIRECCION CLIENTE<\/campoAdicional>\n    <campoAdicional nombre=\"Telefono\">0999999999<\/campoAdicional>\n    <campoAdicional nombre=\"Email\">correo@demo.com<\/campoAdicional>\n    <campoAdicional nombre=\"Observacion\">PRUEBA DEMO<\/campoAdicional>\n  <\/infoAdicional>\n<\/factura>\n"
+    }
+}

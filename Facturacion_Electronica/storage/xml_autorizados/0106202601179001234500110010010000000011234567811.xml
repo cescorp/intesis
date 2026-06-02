@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<factura id="comprobante" version="1.1.0">
+  <infoTributaria>
+    <ambiente>1</ambiente>
+    <tipoEmision>1</tipoEmision>
+    <razonSocial>EMPRESA DEMO S.A.</razonSocial>
+    <nombreComercial>EMPRESA DEMO</nombreComercial>
+    <ruc>1790012345001</ruc>
+    <claveAcceso>0106202601179001234500110010010000000011234567811</claveAcceso>
+    <codDoc>01</codDoc>
+    <estab>001</estab>
+    <ptoEmi>001</ptoEmi>
+    <secuencial>000000001</secuencial>
+    <dirMatriz>AV. DEMO 123</dirMatriz>
+  </infoTributaria>
+  <infoFactura>
+    <fechaEmision>01/06/2026</fechaEmision>
+    <dirEstablecimiento>SUCURSAL DEMO</dirEstablecimiento>
+    <obligadoContabilidad>SI</obligadoContabilidad>
+    <tipoIdentificacionComprador>05</tipoIdentificacionComprador>
+    <razonSocialComprador>CLIENTE DEMO</razonSocialComprador>
+    <identificacionComprador>0912345678</identificacionComprador>
+    <direccionComprador>DIRECCION CLIENTE</direccionComprador>
+    <totalSinImpuestos>100.00</totalSinImpuestos>
+    <totalDescuento>0.00</totalDescuento>
+    <totalConImpuestos>
+      <totalImpuesto>
+        <codigo>2</codigo>
+        <codigoPorcentaje>4</codigoPorcentaje>
+        <baseImponible>100.00</baseImponible>
+        <valor>15.00</valor>
+      </totalImpuesto>
+    </totalConImpuestos>
+    <propina>0.00</propina>
+    <importeTotal>115.00</importeTotal>
+    <moneda>DOLAR</moneda>
+    <pagos>
+      <pago>
+        <formaPago>20</formaPago>
+        <total>115.00</total>
+        <plazo>0</plazo>
+        <unidadTiempo>DIAS</unidadTiempo>
+      </pago>
+    </pagos>
+  </infoFactura>
+  <detalles>
+    <detalle>
+      <codigoPrincipal>ITEM001</codigoPrincipal>
+      <codigoAuxiliar>AUX001</codigoAuxiliar>
+      <descripcion>ITEM DEMO</descripcion>
+      <cantidad>1.00</cantidad>
+      <precioUnitario>100.00</precioUnitario>
+      <descuento>0.00</descuento>
+      <precioTotalSinImpuesto>100.00</precioTotalSinImpuesto>
+      <impuestos>
+        <impuesto>
+          <codigo>2</codigo>
+          <codigoPorcentaje>4</codigoPorcentaje>
+          <tarifa>15.00</tarifa>
+          <baseImponible>100.00</baseImponible>
+          <valor>15.00</valor>
+        </impuesto>
+      </impuestos>
+    </detalle>
+    <detalle>
+      <codigoPrincipal>ITEM001</codigoPrincipal>
+      <codigoAuxiliar>AUX001</codigoAuxiliar>
+      <descripcion>ITEM DEMO</descripcion>
+      <cantidad>1.00</cantidad>
+      <precioUnitario>100.00</precioUnitario>
+      <descuento>0.00</descuento>
+      <precioTotalSinImpuesto>100.00</precioTotalSinImpuesto>
+      <impuestos>
+        <impuesto>
+          <codigo>2</codigo>
+          <codigoPorcentaje>4</codigoPorcentaje>
+          <tarifa>15.00</tarifa>
+          <baseImponible>100.00</baseImponible>
+          <valor>15.00</valor>
+        </impuesto>
+      </impuestos>
+    </detalle>
+  </detalles>
+  <infoAdicional>
+    <campoAdicional nombre="Direccion">DIRECCION CLIENTE</campoAdicional>
+    <campoAdicional nombre="Telefono">0999999999</campoAdicional>
+    <campoAdicional nombre="Email">correo@demo.com</campoAdicional>
+    <campoAdicional nombre="Observacion">PRUEBA DEMO</campoAdicional>
+  </infoAdicional>
+</factura>

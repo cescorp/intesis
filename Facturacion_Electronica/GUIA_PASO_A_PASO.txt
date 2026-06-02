@@ -1,0 +1,149 @@
+﻿GUIA PASO A PASO - FACTURACION ELECTRONICA SRI (SIN PROYECTO, SIN BD, SIN COMPOSER)
+======================================================================================
+
+OBJETIVO
+--------
+Este mini proyecto reproduce el flujo del proyecto original para construir XML con DOMDocument,
+firmar con .p12 y enviar a SRI.
+
+Incluye comprobantes:
+- 01 Factura
+- 04 Nota de credito
+- 05 Nota de debito
+- 06 Guia de remision
+- 07 Retencion
+
+Incluye modos:
+- SIMULACION (sin envio real)
+- REAL (firma + envio SOAP SRI)
+
+Incluye:
+- Multiples lineas de detalle.
+- Multiples lineas de retencion.
+- Visor de XML crudo generado/firmado/autorizado.
+- Validacion anti-texto-plano del XML firmado.
+
+
+SECCION 1 - HERRAMIENTAS NECESARIAS
+-----------------------------------
+
+1) XAMPP para Windows (Apache + PHP).
+2) Java Runtime (JRE/JDK) para firmar con sri2.jar.
+3) Certificado digital .p12 y su clave.
+4) Internet (solo para modo REAL).
+
+Comando de verificacion Java:
+java -version
+
+
+SECCION 2 - CONFIGURACION XAMPP (php.ini)
+-----------------------------------------
+
+Habilitar extensiones:
+- extension=soap
+- extension=openssl
+- extension=dom
+- extension=curl
+- extension=fileinfo
+
+Recomendado:
+- upload_max_filesize=10M
+- post_max_size=20M
+- max_execution_time=120
+- memory_limit=256M
+
+Luego reiniciar Apache.
+
+
+SECCION 3 - ESTRUCTURA
+----------------------
+
+Facturacion_Electronica/
+- index.php
+- procesar.php
+- ver_xml.php
+- GUIA_PASO_A_PASO.txt
+- config/parametros.php
+- config/bootstrap.php
+- src/*.php
+- tools/java/dist/sri2.jar
+- storage/xml_generados
+- storage/xml_firmados
+- storage/xml_autorizados
+- storage/respuestas
+- storage/logs
+- certificado_actual.p12 (se crea en modo REAL)
+
+
+SECCION 4 - USO
+---------------
+
+1) Abrir:
+http://localhost/hesis/Facturacion_Electronica/
+
+2) Elegir:
+- Ambiente: PRUEBAS (recomendado inicio)
+- Modo: SIMULACION
+- Tipo de comprobante
+
+3) Completar:
+- Emisor
+- Receptor
+- Datos documento
+- Multiples lineas de detalle
+- (si tipo 07) lineas de retencion
+
+4) Enviar.
+
+5) En resultado usar links:
+- XML generado (crudo)
+- XML firmado (crudo)
+- XML autorizado (crudo)
+- Respuesta JSON
+
+
+SECCION 5 - MODO REAL
+---------------------
+
+1) Cambiar modo a REAL.
+2) Subir archivo .p12.
+3) Escribir clave del certificado.
+4) Enviar.
+
+El sistema valida:
+- que el archivo firmado sea XML real,
+- que no sea texto plano,
+- y que pueda parsearse con DOMDocument.
+
+
+SECCION 6 - WSDL SRI
+--------------------
+
+PRUEBAS:
+- https://celcer.sri.gob.ec/comprobantes-electronicos-ws/RecepcionComprobantesOffline?wsdl
+- https://celcer.sri.gob.ec/comprobantes-electronicos-ws/AutorizacionComprobantesOffline?wsdl
+
+PRODUCCION:
+- https://cel.sri.gob.ec/comprobantes-electronicos-ws/RecepcionComprobantesOffline?wsdl
+- https://cel.sri.gob.ec/comprobantes-electronicos-ws/AutorizacionComprobantesOffline?wsdl
+
+
+SECCION 7 - ERRORES COMUNES
+---------------------------
+
+1) "No se encontro sri2.jar"
+   Revisar tools/java/dist/sri2.jar
+
+2) "java no reconocido"
+   Instalar Java y agregar al PATH.
+
+3) "parece texto plano, no XML valido"
+   La firma genero salida no XML. Revisar .p12/clave y logs.
+
+4) Error SOAP/WSDL
+   Revisar internet y extension soap.
+
+5) DEVUELTA/NO AUTORIZADO
+   Revisar storage/respuestas/*.json y corregir datos XML.
+
+FIN
