@@ -1,0 +1,3 @@
+- Guardar `log_errores.log` en la raiz del proyecto.
+- Comentar con `*` en modo cuadro de forma tecnica en funciones.
+- En base de datos, siempre agregar comentarios en MAYUSCULAS sencillos y entendibles.

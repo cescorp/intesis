@@ -1,0 +1,56 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Intesis\Controladores;
+
+use Intesis\Modelos\ModuloModelo;
+use Intesis\Modelos\MenuModelo;
+use Intesis\Nucleo\Configuracion;
+use Intesis\Nucleo\Sesion;
+use Intesis\Nucleo\Vista;
+
+final class PanelControlador
+{
+    public function __construct(
+        private Vista $vista,
+        private Sesion $sesion,
+        private ModuloModelo $moduloModelo,
+        private MenuModelo $menuModelo,
+        private Configuracion $configuracion
+    ) {
+    }
+
+    /**
+     * ***************************************************************************
+     * * MUESTRA EL DASHBOARD PRINCIPAL CON LOS MODULOS ACTIVADOS POR LICENCIA.
+     * ***************************************************************************
+     */
+    public function mostrarDashboard(): void
+    {
+        $usuario = $this->sesion->usuario();
+        if (!$usuario) {
+            $this->redirigir('/login');
+        }
+
+        $modulos = $this->moduloModelo->listarPorEmpresa((int) $usuario['empresa_id']);
+        $this->vista->renderizar('panel/dashboard', [
+            'titulo' => 'Dashboard',
+            'usuario' => $usuario,
+            'modulos' => $modulos,
+            'menus' => $this->menuModelo->listarMenusPorPerfil((int) $usuario['empresa_id'], (int) $usuario['perfil_id']),
+            'mensaje' => $this->sesion->consumirMensaje(),
+        ]);
+    }
+
+    /**
+     * ***************************************************************************
+     * * ENVIA UNA REDIRECCION HTTP USANDO LA URL BASE CONFIGURADA.
+     * ***************************************************************************
+     */
+    private function redirigir(string $ruta): never
+    {
+        header('Location: ' . rtrim($this->configuracion->obtener('APP_URL', ''), '/') . $ruta);
+        exit;
+    }
+}
