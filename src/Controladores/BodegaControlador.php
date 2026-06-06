@@ -50,6 +50,8 @@ final class BodegaControlador
                 'USUARIO_DATOS_OBLIGATORIOS',
                 'ERROR_GENERICO_GUARDAR',
                 'ERROR_SIN_PERMISO',
+                'CONFIRMAR_INACTIVAR_BODEGA',
+                'CONFIRMAR_ELIMINAR_BODEGA',
             ]),
         ]);
     }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Intesis\Controladores;
 
 use Intesis\Modelos\MenuModelo;
+use Intesis\Modelos\MensajeSistemaModelo;
 use Intesis\Modelos\PerfilModelo;
 use Intesis\Nucleo\Configuracion;
 use Intesis\Nucleo\RegistroErrores;
@@ -19,6 +20,7 @@ final class PerfilControlador
         private Sesion $sesion,
         private PerfilModelo $perfilModelo,
         private MenuModelo $menuModelo,
+        private MensajeSistemaModelo $mensajeSistemaModelo,
         private Configuracion $configuracion,
         private RegistroErrores $registroErrores
     ) {
@@ -45,6 +47,10 @@ final class PerfilControlador
             'permisosPerfil' => $this->obtenerPermisosPerfil($this->perfilModelo->listar((int) $usuario['empresa_id'], $verTodas)),
             'permisos' => $this->obtenerPermisos($usuario),
             'mensaje' => $this->sesion->consumirMensaje(),
+            'mensajesSistema' => $this->mensajeSistemaModelo->listarPorCodigos([
+                'CONFIRMAR_INACTIVAR_PERFIL',
+                'CONFIRMAR_ELIMINAR_PERFIL',
+            ]),
             'appNombre' => $this->configuracion->obtener('APP_NOMBRE', 'INTESIS'),
         ]);
     }

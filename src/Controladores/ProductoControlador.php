@@ -53,7 +53,10 @@ final class ProductoControlador
             'esSuperusuario' => $verTodas,
             'permisos' => $this->obtenerPermisos($usuario),
             'mensaje' => $this->sesion->consumirMensaje(),
-            'mensajesSistema' => $this->mensajeSistemaModelo->listarPorCodigos(['USUARIO_DATOS_OBLIGATORIOS']),
+            'mensajesSistema' => $this->mensajeSistemaModelo->listarPorCodigos([
+                'USUARIO_DATOS_OBLIGATORIOS',
+                'CONFIRMAR_INACTIVAR_PRODUCTO',
+            ]),
         ]);
     }
 
@@ -111,12 +114,24 @@ final class ProductoControlador
             $producto = $editar ? $this->obtenerProductoPermitido($productoId, $usuario) : null;
             $datos = $this->normalizarDatos($usuario);
             $this->validarDatos($datos, $editar ? $productoId : null);
-            $editar
-                ? $this->productoModelo->actualizar((int) $producto['inv_producto_id'], $datos, (int) $usuario['id'])
-                : $this->productoModelo->crear($datos, (int) $usuario['id']);
+            if ($editar) {
+                $this->productoModelo->actualizar((int) $producto['inv_producto_id'], $datos, (int) $usuario['id']);
+                $productoGuardadoId = (int) $producto['inv_producto_id'];
+            } else {
+                $productoGuardadoId = $this->productoModelo->crear($datos, (int) $usuario['id']);
+            }
+            if ($this->esSolicitudAjax()) {
+                $this->responderJson(true, 'REGISTRO_GUARDADO', 'Producto guardado correctamente.', [
+                    'producto_id' => $productoGuardadoId,
+                    'empresa_id' => (int) $datos['empresa_id'],
+                ]);
+            }
             $this->sesion->guardarMensaje('success', $editar ? 'Producto actualizado' : 'Producto creado', 'Los cambios fueron guardados correctamente.');
         } catch (Throwable $excepcion) {
             $this->registrarErrorCrud($editar ? 'EDITAR PRODUCTO' : 'CREAR PRODUCTO', $excepcion);
+            if ($this->esSolicitudAjax()) {
+                $this->responderJson(false, 'ERROR_VALIDACION', $excepcion->getMessage());
+            }
             $this->guardarMensajeError($excepcion);
         }
         $this->redirigir('/inventario/productos');
@@ -154,7 +169,7 @@ final class ProductoControlador
             'categoria_id' => (int) ($_POST['categoria_id'] ?? 0),
             'marca_id' => (int) ($_POST['marca_id'] ?? 0),
             'codigo_principal' => strtoupper(trim((string) ($_POST['codigo_principal'] ?? ''))),
-            'codigo_auxiliar' => strtoupper(trim((string) ($_POST['codigo_auxiliar'] ?? ''))),
+            'codigo_auxiliar' => '',
             'nombre' => trim((string) ($_POST['nombre'] ?? '')),
             'descripcion' => trim((string) ($_POST['descripcion'] ?? '')),
             'lleva_iva' => isset($_POST['lleva_iva']) ? 1 : 0,
@@ -276,6 +291,32 @@ final class ProductoControlador
             $this->sesion->guardarMensaje('error', 'Acceso restringido', 'Su perfil no tiene permiso para esta accion.');
             $this->redirigir('/dashboard');
         }
+    }
+
+    /**
+     * ***************************************************************************
+     * * IDENTIFICA SI EL GUARDADO VIENE DESDE AJAX.
+     * ***************************************************************************
+     */
+    private function esSolicitudAjax(): bool
+    {
+        return strtolower((string) ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')) === 'xmlhttprequest';
+    }
+
+    /**
+     * ***************************************************************************
+     * * ENVIA RESPUESTA JSON ESTANDAR.
+     * ***************************************************************************
+     */
+    private function responderJson(bool $ok, string $codigo, string $mensaje, array $data = []): never
+    {
+        header('Content-Type: application/json; charset=utf-8');
+        $respuesta = ['ok' => $ok, 'codigo' => $codigo, 'mensaje' => $mensaje, 'data' => $data];
+        if (!$ok) {
+            $respuesta['errores'] = [];
+        }
+        echo json_encode($respuesta, JSON_UNESCAPED_UNICODE);
+        exit;
     }
 
     /**

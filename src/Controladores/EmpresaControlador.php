@@ -36,13 +36,15 @@ final class EmpresaControlador
     {
         $usuario = $this->exigirSesion();
         $this->exigirPermiso('/sistema/empresas/ver');
+        $esSuperusuario = $this->esSuperusuario($usuario);
 
         $this->vista->renderizar('sistema/empresas', [
             'titulo' => 'Empresas',
             'usuario' => $usuario,
             'menus' => $this->menuModelo->listarMenusPorPerfil((int) $usuario['empresa_id'], (int) $usuario['perfil_id']),
-            'empresas' => $this->empresaModelo->listar(),
+            'empresas' => $this->empresaModelo->listar($esSuperusuario ? null : (int) $usuario['empresa_id']),
             'permisos' => $this->obtenerPermisos($usuario),
+            'esSuperusuario' => $esSuperusuario,
             'mensaje' => $this->sesion->consumirMensaje(),
             'mensajesSistema' => $this->mensajeSistemaModelo->listarPorCodigos([
                 'EMPRESA_RUC_INVALIDO',
@@ -62,6 +64,7 @@ final class EmpresaControlador
     public function crear(): void
     {
         $usuario = $this->exigirSesion();
+        $this->exigirSuperusuario($usuario);
         $this->exigirPermiso('/sistema/empresas/crear');
 
         try {
@@ -92,6 +95,7 @@ final class EmpresaControlador
             if ($empresaId <= 0) {
                 throw new \InvalidArgumentException('Empresa no valida para editar.');
             }
+            $this->validarEmpresaPermitida($empresaId, $usuario);
 
             $datos = $this->normalizarDatosFormulario();
             $this->validarDatos($datos);
@@ -143,6 +147,7 @@ final class EmpresaControlador
     private function cambiarEstado(string $permiso, string $estado, string $codigoExito): void
     {
         $usuario = $this->exigirSesion();
+        $this->exigirSuperusuario($usuario);
         $this->exigirPermiso($permiso);
 
         try {
@@ -211,14 +216,50 @@ final class EmpresaControlador
     {
         $empresaId = (int) $usuario['empresa_id'];
         $perfilId = (int) $usuario['perfil_id'];
+        $esSuperusuario = $this->esSuperusuario($usuario);
 
         return [
-            'crear' => $this->menuModelo->tienePermiso($empresaId, $perfilId, '/sistema/empresas/crear'),
+            'crear' => $esSuperusuario && $this->menuModelo->tienePermiso($empresaId, $perfilId, '/sistema/empresas/crear'),
             'editar' => $this->menuModelo->tienePermiso($empresaId, $perfilId, '/sistema/empresas/editar'),
-            'activar' => $this->menuModelo->tienePermiso($empresaId, $perfilId, '/sistema/empresas/activar'),
-            'inactivar' => $this->menuModelo->tienePermiso($empresaId, $perfilId, '/sistema/empresas/inactivar'),
-            'eliminar' => $this->menuModelo->tienePermiso($empresaId, $perfilId, '/sistema/empresas/eliminar'),
+            'activar' => $esSuperusuario && $this->menuModelo->tienePermiso($empresaId, $perfilId, '/sistema/empresas/activar'),
+            'inactivar' => $esSuperusuario && $this->menuModelo->tienePermiso($empresaId, $perfilId, '/sistema/empresas/inactivar'),
+            'eliminar' => $esSuperusuario && $this->menuModelo->tienePermiso($empresaId, $perfilId, '/sistema/empresas/eliminar'),
         ];
+    }
+
+    /**
+     * ***************************************************************************
+     * * IDENTIFICA SI EL USUARIO ACTUAL ES SUPERUSUARIO GLOBAL.
+     * ***************************************************************************
+     */
+    private function esSuperusuario(array $usuario): bool
+    {
+        return strtoupper((string) ($usuario['perfil_codigo'] ?? $usuario['perfil'] ?? '')) === 'SUPERUSUARIO';
+    }
+
+    /**
+     * ***************************************************************************
+     * * EXIGE PERFIL SUPERUSUARIO PARA ACCIONES GLOBALES DE EMPRESA.
+     * ***************************************************************************
+     */
+    private function exigirSuperusuario(array $usuario): void
+    {
+        if (!$this->esSuperusuario($usuario)) {
+            $this->guardarMensajeCodigo('ERROR_SIN_PERMISO');
+            $this->redirigir('/dashboard');
+        }
+    }
+
+    /**
+     * ***************************************************************************
+     * * VALIDA QUE USUARIO NORMAL SOLO EDITE SU EMPRESA ACTIVA.
+     * ***************************************************************************
+     */
+    private function validarEmpresaPermitida(int $empresaId, array $usuario): void
+    {
+        if (!$this->esSuperusuario($usuario) && $empresaId !== (int) $usuario['empresa_id']) {
+            throw new \InvalidArgumentException('ERROR_SIN_PERMISO');
+        }
     }
 
     /**
@@ -290,6 +331,6 @@ final class EmpresaControlador
     private function guardarMensajeCodigo(string $codigo): void
     {
         $mensaje = $this->mensajeSistemaModelo->obtener($codigo);
-        $this->sesion->guardarMensaje($mensaje['icono'], $mensaje['titulo'], $mensaje['texto']);
+        $this->sesion->guardarMensaje($mensaje['icono'], $mensaje['titulo'], $mensaje['texto'], $mensaje['tiempo'], $mensaje['posicion']);
     }
 }

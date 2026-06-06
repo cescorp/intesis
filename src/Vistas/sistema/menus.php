@@ -145,7 +145,7 @@ $renderizarArbolMenus = function (int $padre, int $nivel) use (&$renderizarArbol
                                                         </button>
                                                     <?php endif; ?>
                                                     <?php if ((int) $accion['sis_menu_estado'] === 1 && $permisos['inactivar']): ?>
-                                                        <form action="<?= $appUrl ?>/sistema/menus/inactivar" method="post" class="d-inline formulario-confirmar">
+                                                        <form action="<?= $appUrl ?>/sistema/menus/inactivar" method="post" class="d-inline formulario-confirmar" data-codigo-mensaje="CONFIRMAR_INACTIVAR_MENU">
                                                             <input type="hidden" name="menu_id" value="<?= (int) $accion['sis_menu_id'] ?>">
                                                             <button type="submit" class="btn btn-accion btn-inactivar" title="Inactivar accion"><i class="bi bi-toggle-off"></i></button>
                                                         </form>
@@ -248,4 +248,7 @@ $renderizarArbolMenus = function (int $padre, int $nivel) use (&$renderizarArbol
         window.INTESIS_MENSAJE = <?= json_encode($mensaje, JSON_UNESCAPED_UNICODE) ?>;
     </script>
 <?php endif; ?>
+<script>
+    window.INTESIS_MENSAJES = <?= json_encode($mensajesSistema ?? [], JSON_UNESCAPED_UNICODE) ?>;
+</script>
 <?php require $configuracion->raiz() . '/src/Vistas/plantillas/pie.php'; ?>

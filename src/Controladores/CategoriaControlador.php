@@ -46,7 +46,10 @@ final class CategoriaControlador
             'esSuperusuario' => $verTodas,
             'permisos' => $this->obtenerPermisos($usuario),
             'mensaje' => $this->sesion->consumirMensaje(),
-            'mensajesSistema' => $this->mensajeSistemaModelo->listarPorCodigos(['USUARIO_DATOS_OBLIGATORIOS']),
+            'mensajesSistema' => $this->mensajeSistemaModelo->listarPorCodigos([
+                'USUARIO_DATOS_OBLIGATORIOS',
+                'CONFIRMAR_INACTIVAR_CATEGORIA',
+            ]),
         ]);
     }
 
@@ -318,7 +321,22 @@ final class CategoriaControlador
     private function responderJson(bool $ok, string $codigo, string $mensaje, array $data = []): never
     {
         header('Content-Type: application/json; charset=utf-8');
-        $respuesta = ['ok' => $ok, 'codigo' => $codigo, 'mensaje' => $mensaje, 'data' => $data];
+        $mensajeSistema = $this->mensajeSistemaModelo->obtener($codigo);
+        $respuesta = [
+            'ok' => $ok,
+            'codigo' => $codigo,
+            'mensaje' => $mensaje,
+            'mensaje_sistema' => [
+                'codigo' => $codigo,
+                'tipo' => $mensajeSistema['tipo'],
+                'icono' => $mensajeSistema['icono'],
+                'titulo' => $mensajeSistema['titulo'],
+                'texto' => $mensajeSistema['texto'],
+                'tiempo' => $mensajeSistema['tiempo'],
+                'posicion' => $mensajeSistema['posicion'],
+            ],
+            'data' => $data,
+        ];
         if (!$ok) {
             $respuesta['errores'] = [];
         }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Intesis\Controladores;
 
 use Intesis\Modelos\MenuModelo;
+use Intesis\Modelos\MensajeSistemaModelo;
 use Intesis\Nucleo\Configuracion;
 use Intesis\Nucleo\RegistroErrores;
 use Intesis\Nucleo\Sesion;
@@ -17,6 +18,7 @@ final class MenuControlador
         private Vista $vista,
         private Sesion $sesion,
         private MenuModelo $menuModelo,
+        private MensajeSistemaModelo $mensajeSistemaModelo,
         private Configuracion $configuracion,
         private RegistroErrores $registroErrores
     ) {
@@ -40,6 +42,9 @@ final class MenuControlador
             'menusPadre' => $this->menuModelo->listarMenusPadre(),
             'permisos' => $this->obtenerPermisos($usuario),
             'mensaje' => $this->sesion->consumirMensaje(),
+            'mensajesSistema' => $this->mensajeSistemaModelo->listarPorCodigos([
+                'CONFIRMAR_INACTIVAR_MENU',
+            ]),
         ]);
     }
 

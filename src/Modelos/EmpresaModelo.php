@@ -15,11 +15,12 @@ final class EmpresaModelo
 
     /**
      * ***************************************************************************
-     * * LISTA EMPRESAS NO ELIMINADAS CON SU ESTADO ACTUAL.
+     * * LISTA EMPRESAS NO ELIMINADAS SEGUN ALCANCE DEL USUARIO.
      * ***************************************************************************
      */
-    public function listar(): array
+    public function listar(?int $empresaId = null): array
     {
+        $filtroEmpresa = $empresaId === null ? '' : 'AND e.sis_empresa_id = :empresa_id';
         $sql = "
             SELECT
                 e.sis_empresa_id,
@@ -36,10 +37,14 @@ final class EmpresaModelo
             FROM sis_empresa e
             INNER JOIN sis_estado es ON es.sis_estado_id = e.sis_estado_id
             WHERE es.sis_estado_codigo <> 'ELIMINADO'
+            {$filtroEmpresa}
             ORDER BY e.sis_empresa_id
         ";
 
-        return $this->conexionBaseDatos->obtener()->query($sql)->fetchAll();
+        $sentencia = $this->conexionBaseDatos->obtener()->prepare($sql);
+        $sentencia->execute($empresaId === null ? [] : ['empresa_id' => $empresaId]);
+
+        return $sentencia->fetchAll();
     }
 
     /**

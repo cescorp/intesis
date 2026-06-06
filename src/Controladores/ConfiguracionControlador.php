@@ -53,6 +53,12 @@ final class ConfiguracionControlador
             'esSuperusuario' => $esSuperusuario,
             'permisos' => $this->obtenerPermisos($usuario),
             'mensaje' => $this->sesion->consumirMensaje(),
+            'mensajesSistema' => $this->mensajeModelo->listarPorCodigos([
+                'CONFIRMAR_INACTIVAR_ESTADO',
+                'CONFIRMAR_INACTIVAR_MENSAJE',
+                'CONFIRMAR_INACTIVAR_TIPO_DOCUMENTO',
+                'CONFIRMAR_INACTIVAR_SECUENCIA',
+            ]),
         ]);
     }
 
@@ -536,6 +542,8 @@ final class ConfiguracionControlador
             'icono' => strtolower(trim((string) ($_POST['icono'] ?? 'error'))),
             'modulo' => strtoupper(trim((string) ($_POST['modulo'] ?? 'SISTEMA'))),
             'entidad' => strtoupper(trim((string) ($_POST['entidad'] ?? 'GENERAL'))),
+            'tiempo' => max(0, (int) ($_POST['tiempo'] ?? 0)),
+            'posicion' => (int) ($_POST['posicion'] ?? 4),
         ];
     }
 
@@ -553,6 +561,9 @@ final class ConfiguracionControlador
         }
         if ($this->mensajeModelo->existeCodigo($datos['codigo'], $mensajeId)) {
             throw new \InvalidArgumentException('Ya existe un mensaje con ese codigo.');
+        }
+        if (!in_array($datos['posicion'], [1, 2, 3, 4, 5], true)) {
+            throw new \InvalidArgumentException('La posicion del mensaje no es valida.');
         }
     }
 

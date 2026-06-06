@@ -40,3 +40,49 @@ HINT:  Probablemente quiera hacer referencia a la columna «s.sis_secuencias_est
 [2026-06-04 16:53:45] TypeError: Intesis\Nucleo\Enrutador::__construct(): Argument #8 ($configuracion) must be of type Intesis\Nucleo\Configuracion, Intesis\Controladores\BodegaControlador given, called in C:\xampp\htdocs\intesis\src\Nucleo\Aplicacion.php on line 63 EN C:\xampp\htdocs\intesis\src\Nucleo\Enrutador.php:17
 [2026-06-04 16:53:49] TypeError: Intesis\Nucleo\Enrutador::__construct(): Argument #8 ($configuracion) must be of type Intesis\Nucleo\Configuracion, Intesis\Controladores\BodegaControlador given, called in C:\xampp\htdocs\intesis\src\Nucleo\Aplicacion.php on line 63 EN C:\xampp\htdocs\intesis\src\Nucleo\Enrutador.php:17
 [2026-06-04 17:35:32] TypeError: Intesis\Nucleo\Enrutador::__construct(): Argument #9 ($configuracion) must be of type Intesis\Nucleo\Configuracion, Intesis\Controladores\CategoriaControlador given, called in C:\xampp\htdocs\intesis\src\Nucleo\Aplicacion.php on line 72 EN C:\xampp\htdocs\intesis\src\Nucleo\Enrutador.php:18
+[2026-06-04 18:37:36] PDOException: SQLSTATE[42804]: Datatype mismatch: 7 ERROR:  los tipos character varying y integer no son coincidentes en COALESCE
+LINE 9: ...           COALESCE(sis_mensaje_errores_posicion, 4) AS sis_...
+                                                             ^ EN C:\xampp\htdocs\intesis\src\Modelos\MensajeSistemaModelo.php:44
+[2026-06-04 18:37:37] PDOException: SQLSTATE[42804]: Datatype mismatch: 7 ERROR:  los tipos character varying y integer no son coincidentes en COALESCE
+LINE 9: ...           COALESCE(sis_mensaje_errores_posicion, 4) AS sis_...
+                                                             ^ EN C:\xampp\htdocs\intesis\src\Modelos\MensajeSistemaModelo.php:44
+[2026-06-04 18:37:38] PDOException: SQLSTATE[42804]: Datatype mismatch: 7 ERROR:  los tipos character varying y integer no son coincidentes en COALESCE
+LINE 9: ...           COALESCE(sis_mensaje_errores_posicion, 4) AS sis_...
+                                                             ^ EN C:\xampp\htdocs\intesis\src\Modelos\MensajeSistemaModelo.php:44
+[2026-06-04 18:37:56] PDOException: SQLSTATE[42804]: Datatype mismatch: 7 ERROR:  los tipos character varying y integer no son coincidentes en COALESCE
+LINE 9: ...           COALESCE(sis_mensaje_errores_posicion, 4) AS sis_...
+                                                             ^ EN C:\xampp\htdocs\intesis\src\Modelos\MensajeSistemaModelo.php:44
+[2026-06-04 18:38:07] PDOException: SQLSTATE[42804]: Datatype mismatch: 7 ERROR:  los tipos character varying y integer no son coincidentes en COALESCE
+LINE 9: ...           COALESCE(sis_mensaje_errores_posicion, 4) AS sis_...
+                                                             ^ EN C:\xampp\htdocs\intesis\src\Modelos\MensajeSistemaModelo.php:44
+[2026-06-04 18:40:14] PDOException: SQLSTATE[42804]: Datatype mismatch: 7 ERROR:  los tipos character varying y integer no son coincidentes en COALESCE
+LINE 9: ...           COALESCE(sis_mensaje_errores_posicion, 4) AS sis_...
+                                                             ^ EN C:\xampp\htdocs\intesis\src\Modelos\MensajeSistemaModelo.php:44
+[2026-06-04 20:22:20] MENSAJE NO CONFIGURADO: CONFIRMAR_INACTIVAR_BODEGA
+[2026-06-04 20:22:20] MENSAJE NO CONFIGURADO: CONFIRMAR_ELIMINAR_BODEGA
+[2026-06-05 17:46:06] PDOException: SQLSTATE[42703]: Undefined column: 7 ERROR:  no existe la columna img.sis_archivos_principal
+LINE 17:                 AND img.sis_archivos_principal = TRUE
+                             ^ EN C:\xampp\htdocs\intesis\src\Modelos\ProductoModelo.php:45
+[2026-06-05 17:47:12] TypeError: Intesis\Nucleo\Enrutador::__construct(): Argument #9 ($categoriaControlador) must be of type Intesis\Controladores\CategoriaControlador, Intesis\Controladores\ArchivoProductoControlador given, called in C:\xampp\htdocs\intesis\src\Nucleo\Aplicacion.php on line 75 EN C:\xampp\htdocs\intesis\src\Nucleo\Enrutador.php:21
+[2026-06-05 17:47:17] TypeError: Intesis\Nucleo\Enrutador::__construct(): Argument #9 ($categoriaControlador) must be of type Intesis\Controladores\CategoriaControlador, Intesis\Controladores\ArchivoProductoControlador given, called in C:\xampp\htdocs\intesis\src\Nucleo\Aplicacion.php on line 75 EN C:\xampp\htdocs\intesis\src\Nucleo\Enrutador.php:21
+[2026-06-05 17:47:28] PDOException: SQLSTATE[42703]: Undefined column: 7 ERROR:  no existe la columna img.sis_archivos_principal
+LINE 17:                 AND img.sis_archivos_principal = TRUE
+                             ^ EN C:\xampp\htdocs\intesis\src\Modelos\ProductoModelo.php:45
+[2026-06-05 17:47:29] PDOException: SQLSTATE[42703]: Undefined column: 7 ERROR:  no existe la columna img.sis_archivos_principal
+LINE 17:                 AND img.sis_archivos_principal = TRUE
+                             ^ EN C:\xampp\htdocs\intesis\src\Modelos\ProductoModelo.php:45
+[2026-06-05 17:47:29] PDOException: SQLSTATE[42703]: Undefined column: 7 ERROR:  no existe la columna img.sis_archivos_principal
+LINE 17:                 AND img.sis_archivos_principal = TRUE
+                             ^ EN C:\xampp\htdocs\intesis\src\Modelos\ProductoModelo.php:45
+[2026-06-05 17:47:35] PDOException: SQLSTATE[42703]: Undefined column: 7 ERROR:  no existe la columna img.sis_archivos_principal
+LINE 17:                 AND img.sis_archivos_principal = TRUE
+                             ^ EN C:\xampp\htdocs\intesis\src\Modelos\ProductoModelo.php:45
+[2026-06-05 17:47:36] PDOException: SQLSTATE[42703]: Undefined column: 7 ERROR:  no existe la columna img.sis_archivos_principal
+LINE 17:                 AND img.sis_archivos_principal = TRUE
+                             ^ EN C:\xampp\htdocs\intesis\src\Modelos\ProductoModelo.php:45
+[2026-06-05 17:48:18] PDOException: SQLSTATE[42703]: Undefined column: 7 ERROR:  no existe la columna img.sis_archivos_principal
+LINE 17:                 AND img.sis_archivos_principal = TRUE
+                             ^ EN C:\xampp\htdocs\intesis\src\Modelos\ProductoModelo.php:45
+[2026-06-05 17:48:19] PDOException: SQLSTATE[42703]: Undefined column: 7 ERROR:  no existe la columna img.sis_archivos_principal
+LINE 17:                 AND img.sis_archivos_principal = TRUE
+                             ^ EN C:\xampp\htdocs\intesis\src\Modelos\ProductoModelo.php:45

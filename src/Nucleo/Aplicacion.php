@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Intesis\Nucleo;
 
 use Intesis\Controladores\AutenticacionControlador;
+use Intesis\Controladores\ArchivoProductoControlador;
 use Intesis\Controladores\BodegaControlador;
 use Intesis\Controladores\CategoriaControlador;
 use Intesis\Controladores\ConfiguracionControlador;
@@ -16,6 +17,7 @@ use Intesis\Controladores\PerfilControlador;
 use Intesis\Controladores\ProductoControlador;
 use Intesis\Controladores\UsuarioControlador;
 use Intesis\Modelos\EmpresaModelo;
+use Intesis\Modelos\ArchivoProductoModelo;
 use Intesis\Modelos\BodegaModelo;
 use Intesis\Modelos\CategoriaModelo;
 use Intesis\Modelos\EstadoModelo;
@@ -64,6 +66,7 @@ final class Aplicacion
         $tipoDocumentoModelo = new TipoDocumentoModelo($conexion);
         $secuenciaModelo = new SecuenciaModelo($conexion);
         $bodegaModelo = new BodegaModelo($conexion);
+        $archivoProductoModelo = new ArchivoProductoModelo($conexion);
         $categoriaModelo = new CategoriaModelo($conexion);
         $marcaModelo = new MarcaModelo($conexion);
         $productoModelo = new ProductoModelo($conexion);
@@ -74,10 +77,11 @@ final class Aplicacion
             new PanelControlador($vista, $sesion, $moduloModelo, $menuModelo, $configuracion),
             new EmpresaControlador($vista, $sesion, $empresaModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
             new UsuarioControlador($vista, $sesion, $usuarioEmpresaModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
-            new PerfilControlador($vista, $sesion, $perfilModelo, $menuModelo, $configuracion, $registroErrores),
-            new MenuControlador($vista, $sesion, $menuModelo, $configuracion, $registroErrores),
+            new PerfilControlador($vista, $sesion, $perfilModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
+            new MenuControlador($vista, $sesion, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
             new ConfiguracionControlador($vista, $sesion, $estadoModelo, $mensajeSistemaModelo, $tipoDocumentoModelo, $secuenciaModelo, $menuModelo, $configuracion, $registroErrores),
             new BodegaControlador($vista, $sesion, $bodegaModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
+            new ArchivoProductoControlador($sesion, $productoModelo, $archivoProductoModelo, $menuModelo, $configuracion, $registroErrores),
             new CategoriaControlador($vista, $sesion, $categoriaModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
             new MarcaControlador($vista, $sesion, $marcaModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
             new ProductoControlador($vista, $sesion, $productoModelo, $categoriaModelo, $marcaModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),

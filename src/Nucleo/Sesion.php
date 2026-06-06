@@ -77,12 +77,18 @@ final class Sesion
      * * GUARDA UN MENSAJE TEMPORAL PARA MOSTRARLO EN LA SIGUIENTE RESPUESTA.
      * ***************************************************************************
      */
-    public function guardarMensaje(string $tipo, string $titulo, string $texto): void
+    public function guardarMensaje(string $tipo, string $titulo, string $texto, int $tiempo = 0, int $posicion = 0): void
     {
+        if ($posicion === 0) {
+            $posicion = strtolower($tipo) === 'success' ? 2 : 4;
+        }
+
         $_SESSION['mensaje_sistema'] = [
             'tipo' => $tipo,
             'titulo' => $titulo,
             'texto' => $texto,
+            'tiempo' => $tiempo,
+            'posicion' => $posicion,
         ];
     }
 

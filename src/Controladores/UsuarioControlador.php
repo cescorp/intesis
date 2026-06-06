@@ -499,6 +499,6 @@ final class UsuarioControlador
     private function guardarMensajeCodigo(string $codigo): void
     {
         $mensaje = $this->mensajeSistemaModelo->obtener($codigo);
-        $this->sesion->guardarMensaje($mensaje['icono'], $mensaje['titulo'], $mensaje['texto']);
+        $this->sesion->guardarMensaje($mensaje['icono'], $mensaje['titulo'], $mensaje['texto'], $mensaje['tiempo'], $mensaje['posicion']);
     }
 }

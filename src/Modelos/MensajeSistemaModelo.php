@@ -34,7 +34,9 @@ final class MensajeSistemaModelo
                 sis_mensaje_errores_tipo,
                 sis_mensaje_errores_titulo,
                 sis_mensaje_errores_mensaje,
-                sis_mensaje_errores_icono
+                sis_mensaje_errores_icono,
+                COALESCE(sis_mensaje_errores_tiempo, 0) AS sis_mensaje_errores_tiempo,
+                COALESCE(NULLIF(sis_mensaje_errores_posicion::text, '')::integer, 4) AS sis_mensaje_errores_posicion
             FROM sis_mensaje_errores
             WHERE sis_mensaje_errores_activo = TRUE
               AND sis_mensaje_errores_codigo IN ({$marcadores})
@@ -48,6 +50,8 @@ final class MensajeSistemaModelo
                 'titulo' => $fila['sis_mensaje_errores_titulo'],
                 'texto' => $fila['sis_mensaje_errores_mensaje'],
                 'icono' => strtolower((string) $fila['sis_mensaje_errores_icono']),
+                'tiempo' => (int) $fila['sis_mensaje_errores_tiempo'],
+                'posicion' => (int) $fila['sis_mensaje_errores_posicion'],
             ];
         }
 
@@ -59,6 +63,8 @@ final class MensajeSistemaModelo
                     'titulo' => 'Mensaje no configurado',
                     'texto' => 'Codigo pendiente de configurar: ' . $codigo,
                     'icono' => 'warning',
+                    'tiempo' => 0,
+                    'posicion' => 4,
                 ];
             }
         }
@@ -103,9 +109,10 @@ final class MensajeSistemaModelo
                 sis_mensaje_errores_titulo, sis_mensaje_errores_mensaje,
                 sis_mensaje_errores_icono, sis_mensaje_errores_modulo,
                 sis_mensaje_errores_entidad, sis_mensaje_errores_activo,
+                sis_mensaje_errores_tiempo, sis_mensaje_errores_posicion,
                 usuario_crea
             )
-            VALUES (:codigo, :tipo, :titulo, :mensaje, :icono, :modulo, :entidad, TRUE, :usuario_crea)
+            VALUES (:codigo, :tipo, :titulo, :mensaje, :icono, :modulo, :entidad, TRUE, :tiempo, :posicion, :usuario_crea)
         ");
         $sentencia->execute($this->parametrosMensaje($datos, $usuarioId));
     }
@@ -128,6 +135,8 @@ final class MensajeSistemaModelo
                 sis_mensaje_errores_icono = :icono,
                 sis_mensaje_errores_modulo = :modulo,
                 sis_mensaje_errores_entidad = :entidad,
+                sis_mensaje_errores_tiempo = :tiempo,
+                sis_mensaje_errores_posicion = :posicion,
                 usuario_modifica = :usuario_crea,
                 fecha_modifica = now()
             WHERE sis_mensaje_errores_id = :mensaje_id
@@ -205,6 +214,8 @@ final class MensajeSistemaModelo
             'icono' => $datos['icono'],
             'modulo' => $datos['modulo'],
             'entidad' => $datos['entidad'],
+            'tiempo' => (int) ($datos['tiempo'] ?? 0),
+            'posicion' => (int) ($datos['posicion'] ?? 4),
             'usuario_crea' => $usuarioId,
         ];
     }

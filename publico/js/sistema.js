@@ -1,4 +1,35 @@
 (() => {
+    const obtenerPosicionSweetAlert = (posicion) => ({
+        1: 'top',
+        2: 'top-end',
+        3: 'center-end',
+        4: 'center',
+        5: 'bottom-end',
+    }[Number(posicion)] || 'center');
+
+    const construirOpcionesSweetAlert = (mensaje, opciones = {}) => {
+        const tiempo = Number(mensaje.tiempo ?? opciones.tiempo ?? 0);
+        const configuracion = {
+            icon: mensaje.icono || mensaje.tipo || opciones.icono || 'info',
+            title: mensaje.titulo || opciones.titulo || 'Mensaje del sistema',
+            text: mensaje.texto || opciones.texto || '',
+            position: obtenerPosicionSweetAlert(mensaje.posicion ?? opciones.posicion ?? 4),
+            confirmButtonText: opciones.confirmButtonText || 'Aceptar',
+            confirmButtonColor: opciones.confirmButtonColor || '#1f6f68',
+            ...opciones.extra,
+        };
+
+        if (tiempo > 0 && !opciones.omitirTimer) {
+            configuracion.timer = tiempo;
+            configuracion.timerProgressBar = true;
+            configuracion.showConfirmButton = false;
+        }
+
+        return configuracion;
+    };
+
+    const mostrarAlerta = (mensaje, opciones = {}) => Swal.fire(construirOpcionesSweetAlert(mensaje, opciones));
+
     const obtenerMensaje = (codigo, defecto = {}) => {
         const mensajes = window.INTESIS_MENSAJES || {};
         if (mensajes[codigo]) {
@@ -9,18 +40,14 @@
             icono: defecto.icono || 'warning',
             titulo: defecto.titulo || 'Mensaje no configurado',
             texto: defecto.texto || `Codigo pendiente de configurar: ${codigo}`,
+            tiempo: defecto.tiempo || 0,
+            posicion: defecto.posicion || 4,
         };
     };
 
     const mostrarMensaje = (codigo, defecto = {}) => {
         const mensaje = obtenerMensaje(codigo, defecto);
-        return Swal.fire({
-            icon: mensaje.icono || mensaje.tipo || 'info',
-            title: mensaje.titulo || 'Mensaje del sistema',
-            text: mensaje.texto || '',
-            confirmButtonText: 'Aceptar',
-            confirmButtonColor: '#1f6f68',
-        });
+        return mostrarAlerta(mensaje);
     };
 
     const validarCedulaEcuador = (cedula) => {
@@ -61,13 +88,7 @@
 
     const mensaje = window.INTESIS_MENSAJE;
     if (mensaje && window.Swal) {
-        Swal.fire({
-            icon: mensaje.tipo || 'info',
-            title: mensaje.titulo || 'Mensaje del sistema',
-            text: mensaje.texto || '',
-            confirmButtonText: 'Aceptar',
-            confirmButtonColor: '#1f6f68',
-        });
+        mostrarAlerta(mensaje);
     }
 
     if (window.jQuery && jQuery.fn.DataTable) {
@@ -106,15 +127,16 @@
                     icono: 'warning',
                 };
 
-            Swal.fire({
-                icon: mensajeConfirmacion.icono || 'warning',
-                title: mensajeConfirmacion.titulo || 'Confirmar accion',
-                text: mensajeConfirmacion.texto || '',
-                showCancelButton: true,
+            mostrarAlerta(mensajeConfirmacion, {
+                omitirTimer: true,
+                extra: {
+                    showCancelButton: true,
+                    showConfirmButton: true,
+                    cancelButtonText: 'Cancelar',
+                    cancelButtonColor: '#263a5f',
+                },
                 confirmButtonText: 'Confirmar',
-                cancelButtonText: 'Cancelar',
                 confirmButtonColor: '#d65f5f',
-                cancelButtonColor: '#263a5f',
             }).then((resultado) => {
                 if (resultado.isConfirmed) {
                     formulario.dataset.confirmado = '1';
@@ -899,6 +921,28 @@
 
     document.getElementById('producto_empresa_id')?.addEventListener('change', filtrarSelectsProductoPorEmpresa);
 
+    document.addEventListener('click', (evento) => {
+        const boton = evento.target.closest('[data-bs-target="#modalCategoriaRapida"], [data-bs-target="#modalMarcaRapida"]');
+        const modalProductoAbierto = document.getElementById('modalProducto')?.classList.contains('show');
+        if (!boton || !modalProductoAbierto) {
+            return;
+        }
+
+        evento.preventDefault();
+        evento.stopPropagation();
+        evento.stopImmediatePropagation();
+        filtrarSelectsProductoPorEmpresa();
+
+        const modalHijo = document.querySelector(boton.dataset.bsTarget || '');
+        const formularioHijo = modalHijo?.querySelector('form');
+        formularioHijo?.reset();
+        filtrarSelectsProductoPorEmpresa();
+
+        if (modalHijo) {
+            bootstrap.Modal.getOrCreateInstance(modalHijo).show();
+        }
+    }, true);
+
     const modalProducto = document.getElementById('modalProducto');
     if (modalProducto) {
         modalProducto.addEventListener('show.bs.modal', (evento) => {
@@ -928,14 +972,16 @@
                 filtrarSelectsProductoPorEmpresa();
                 document.getElementById('producto_categoria_id').value = boton.dataset.categoria || '';
                 document.getElementById('producto_marca_id').value = boton.dataset.marca || '';
+                habilitarGaleriaProducto(boton.dataset.id || '', boton.dataset.empresa || '');
             } else {
                 filtrarSelectsProductoPorEmpresa();
+                habilitarGaleriaProducto('', obtenerEmpresaProducto());
             }
             const soloVer = modo === 'ver';
             formulario.querySelectorAll('input, select, textarea').forEach((campo) => {
                 if (campo.type !== 'hidden') campo.disabled = soloVer;
             });
-            document.querySelectorAll('[data-bs-target="#modalCategoriaRapida"], [data-bs-target="#modalMarcaRapida"], #btnGuardarProducto').forEach((elemento) => {
+            document.querySelectorAll('[data-bs-target="#modalCategoriaRapida"], [data-bs-target="#modalMarcaRapida"], #btnGuardarProducto, #btnSeleccionarImagenesProducto').forEach((elemento) => {
                 elemento.classList.toggle('d-none', soloVer);
             });
         });
@@ -943,7 +989,8 @@
 
     const formularioProducto = document.getElementById('formularioProducto');
     if (formularioProducto) {
-        formularioProducto.addEventListener('submit', (evento) => {
+        formularioProducto.addEventListener('submit', async (evento) => {
+            evento.preventDefault();
             const empresa = obtenerEmpresaProducto();
             const codigo = document.getElementById('producto_codigo_principal').value.trim();
             const nombre = document.getElementById('producto_nombre').value.trim();
@@ -959,6 +1006,253 @@
                     texto: 'Ingrese empresa, codigo, nombre, categoria, marca y valores numericos validos.',
                     icono: 'error',
                 });
+                return;
+            }
+
+            try {
+                const datos = new FormData(formularioProducto);
+                const respuesta = await fetch(formularioProducto.action, {
+                    method: 'POST',
+                    body: datos,
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                const json = await respuesta.json();
+                if (!json.ok) {
+                    throw new Error(json.mensaje || 'No se pudo guardar.');
+                }
+                document.getElementById('producto_id').value = String(json.data.producto_id || '');
+                formularioProducto.action = `${window.location.origin}${document.body.dataset.baseUrl || ''}/inventario/productos/editar`;
+                document.getElementById('modalProductoTitulo').textContent = 'Editar producto';
+                habilitarGaleriaProducto(json.data.producto_id || '', json.data.empresa_id || empresa);
+                await mostrarAlerta({
+                    icono: 'success',
+                    titulo: 'Producto guardado',
+                    texto: json.mensaje || 'Producto guardado correctamente.',
+                    tiempo: 0,
+                    posicion: 2,
+                });
+            } catch (error) {
+                mostrarAlerta({
+                    icono: 'error',
+                    titulo: 'No se pudo guardar',
+                    texto: error.message || 'Revise los datos ingresados.',
+                    tiempo: 0,
+                    posicion: 4,
+                });
+            }
+        });
+    }
+
+    const crearBloqueoCargaArchivos = (archivos) => {
+        const bloqueo = document.createElement('div');
+        bloqueo.className = 'bloqueo-carga-archivos';
+        bloqueo.innerHTML = `
+            <div class="bloqueo-carga-archivos-panel">
+                <strong>Cargando archivos</strong>
+                <div id="listaProgresoArchivos"></div>
+            </div>
+        `;
+        document.body.appendChild(bloqueo);
+        const lista = bloqueo.querySelector('#listaProgresoArchivos');
+        archivos.forEach((archivo, indice) => {
+            const fila = document.createElement('div');
+            fila.className = 'progreso-archivo';
+            fila.innerHTML = `
+                <div>
+                    <div class="text-truncate">${archivo.name}</div>
+                    <div class="progress" style="height: 6px;"><div class="progress-bar" id="progreso_archivo_${indice}" style="width: 0%"></div></div>
+                </div>
+                <span id="porcentaje_archivo_${indice}">0%</span>
+            `;
+            lista.appendChild(fila);
+        });
+        return bloqueo;
+    };
+
+    const actualizarProgresoArchivo = (indice, porcentaje) => {
+        const barra = document.getElementById(`progreso_archivo_${indice}`);
+        const texto = document.getElementById(`porcentaje_archivo_${indice}`);
+        if (barra) barra.style.width = `${porcentaje}%`;
+        if (texto) texto.textContent = `${porcentaje}%`;
+    };
+
+    window.INTESIS_SUBIR_ARCHIVOS = async ({ url, archivos, parametros = {}, extensiones = ['jpg', 'jpeg', 'png', 'webp'], maximoMb = 7 }) => {
+        const listaArchivos = Array.from(archivos || []);
+        if (!listaArchivos.length) {
+            throw new Error('Seleccione al menos un archivo.');
+        }
+        listaArchivos.forEach((archivo) => {
+            const extension = archivo.name.split('.').pop().toLowerCase();
+            if (!extensiones.includes(extension)) {
+                throw new Error('Solo se permiten imagenes JPG, PNG o WEBP.');
+            }
+            if (archivo.size > maximoMb * 1024 * 1024) {
+                throw new Error(`Cada archivo debe pesar maximo ${maximoMb}MB.`);
+            }
+        });
+
+        const bloqueo = crearBloqueoCargaArchivos(listaArchivos);
+        let subidos = 0;
+        try {
+            for (const [indice, archivo] of listaArchivos.entries()) {
+                const datos = new FormData();
+                Object.entries(parametros).forEach(([clave, valor]) => datos.append(clave, valor));
+                datos.append('archivos[]', archivo);
+                await new Promise((resolver, rechazar) => {
+                    const solicitud = new XMLHttpRequest();
+                    solicitud.open('POST', url);
+                    solicitud.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+                    solicitud.upload.addEventListener('progress', (evento) => {
+                        if (evento.lengthComputable) {
+                            actualizarProgresoArchivo(indice, Math.round((evento.loaded / evento.total) * 100));
+                        }
+                    });
+                    solicitud.addEventListener('load', () => {
+                        try {
+                            const json = JSON.parse(solicitud.responseText || '{}');
+                            if (!json.ok) {
+                                rechazar(new Error(json.mensaje || 'No se pudo cargar el archivo.'));
+                                return;
+                            }
+                            actualizarProgresoArchivo(indice, 100);
+                            subidos += Number(json.data?.subidos || 1);
+                            resolver(json);
+                        } catch (error) {
+                            rechazar(error);
+                        }
+                    });
+                    solicitud.addEventListener('error', () => rechazar(new Error('No se pudo cargar el archivo.')));
+                    solicitud.send(datos);
+                });
+            }
+            bloqueo.remove();
+            await Swal.fire({
+                icon: 'success',
+                title: `CARGA DE ${subidos} ARCHIVOS COMPLETA`,
+                position: 'top-end',
+                toast: true,
+                timer: 3500,
+                timerProgressBar: true,
+                showConfirmButton: false,
+                confirmButtonText: 'Aceptar',
+                confirmButtonColor: '#1f6f68',
+            });
+            return { subidos };
+        } finally {
+            bloqueo.remove();
+        }
+    };
+
+    const habilitarGaleriaProducto = (productoId, empresaId) => {
+        const botonSubir = document.getElementById('btnSeleccionarImagenesProducto');
+        const botonGaleria = document.getElementById('btnAbrirGaleriaProductoModal');
+        const ayuda = document.getElementById('ayudaGaleriaProducto');
+        if (botonSubir) botonSubir.disabled = !productoId;
+        if (botonGaleria) {
+            botonGaleria.disabled = !productoId;
+            botonGaleria.dataset.producto = productoId || '';
+            botonGaleria.dataset.empresa = empresaId || '';
+            botonGaleria.dataset.nombre = document.getElementById('producto_nombre')?.value || '';
+        }
+        if (ayuda) {
+            ayuda.textContent = productoId ? 'Puede seleccionar multiples imagenes JPG, PNG o WEBP de hasta 7MB.' : 'Guarde el producto para habilitar la carga de imagenes.';
+        }
+    };
+
+    const renderizarGaleriaProducto = (imagenes) => {
+        const contenedor = document.getElementById('galeriaProductoContenedor');
+        if (!contenedor) return;
+        contenedor.innerHTML = '';
+        if (!imagenes.length) {
+            contenedor.innerHTML = '<div class="text-muted">Sin imagenes registradas.</div>';
+            return;
+        }
+        imagenes.forEach((imagen) => {
+            const item = document.createElement('div');
+            item.className = 'galeria-producto-item';
+            item.innerHTML = `
+                <img src="${imagen.url}" alt="${imagen.archivo}">
+                <div class="galeria-producto-acciones">
+                    <button type="button" class="btn btn-accion btn-galeria-principal" data-archivo="${imagen.id}" title="Principal"><i class="bi ${imagen.principal ? 'bi-star-fill' : 'bi-star'}"></i></button>
+                    <a class="btn btn-accion" href="${imagen.url}" target="_blank" title="Ver"><i class="bi bi-eye"></i></a>
+                    <button type="button" class="btn btn-accion btn-eliminar-galeria" data-archivo="${imagen.id}" title="Eliminar"><i class="bi bi-trash3"></i></button>
+                </div>
+            `;
+            contenedor.appendChild(item);
+        });
+    };
+
+    const cargarGaleriaProducto = async (productoId) => {
+        if (!productoId) return;
+        const respuesta = await fetch(`${window.location.origin}${document.body.dataset.baseUrl || ''}/inventario/productos/archivos/listar?producto_id=${productoId}`, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        });
+        const json = await respuesta.json();
+        if (!json.ok) {
+            throw new Error(json.mensaje || 'No se pudo cargar la galeria.');
+        }
+        renderizarGaleriaProducto(json.data.imagenes || []);
+    };
+
+    document.getElementById('btnSeleccionarImagenesProducto')?.addEventListener('click', () => {
+        document.getElementById('producto_imagenes')?.click();
+    });
+
+    document.getElementById('producto_imagenes')?.addEventListener('change', async (evento) => {
+        const productoId = document.getElementById('producto_id')?.value || '';
+        if (!productoId) {
+            mostrarAlerta({ icono: 'warning', titulo: 'Producto requerido', texto: 'Guarde el producto antes de subir imagenes.' });
+            return;
+        }
+        try {
+            await window.INTESIS_SUBIR_ARCHIVOS({
+                url: `${window.location.origin}${document.body.dataset.baseUrl || ''}/inventario/productos/archivos/subir`,
+                archivos: evento.target.files,
+                parametros: { producto_id: productoId },
+                maximoMb: 7,
+            });
+            evento.target.value = '';
+            await cargarGaleriaProducto(productoId);
+        } catch (error) {
+            mostrarAlerta({ icono: 'error', titulo: 'No se pudo cargar', texto: error.message || 'Revise los archivos seleccionados.' });
+        }
+    });
+
+    const modalGaleriaProducto = document.getElementById('modalGaleriaProducto');
+    if (modalGaleriaProducto) {
+        modalGaleriaProducto.addEventListener('show.bs.modal', async (evento) => {
+            const boton = evento.relatedTarget || document.getElementById('btnAbrirGaleriaProductoModal');
+            const productoId = boton?.dataset.producto || document.getElementById('producto_id')?.value || '';
+            document.getElementById('galeria_producto_id').value = productoId;
+            document.getElementById('galeria_empresa_id').value = boton?.dataset.empresa || obtenerEmpresaProducto();
+            document.getElementById('modalGaleriaProductoTitulo').textContent = `Galeria ${boton?.dataset.nombre || document.getElementById('producto_nombre')?.value || 'producto'}`.trim();
+            try {
+                await cargarGaleriaProducto(productoId);
+            } catch (error) {
+                renderizarGaleriaProducto([]);
+                mostrarAlerta({ icono: 'error', titulo: 'No se pudo cargar', texto: error.message || 'No se pudo cargar la galeria.' });
+            }
+        });
+
+        modalGaleriaProducto.addEventListener('click', async (evento) => {
+            const principal = evento.target.closest('.btn-galeria-principal');
+            const eliminar = evento.target.closest('.btn-eliminar-galeria');
+            const boton = principal || eliminar;
+            if (!boton) return;
+            const datos = new FormData();
+            datos.append('archivo_id', boton.dataset.archivo || '');
+            const ruta = principal ? 'principal' : 'eliminar';
+            try {
+                const respuesta = await fetch(`${window.location.origin}${document.body.dataset.baseUrl || ''}/inventario/productos/archivos/${ruta}`, {
+                    method: 'POST',
+                    body: datos,
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                const json = await respuesta.json();
+                if (!json.ok) throw new Error(json.mensaje || 'No se pudo actualizar la galeria.');
+                await cargarGaleriaProducto(document.getElementById('galeria_producto_id').value);
+            } catch (error) {
+                mostrarAlerta({ icono: 'error', titulo: 'No se pudo actualizar', texto: error.message || 'Revise la imagen seleccionada.' });
             }
         });
     }
@@ -993,22 +1287,24 @@
                 opcion.dataset.empresa = String(json.data.empresa_id || empresa);
                 select.add(opcion);
                 select.value = String(json.data.id);
+                filtrarSelectsProductoPorEmpresa();
+                select.value = String(json.data.id);
                 bootstrap.Modal.getInstance(document.getElementById(modalId))?.hide();
                 formulario.reset();
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Registro guardado',
-                    text: json.mensaje || 'Registro guardado correctamente.',
-                    confirmButtonText: 'Aceptar',
-                    confirmButtonColor: '#1f6f68',
+                mostrarAlerta(json.mensaje_sistema || {
+                    icono: 'success',
+                    titulo: 'Registro guardado',
+                    texto: json.mensaje || 'Registro guardado correctamente.',
+                    tiempo: 0,
+                    posicion: 2,
                 });
             } catch (error) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'No se pudo guardar',
-                    text: error.message || 'Revise los datos ingresados.',
-                    confirmButtonText: 'Aceptar',
-                    confirmButtonColor: '#1f6f68',
+                mostrarAlerta({
+                    icono: 'error',
+                    titulo: 'No se pudo guardar',
+                    texto: error.message || 'Revise los datos ingresados.',
+                    tiempo: 0,
+                    posicion: 4,
                 });
             }
         });
@@ -1096,6 +1392,8 @@
             const formulario = document.getElementById('formularioMensajeError');
             formulario.reset();
             document.getElementById('mensaje_id').value = '';
+            document.getElementById('mensaje_tiempo').value = '0';
+            document.getElementById('mensaje_posicion').value = '4';
             document.getElementById('modalMensajeTitulo').textContent = modo === 'editar' ? 'Editar mensaje' : 'Nuevo mensaje';
             formulario.action = `${window.location.origin}${document.body.dataset.baseUrl || ''}/sistema/configuracion/mensajes-error/${modo === 'editar' ? 'editar' : 'crear'}`;
             if (modo === 'editar') {
@@ -1107,6 +1405,8 @@
                 document.getElementById('mensaje_icono').value = boton.dataset.icono || 'error';
                 document.getElementById('mensaje_modulo').value = boton.dataset.modulo || '';
                 document.getElementById('mensaje_entidad').value = boton.dataset.entidad || '';
+                document.getElementById('mensaje_tiempo').value = boton.dataset.tiempo || '0';
+                document.getElementById('mensaje_posicion').value = boton.dataset.posicion || '4';
             }
         });
     }
@@ -1237,30 +1537,38 @@
         }
     }
 
-    const pilaModales = [];
+    const actualizarCapasModales = () => {
+        const modalesAbiertos = Array.from(document.querySelectorAll('.modal.show'));
+        modalesAbiertos.forEach((modal, indice) => {
+            const zIndex = 1055 + (indice * 20);
+            modal.style.zIndex = String(zIndex);
+            modal.classList.toggle('modal-en-segundo-plano', indice < modalesAbiertos.length - 1);
+        });
+    };
+
     document.querySelectorAll('.modal').forEach((modal) => {
         modal.addEventListener('show.bs.modal', () => {
-            const modalAbierto = document.querySelector('.modal.show');
-            if (modalAbierto && modalAbierto !== modal) {
-                pilaModales.push(modalAbierto.id);
-                modalAbierto.dataset.omitirRetorno = '1';
-                bootstrap.Modal.getInstance(modalAbierto)?.hide();
-            }
+            const cantidadAbiertos = document.querySelectorAll('.modal.show').length;
+            modal.style.zIndex = String(1055 + (cantidadAbiertos * 20));
+
+            setTimeout(() => {
+                const respaldos = document.querySelectorAll('.modal-backdrop:not(.modal-backdrop-apilado)');
+                const respaldo = respaldos[respaldos.length - 1];
+                if (respaldo) {
+                    respaldo.classList.add('modal-backdrop-apilado');
+                    respaldo.style.zIndex = String(1050 + (cantidadAbiertos * 20));
+                }
+                actualizarCapasModales();
+            }, 0);
         });
 
         modal.addEventListener('hidden.bs.modal', () => {
-            if (modal.dataset.omitirRetorno === '1') {
-                delete modal.dataset.omitirRetorno;
-                return;
+            modal.style.zIndex = '';
+            modal.classList.remove('modal-en-segundo-plano');
+            if (document.querySelector('.modal.show')) {
+                document.body.classList.add('modal-open');
             }
-
-            const anterior = pilaModales.pop();
-            if (anterior) {
-                const modalAnterior = document.getElementById(anterior);
-                if (modalAnterior) {
-                    bootstrap.Modal.getOrCreateInstance(modalAnterior).show();
-                }
-            }
+            actualizarCapasModales();
         });
     });
 

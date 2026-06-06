@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Intesis\Nucleo;
 
 use Intesis\Controladores\AutenticacionControlador;
+use Intesis\Controladores\ArchivoProductoControlador;
 use Intesis\Controladores\BodegaControlador;
 use Intesis\Controladores\CategoriaControlador;
 use Intesis\Controladores\ConfiguracionControlador;
@@ -27,6 +28,7 @@ final class Enrutador
         private MenuControlador $menuControlador,
         private ConfiguracionControlador $configuracionControlador,
         private BodegaControlador $bodegaControlador,
+        private ArchivoProductoControlador $archivoProductoControlador,
         private CategoriaControlador $categoriaControlador,
         private MarcaControlador $marcaControlador,
         private ProductoControlador $productoControlador,
@@ -326,6 +328,31 @@ final class Enrutador
 
         if ($metodo === 'POST' && $ruta === '/inventario/bodegas/eliminar') {
             $this->bodegaControlador->eliminar();
+            return;
+        }
+
+        if ($metodo === 'GET' && $ruta === '/inventario/productos/archivos/listar') {
+            $this->archivoProductoControlador->listar();
+            return;
+        }
+
+        if ($metodo === 'POST' && $ruta === '/inventario/productos/archivos/subir') {
+            $this->archivoProductoControlador->subir();
+            return;
+        }
+
+        if ($metodo === 'GET' && $ruta === '/inventario/productos/archivos/ver') {
+            $this->archivoProductoControlador->ver();
+            return;
+        }
+
+        if ($metodo === 'POST' && $ruta === '/inventario/productos/archivos/principal') {
+            $this->archivoProductoControlador->principal();
+            return;
+        }
+
+        if ($metodo === 'POST' && $ruta === '/inventario/productos/archivos/eliminar') {
+            $this->archivoProductoControlador->eliminar();
             return;
         }
 

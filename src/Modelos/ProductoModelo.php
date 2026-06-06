@@ -25,12 +25,19 @@ final class ProductoModelo
             SELECT
                 p.*, e.sis_empresa_nombre_comercial,
                 c.inv_categoria_nombre, m.inv_marca_nombre,
-                es.sis_estado_codigo, es.sis_estado_nombre
+                es.sis_estado_codigo, es.sis_estado_nombre,
+                img.sis_archivos_id AS imagen_principal_id,
+                img.sis_archivos_ubicacion AS imagen_principal_ubicacion
             FROM inv_producto p
             INNER JOIN sis_empresa e ON e.sis_empresa_id = p.sis_empresa_id
             INNER JOIN inv_categoria c ON c.inv_categoria_id = p.inv_categoria_id
             INNER JOIN inv_marca m ON m.inv_marca_id = p.inv_marca_id
             INNER JOIN sis_estado es ON es.sis_estado_id = p.sis_estado_id
+            LEFT JOIN sis_archivos img ON img.sis_empresa_id = p.sis_empresa_id
+                AND img.sis_archivos_tabla = 'INV_PRODUCTO'
+                AND img.sis_archivos_id_padre = p.inv_producto_id
+                AND img.sis_archivos_estado = 1
+                AND img.sis_archivos_principal = TRUE
             WHERE es.sis_estado_codigo <> 'ELIMINADO'
             {$filtro}
             ORDER BY e.sis_empresa_nombre_comercial, p.inv_producto_nombre
@@ -66,7 +73,7 @@ final class ProductoModelo
      * * CREA UN PRODUCTO DE INVENTARIO.
      * ***************************************************************************
      */
-    public function crear(array $datos, int $usuarioId): void
+    public function crear(array $datos, int $usuarioId): int
     {
         $sentencia = $this->conexionBaseDatos->obtener()->prepare("
             INSERT INTO inv_producto (
@@ -87,11 +94,14 @@ final class ProductoModelo
                 :stock_minimo, :stock_maximo,
                 :estado_id, :usuario_crea
             )
+            RETURNING inv_producto_id
         ");
         $this->vincularDatos($sentencia, $datos);
         $sentencia->bindValue(':estado_id', $this->obtenerEstadoId('ACTIVO'), PDO::PARAM_INT);
         $sentencia->bindValue(':usuario_crea', $usuarioId, PDO::PARAM_INT);
         $sentencia->execute();
+
+        return (int) $sentencia->fetchColumn();
     }
 
     /**

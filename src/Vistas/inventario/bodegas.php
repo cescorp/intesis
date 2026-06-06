@@ -60,10 +60,10 @@ $appUrl = rtrim($configuracion->obtener('APP_URL', ''), '/');
                                                 <form action="<?= $appUrl ?>/inventario/bodegas/activar" method="post" class="d-inline"><input type="hidden" name="bodega_id" value="<?= (int) $bodega['inv_bodega_id'] ?>"><button type="submit" class="btn btn-accion btn-activar" title="Activar bodega"><i class="bi bi-toggle-on"></i></button></form>
                                             <?php endif; ?>
                                             <?php if ($bodega['sis_estado_codigo'] === 'ACTIVO' && $permisos['inactivar']): ?>
-                                                <form action="<?= $appUrl ?>/inventario/bodegas/inactivar" method="post" class="d-inline formulario-confirmar"><input type="hidden" name="bodega_id" value="<?= (int) $bodega['inv_bodega_id'] ?>"><button type="submit" class="btn btn-accion btn-inactivar" title="Inactivar bodega"><i class="bi bi-toggle-off"></i></button></form>
+                                                <form action="<?= $appUrl ?>/inventario/bodegas/inactivar" method="post" class="d-inline formulario-confirmar" data-codigo-mensaje="CONFIRMAR_INACTIVAR_BODEGA"><input type="hidden" name="bodega_id" value="<?= (int) $bodega['inv_bodega_id'] ?>"><button type="submit" class="btn btn-accion btn-inactivar" title="Inactivar bodega"><i class="bi bi-toggle-off"></i></button></form>
                                             <?php endif; ?>
                                             <?php if ($permisos['eliminar']): ?>
-                                                <form action="<?= $appUrl ?>/inventario/bodegas/eliminar" method="post" class="d-inline formulario-confirmar"><input type="hidden" name="bodega_id" value="<?= (int) $bodega['inv_bodega_id'] ?>"><button type="submit" class="btn btn-accion btn-eliminar" title="Eliminar bodega"><i class="bi bi-trash3"></i></button></form>
+                                                <form action="<?= $appUrl ?>/inventario/bodegas/eliminar" method="post" class="d-inline formulario-confirmar" data-codigo-mensaje="CONFIRMAR_ELIMINAR_BODEGA"><input type="hidden" name="bodega_id" value="<?= (int) $bodega['inv_bodega_id'] ?>"><button type="submit" class="btn btn-accion btn-eliminar" title="Eliminar bodega"><i class="bi bi-trash3"></i></button></form>
                                             <?php endif; ?>
                                         </td>
                                     </tr>

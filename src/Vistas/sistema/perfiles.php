@@ -124,7 +124,7 @@ foreach ($menusSolo as $menu) {
                                                 </button>
                                             <?php endif; ?>
                                             <?php if ((int) $perfil['sis_perfil_estado'] === 1 && $permisos['inactivar'] && !$protegido): ?>
-                                                <form action="<?= $appUrl ?>/sistema/perfiles/inactivar" method="post" class="d-inline formulario-confirmar">
+                                                <form action="<?= $appUrl ?>/sistema/perfiles/inactivar" method="post" class="d-inline formulario-confirmar" data-codigo-mensaje="CONFIRMAR_INACTIVAR_PERFIL">
                                                     <input type="hidden" name="perfil_id" value="<?= (int) $perfil['sis_perfil_id'] ?>">
                                                     <button type="submit" class="btn btn-accion btn-inactivar" title="Inactivar perfil"><i class="bi bi-toggle-off"></i></button>
                                                 </form>
@@ -136,7 +136,7 @@ foreach ($menusSolo as $menu) {
                                                 </form>
                                             <?php endif; ?>
                                             <?php if ($permisos['eliminar'] && !$protegido && (int) $perfil['total_usuarios'] === 0): ?>
-                                                <form action="<?= $appUrl ?>/sistema/perfiles/eliminar" method="post" class="d-inline formulario-confirmar">
+                                                <form action="<?= $appUrl ?>/sistema/perfiles/eliminar" method="post" class="d-inline formulario-confirmar" data-codigo-mensaje="CONFIRMAR_ELIMINAR_PERFIL">
                                                     <input type="hidden" name="perfil_id" value="<?= (int) $perfil['sis_perfil_id'] ?>">
                                                     <button type="submit" class="btn btn-accion btn-eliminar" title="Eliminar perfil"><i class="bi bi-trash3"></i></button>
                                                 </form>
@@ -274,6 +274,7 @@ foreach ($menusSolo as $menu) {
     </script>
 <?php endif; ?>
 <script>
+    window.INTESIS_MENSAJES = <?= json_encode($mensajesSistema ?? [], JSON_UNESCAPED_UNICODE) ?>;
     window.INTESIS_PERMISOS_PERFIL = <?= json_encode($permisosPerfil ?? [], JSON_UNESCAPED_UNICODE) ?>;
 </script>
 <?php require $configuracion->raiz() . '/src/Vistas/plantillas/pie.php'; ?>
