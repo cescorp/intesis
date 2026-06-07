@@ -15,6 +15,8 @@ use Intesis\Controladores\MenuControlador;
 use Intesis\Controladores\PanelControlador;
 use Intesis\Controladores\PerfilControlador;
 use Intesis\Controladores\ProductoControlador;
+use Intesis\Controladores\StockControlador;
+use Intesis\Controladores\KardexControlador;
 use Intesis\Controladores\UsuarioControlador;
 
 final class Enrutador
@@ -32,6 +34,8 @@ final class Enrutador
         private CategoriaControlador $categoriaControlador,
         private MarcaControlador $marcaControlador,
         private ProductoControlador $productoControlador,
+        private StockControlador $stockControlador,
+        private KardexControlador $kardexControlador,
         private Configuracion $configuracion
     ) {
     }
@@ -378,6 +382,51 @@ final class Enrutador
 
         if ($metodo === 'POST' && $ruta === '/inventario/productos/inactivar') {
             $this->productoControlador->inactivar();
+            return;
+        }
+
+        if ($metodo === 'GET' && $ruta === '/inventario/stock') {
+            $this->stockControlador->listar();
+            return;
+        }
+
+        if ($metodo === 'POST' && $ruta === '/inventario/stock/registrar') {
+            $this->stockControlador->registrar();
+            return;
+        }
+
+        if ($metodo === 'POST' && $ruta === '/inventario/stock/importar') {
+            $this->stockControlador->importar();
+            return;
+        }
+
+        if ($metodo === 'POST' && $ruta === '/inventario/stock/confirmar-importacion') {
+            $this->stockControlador->confirmarImportacion();
+            return;
+        }
+
+        if ($metodo === 'GET' && $ruta === '/inventario/stock/plantilla') {
+            $this->stockControlador->plantilla();
+            return;
+        }
+
+        if ($metodo === 'GET' && $ruta === '/inventario/stock/precios') {
+            $this->stockControlador->precios();
+            return;
+        }
+
+        if ($metodo === 'GET' && $ruta === '/inventario/stock/codigos-proveedor') {
+            $this->stockControlador->codigosProveedor();
+            return;
+        }
+
+        if ($metodo === 'GET' && $ruta === '/inventario/kardex') {
+            $this->kardexControlador->listar();
+            return;
+        }
+
+        if ($metodo === 'GET' && $ruta === '/inventario/kardex/detalle') {
+            $this->kardexControlador->detalle();
             return;
         }
 

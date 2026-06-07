@@ -629,8 +629,13 @@ body {
 
 .permisos-layout {
     display: grid;
-    grid-template-columns: minmax(280px, 380px) minmax(0, 1fr);
+    grid-template-columns: 380px minmax(520px, 1fr);
     gap: 1rem;
+    min-width: 920px;
+}
+
+#modalPermisosPerfil .modal-body {
+    overflow-x: auto;
 }
 
 .permisos-arbol,
@@ -694,6 +699,10 @@ body {
 
 .permiso-nodo.nivel-menu-2 {
     padding-left: 1.25rem;
+}
+
+.permiso-nodo.nivel-menu-3 {
+    padding-left: 2.2rem;
 }
 
 .btn-menu-acordeon,
@@ -1128,6 +1137,23 @@ body {
     align-items: center;
     margin-top: .55rem;
     font-size: .82rem;
+}
+
+.stock-tabla-contenedor {
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+.stock-tabla-contenedor th,
+.stock-tabla-contenedor td {
+    white-space: nowrap;
+}
+
+.stock-tabla-contenedor .btn-link {
+    color: #1f6f68;
+    font-weight: 700;
+    padding: 0;
+    text-decoration: none;
 }
 
 @media (max-width: 1050px) {

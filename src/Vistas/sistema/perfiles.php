@@ -10,8 +10,10 @@ foreach ($perfiles as $perfil) {
 $menusSolo = array_values(array_filter($menusPermisos, fn (array $menu): bool => $menu['sis_menu_tipo'] === 'M'));
 $accionesSolo = array_values(array_filter($menusPermisos, fn (array $menu): bool => $menu['sis_menu_tipo'] === 'B'));
 $menusPorId = [];
+$menusPorPadre = [];
 foreach ($menusSolo as $menu) {
     $menusPorId[(int) $menu['sis_menu_id']] = $menu;
+    $menusPorPadre[(int) ($menu['sis_menu_padre'] ?? 0)][] = $menu;
 }
 $accionesPorMenu = [];
 foreach ($accionesSolo as $accion) {
@@ -27,6 +29,36 @@ foreach ($menusSolo as $menu) {
         }
     }
 }
+
+/**
+ * ***************************************************************************
+ * * RENDERIZA EL ARBOL DE MENUS PARA ASIGNAR PERMISOS POR PERFIL.
+ * ***************************************************************************
+ */
+$renderizarArbolPermisos = function (int $padreId, int $nivel) use (&$renderizarArbolPermisos, $menusPorPadre, $accionesDescendientes): void {
+    foreach ($menusPorPadre[$padreId] ?? [] as $menu) {
+        $menuId = (int) $menu['sis_menu_id'];
+        $esPrincipal = $padreId === 0;
+        ?>
+        <div class="permiso-nodo permiso-menu nivel-menu-<?= min($nivel, 3) ?> <?= $esPrincipal ? 'menu-desplegado' : '' ?>" data-menu-id="<?= $menuId ?>" data-padre="<?= $padreId ?>">
+            <button type="button" class="btn-menu-acordeon <?= $esPrincipal ? '' : 'invisible' ?>" title="Desplegar u ocultar">
+                <i class="bi <?= $esPrincipal ? 'bi-chevron-down' : 'bi-chevron-right' ?>"></i>
+            </button>
+            <label class="permiso-menu-check">
+                <input type="checkbox" name="menu_ids[]" value="<?= $menuId ?>">
+                <i class="<?= htmlspecialchars($menu['sis_menu_icono'] ?: 'bi bi-dot') ?>"></i>
+                <span><?= htmlspecialchars($menu['sis_menu_nombre']) ?></span>
+            </label>
+            <?php if (!empty($accionesDescendientes[$menuId])): ?>
+                <button type="button" class="btn-cargar-acciones" title="Cargar acciones">
+                    <i class="bi bi-arrow-right-square"></i>
+                </button>
+            <?php endif; ?>
+        </div>
+        <?php $renderizarArbolPermisos($menuId, $nivel + 1); ?>
+        <?php
+    }
+};
 ?>
 <div class="app-wrapper">
     <nav class="app-header navbar navbar-expand navbar-intesis">
@@ -203,28 +235,7 @@ foreach ($menusSolo as $menu) {
             <div class="modal-body">
                 <div class="permisos-layout">
                     <div class="permisos-arbol">
-                        <?php foreach ($menusSolo as $menu): ?>
-                            <?php
-                            $menuId = (int) $menu['sis_menu_id'];
-                            $padreId = (int) ($menu['sis_menu_padre'] ?? 0);
-                            $esPrincipal = $padreId === 0;
-                            ?>
-                            <div class="permiso-nodo permiso-menu nivel-menu-<?= $esPrincipal ? '1' : '2' ?> <?= $esPrincipal ? 'menu-colapsado' : 'd-none' ?>" data-menu-id="<?= $menuId ?>" data-padre="<?= $padreId ?>">
-                                <button type="button" class="btn-menu-acordeon <?= $esPrincipal ? '' : 'invisible' ?>" title="Desplegar u ocultar">
-                                    <i class="bi bi-chevron-right"></i>
-                                </button>
-                                <label class="permiso-menu-check">
-                                    <input type="checkbox" name="menu_ids[]" value="<?= $menuId ?>">
-                                    <i class="<?= htmlspecialchars($menu['sis_menu_icono'] ?: 'bi bi-dot') ?>"></i>
-                                    <span><?= htmlspecialchars($menu['sis_menu_nombre']) ?></span>
-                                </label>
-                                <?php if (!empty($accionesDescendientes[$menuId])): ?>
-                                    <button type="button" class="btn-cargar-acciones" title="Cargar acciones">
-                                        <i class="bi bi-arrow-right-square"></i>
-                                    </button>
-                                <?php endif; ?>
-                            </div>
-                        <?php endforeach; ?>
+                        <?php $renderizarArbolPermisos(0, 1); ?>
                     </div>
                     <div class="permisos-detalle" id="permisosDetallePerfil">
                         <?php foreach ($menusSolo as $menu): ?>

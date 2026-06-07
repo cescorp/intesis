@@ -29,17 +29,17 @@ $renderizarArbolMenus = function (int $padre, int $nivel) use (&$renderizarArbol
         $hijosMenu = array_filter($hijos, fn (array $hijo): bool => $hijo['sis_menu_tipo'] === 'M');
         $menuId = (int) $menu['sis_menu_id'];
         ?>
-        <div class="menu-admin-nodo nivel-menu-<?= min($nivel, 3) ?> <?= $padre === 0 ? 'menu-admin-colapsado' : 'd-none' ?> <?= (int) $menu['sis_menu_estado'] === 1 ? '' : 'inactivo' ?>" data-menu-id="<?= $menuId ?>" data-padre="<?= $padre ?>">
+        <div class="menu-admin-nodo nivel-menu-<?= min($nivel, 3) ?> <?= $padre === 0 ? 'menu-admin-desplegado' : '' ?> <?= (int) $menu['sis_menu_estado'] === 1 ? '' : 'inactivo' ?>" data-menu-id="<?= $menuId ?>" data-padre="<?= $padre ?>">
             <button type="button" class="btn-menu-admin-acordeon <?= $padre === 0 ? '' : 'invisible' ?>" title="Desplegar u ocultar">
-                <i class="bi bi-chevron-right"></i>
+                <i class="bi <?= $padre === 0 ? 'bi-chevron-down' : 'bi-chevron-right' ?>"></i>
             </button>
             <i class="<?= htmlspecialchars($menu['sis_menu_icono'] ?: 'bi bi-circle') ?>"></i>
             <span><?= htmlspecialchars($menu['sis_menu_nombre']) ?></span>
-            <button type="button" class="btn-cargar-menu-admin" title="Cargar acciones">
+            <button type="button" class="btn-cargar-menu-admin" title="Cargar acciones" <?= $padre === 0 && (int) $menu['sis_menu_estado'] !== 1 ? 'disabled' : '' ?>>
                 <i class="bi bi-arrow-right-square"></i>
             </button>
             <?php if ($permisos['editar']): ?>
-                <button type="button" class="btn-menu-admin-editar btn-editar-menu" title="Editar menu" data-bs-toggle="modal" data-bs-target="#modalMenu" data-modo="editar" data-id="<?= $menuId ?>" data-nombre="<?= htmlspecialchars($menu['sis_menu_nombre']) ?>" data-padre="<?= (int) ($menu['sis_menu_padre'] ?? 0) ?>" data-tipo="<?= htmlspecialchars($menu['sis_menu_tipo']) ?>" data-url="<?= htmlspecialchars($menu['sis_menu_url']) ?>" data-icono="<?= htmlspecialchars($menu['sis_menu_icono'] ?? '') ?>" data-orden="<?= (int) $menu['sis_menu_orden'] ?>">
+                <button type="button" class="btn-menu-admin-editar btn-editar-menu" title="Editar menu" data-bs-toggle="modal" data-bs-target="#modalMenu" data-modo="editar" data-id="<?= $menuId ?>" data-nombre="<?= htmlspecialchars($menu['sis_menu_nombre']) ?>" data-padre="<?= (int) ($menu['sis_menu_padre'] ?? 0) ?>" data-tipo="<?= htmlspecialchars($menu['sis_menu_tipo']) ?>" data-url="<?= htmlspecialchars($menu['sis_menu_url']) ?>" data-icono="<?= htmlspecialchars($menu['sis_menu_icono'] ?? '') ?>" data-orden="<?= (int) $menu['sis_menu_orden'] ?>" data-estado="<?= (int) $menu['sis_menu_estado'] ?>">
                     <i class="bi bi-pencil-square"></i>
                 </button>
             <?php endif; ?>
@@ -124,7 +124,7 @@ $renderizarArbolMenus = function (int $padre, int $nivel) use (&$renderizarArbol
                                             <span><?= htmlspecialchars($menu['sis_menu_url']) ?></span>
                                         </div>
                                         <?php if ($permisos['crear']): ?>
-                                            <button type="button" class="btn btn-secundario btn-sm btn-nueva-accion-menu" data-bs-toggle="modal" data-bs-target="#modalMenu" data-modo="crear" data-tipo="B" data-padre="<?= $menuId ?>">
+                                            <button type="button" class="btn btn-secundario btn-sm btn-nueva-accion-menu" data-bs-toggle="modal" data-bs-target="#modalMenu" data-modo="crear" data-tipo="B" data-padre="<?= $menuId ?>" <?= (int) $menu['sis_menu_estado'] === 1 ? '' : 'disabled title="Menu principal inactivo"' ?>>
                                                 <i class="bi bi-plus-lg"></i>
                                                 Accion
                                             </button>
@@ -140,7 +140,7 @@ $renderizarArbolMenus = function (int $padre, int $nivel) use (&$renderizarArbol
                                                 </div>
                                                 <div class="acciones-tabla">
                                                     <?php if ($permisos['editar']): ?>
-                                                        <button type="button" class="btn btn-accion btn-editar-menu" title="Editar accion" data-bs-toggle="modal" data-bs-target="#modalMenu" data-modo="editar" data-id="<?= (int) $accion['sis_menu_id'] ?>" data-nombre="<?= htmlspecialchars($accion['sis_menu_nombre']) ?>" data-padre="<?= (int) ($accion['sis_menu_padre'] ?? 0) ?>" data-tipo="<?= htmlspecialchars($accion['sis_menu_tipo']) ?>" data-url="<?= htmlspecialchars($accion['sis_menu_url']) ?>" data-icono="<?= htmlspecialchars($accion['sis_menu_icono'] ?? '') ?>" data-orden="<?= (int) $accion['sis_menu_orden'] ?>">
+                                                        <button type="button" class="btn btn-accion btn-editar-menu" title="Editar accion" data-bs-toggle="modal" data-bs-target="#modalMenu" data-modo="editar" data-id="<?= (int) $accion['sis_menu_id'] ?>" data-nombre="<?= htmlspecialchars($accion['sis_menu_nombre']) ?>" data-padre="<?= (int) ($accion['sis_menu_padre'] ?? 0) ?>" data-tipo="<?= htmlspecialchars($accion['sis_menu_tipo']) ?>" data-url="<?= htmlspecialchars($accion['sis_menu_url']) ?>" data-icono="<?= htmlspecialchars($accion['sis_menu_icono'] ?? '') ?>" data-orden="<?= (int) $accion['sis_menu_orden'] ?>" data-estado="<?= (int) $accion['sis_menu_estado'] ?>">
                                                             <i class="bi bi-pencil-square"></i>
                                                         </button>
                                                     <?php endif; ?>
@@ -232,6 +232,13 @@ $renderizarArbolMenus = function (int $padre, int $nivel) use (&$renderizarArbol
                             <input class="form-check-input" type="checkbox" role="switch" id="menu_crear_ver" name="crear_ver" checked>
                             <label class="form-check-label" for="menu_crear_ver">Crear accion Ver automaticamente</label>
                         </div>
+                    </div>
+                    <div class="col-md-4" id="contenedorMenuEstado">
+                        <label class="form-label" for="menu_estado">Visualizacion</label>
+                        <select class="form-control form-control-sm" id="menu_estado" name="estado">
+                            <option value="1">Activo</option>
+                            <option value="0">Inactivo</option>
+                        </select>
                     </div>
                 </div>
             </div>

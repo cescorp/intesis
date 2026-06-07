@@ -15,6 +15,8 @@ use Intesis\Controladores\MenuControlador;
 use Intesis\Controladores\PanelControlador;
 use Intesis\Controladores\PerfilControlador;
 use Intesis\Controladores\ProductoControlador;
+use Intesis\Controladores\StockControlador;
+use Intesis\Controladores\KardexControlador;
 use Intesis\Controladores\UsuarioControlador;
 use Intesis\Modelos\EmpresaModelo;
 use Intesis\Modelos\ArchivoProductoModelo;
@@ -28,6 +30,8 @@ use Intesis\Modelos\ModuloModelo;
 use Intesis\Modelos\PerfilModelo;
 use Intesis\Modelos\ProductoModelo;
 use Intesis\Modelos\SecuenciaModelo;
+use Intesis\Modelos\StockModelo;
+use Intesis\Modelos\KardexModelo;
 use Intesis\Modelos\TipoDocumentoModelo;
 use Intesis\Modelos\UsuarioEmpresaModelo;
 use Intesis\Modelos\UsuarioModelo;
@@ -70,6 +74,8 @@ final class Aplicacion
         $categoriaModelo = new CategoriaModelo($conexion);
         $marcaModelo = new MarcaModelo($conexion);
         $productoModelo = new ProductoModelo($conexion);
+        $stockModelo = new StockModelo($conexion);
+        $kardexModelo = new KardexModelo($conexion);
         $autenticacionServicio = new AutenticacionServicio($usuarioModelo, $registroErrores);
 
         $this->enrutador = new Enrutador(
@@ -85,6 +91,8 @@ final class Aplicacion
             new CategoriaControlador($vista, $sesion, $categoriaModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
             new MarcaControlador($vista, $sesion, $marcaModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
             new ProductoControlador($vista, $sesion, $productoModelo, $categoriaModelo, $marcaModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
+            new StockControlador($vista, $sesion, $stockModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
+            new KardexControlador($vista, $sesion, $kardexModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
             $configuracion
         );
     }

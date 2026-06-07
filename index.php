@@ -24,6 +24,8 @@ require_once __DIR__ . '/src/Modelos/ArchivoProductoModelo.php';
 require_once __DIR__ . '/src/Modelos/CategoriaModelo.php';
 require_once __DIR__ . '/src/Modelos/MarcaModelo.php';
 require_once __DIR__ . '/src/Modelos/ProductoModelo.php';
+require_once __DIR__ . '/src/Modelos/StockModelo.php';
+require_once __DIR__ . '/src/Modelos/KardexModelo.php';
 require_once __DIR__ . '/src/Servicios/AutenticacionServicio.php';
 require_once __DIR__ . '/src/Servicios/ValidadorIdentificacion.php';
 require_once __DIR__ . '/src/Controladores/AutenticacionControlador.php';
@@ -38,6 +40,8 @@ require_once __DIR__ . '/src/Controladores/ArchivoProductoControlador.php';
 require_once __DIR__ . '/src/Controladores/CategoriaControlador.php';
 require_once __DIR__ . '/src/Controladores/MarcaControlador.php';
 require_once __DIR__ . '/src/Controladores/ProductoControlador.php';
+require_once __DIR__ . '/src/Controladores/StockControlador.php';
+require_once __DIR__ . '/src/Controladores/KardexControlador.php';
 
 use Intesis\Nucleo\Aplicacion;
 

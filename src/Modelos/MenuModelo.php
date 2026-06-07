@@ -35,6 +35,13 @@ final class MenuModelo
               AND pp.sis_perfil_permisos_estado = 1
               AND m.sis_menu_estado = 1
               AND m.sis_menu_tipo = 'M'
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM sis_menu padre
+                  WHERE padre.sis_menu_id = m.sis_menu_padre
+                    AND padre.sis_menu_padre IS NULL
+                    AND padre.sis_menu_estado <> 1
+              )
             ORDER BY m.sis_menu_padre NULLS FIRST, m.sis_menu_orden, m.sis_menu_nombre
         ";
 
@@ -128,7 +135,7 @@ final class MenuModelo
                 )
                 VALUES (
                     :nombre, :padre, :icono, :url,
-                    :orden, 1, :tipo, :usuario_crea
+                    :orden, :estado, :tipo, :usuario_crea
                 )
                 RETURNING sis_menu_id
             ");
@@ -138,6 +145,7 @@ final class MenuModelo
                 'icono' => $datos['icono'],
                 'url' => $datos['url'],
                 'orden' => $datos['orden'],
+                'estado' => $datos['estado'],
                 'tipo' => $datos['tipo'],
                 'usuario_crea' => $usuarioId,
             ]);
@@ -171,6 +179,7 @@ final class MenuModelo
                 sis_menu_icono = :icono,
                 sis_menu_url = :url,
                 sis_menu_orden = :orden,
+                sis_menu_estado = :estado,
                 sis_menu_tipo = :tipo,
                 usuario_modifica = :usuario_modifica,
                 fecha_modifica = now()
@@ -183,6 +192,7 @@ final class MenuModelo
             'icono' => $datos['icono'],
             'url' => $datos['url'],
             'orden' => $datos['orden'],
+            'estado' => $datos['estado'],
             'tipo' => $datos['tipo'],
             'usuario_modifica' => $usuarioId,
         ]);

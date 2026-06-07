@@ -1,0 +1,205 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Intesis\Controladores;
+
+use Intesis\Modelos\KardexModelo;
+use Intesis\Modelos\MenuModelo;
+use Intesis\Modelos\MensajeSistemaModelo;
+use Intesis\Nucleo\Configuracion;
+use Intesis\Nucleo\RegistroErrores;
+use Intesis\Nucleo\Sesion;
+use Intesis\Nucleo\Vista;
+use Throwable;
+
+final class KardexControlador
+{
+    public function __construct(
+        private Vista $vista,
+        private Sesion $sesion,
+        private KardexModelo $kardexModelo,
+        private MenuModelo $menuModelo,
+        private MensajeSistemaModelo $mensajeSistemaModelo,
+        private Configuracion $configuracion,
+        private RegistroErrores $registroErrores
+    ) {
+    }
+
+    /**
+     * ***************************************************************************
+     * * MUESTRA LA CONSULTA DE KARDEX POR PRODUCTOS Y BODEGAS.
+     * ***************************************************************************
+     */
+    public function listar(): void
+    {
+        $usuario = $this->exigirSesion();
+        $this->exigirPermiso('/inventario/kardex/ver');
+        $verTodas = $this->esSuperusuario($usuario);
+        $empresaId = $verTodas ? (int) ($_GET['empresa_id'] ?? $usuario['empresa_id']) : (int) $usuario['empresa_id'];
+
+        $this->vista->renderizar('inventario/kardex', [
+            'titulo' => 'Kardex',
+            'usuario' => $usuario,
+            'menus' => $this->menuModelo->listarMenusPorPerfil((int) $usuario['empresa_id'], (int) $usuario['perfil_id']),
+            'empresas' => $this->kardexModelo->listarEmpresasActivas($verTodas, (int) $usuario['empresa_id']),
+            'empresaSeleccionada' => $empresaId,
+            'bodegas' => $this->kardexModelo->listarBodegas($empresaId),
+            'kardex' => $this->kardexModelo->listarKardexGlobal($empresaId),
+            'esSuperusuario' => $verTodas,
+            'mensaje' => $this->sesion->consumirMensaje(),
+            'mensajesSistema' => $this->mensajeSistemaModelo->listarPorCodigos(['USUARIO_DATOS_OBLIGATORIOS']),
+        ]);
+    }
+
+    /**
+     * ***************************************************************************
+     * * DEVUELVE EL DETALLE HISTORICO DE KARDEX DE UN PRODUCTO.
+     * ***************************************************************************
+     */
+    public function detalle(): void
+    {
+        $usuario = $this->exigirSesionJson();
+        $this->exigirPermisoJson('/inventario/kardex/detalle');
+        try {
+            $empresaId = $this->obtenerEmpresaPermitida($usuario, (int) ($_GET['empresa_id'] ?? 0));
+            $productoId = (int) ($_GET['producto_id'] ?? 0);
+            $desde = $this->normalizarFecha($_GET['desde'] ?? null);
+            $hasta = $this->normalizarFecha($_GET['hasta'] ?? null);
+            if (!$this->kardexModelo->productoPerteneceEmpresa($empresaId, $productoId)) {
+                throw new \InvalidArgumentException('Producto no valido.');
+            }
+            $this->responderJson(true, 'KARDEX_DETALLE_OK', 'Detalle kardex listado.', [
+                'bodegas' => $this->kardexModelo->listarBodegas($empresaId),
+                'movimientos' => array_map(fn (array $fila): array => $this->formatearMovimiento($fila), $this->kardexModelo->listarDetalleProducto($empresaId, $productoId, $desde, $hasta)),
+            ]);
+        } catch (Throwable $excepcion) {
+            $this->registroErrores->escribir('DETALLE KARDEX: ' . $excepcion->getMessage());
+            $this->responderJson(false, 'ERROR_VALIDACION', $excepcion->getMessage());
+        }
+    }
+
+    /**
+     * ***************************************************************************
+     * * PREPARA MOVIMIENTO DE KARDEX PARA RESPUESTA JSON.
+     * ***************************************************************************
+     */
+    private function formatearMovimiento(array $fila): array
+    {
+        $entrada = (float) $fila['inv_kardex_cantidad_entrada'];
+        $salida = (float) $fila['inv_kardex_cantidad_salida'];
+        $cantidad = $entrada > 0 ? $entrada : ($salida > 0 ? -$salida : 0);
+
+        return [
+            'id' => (int) $fila['inv_kardex_id'],
+            'bodega_id' => (int) $fila['inv_bodega_id'],
+            'detalle' => $this->traducirTipoMovimiento((string) $fila['inv_kardex_tipo_movimiento']),
+            'documento_tipo' => (string) $fila['inv_kardex_documento_tipo'],
+            'documento_id' => (int) $fila['inv_kardex_documento_id'],
+            'documento_numero' => (string) $fila['inv_kardex_documento_numero'],
+            'cantidad' => $cantidad,
+            'saldo' => (float) $fila['inv_kardex_saldo_cantidad'],
+            'observacion' => (string) ($fila['inv_kardex_observacion'] ?? ''),
+            'fecha' => (string) $fila['fecha'],
+            'hora' => (string) $fila['hora'],
+        ];
+    }
+
+    /**
+     * ***************************************************************************
+     * * CONVIERTE CODIGOS TECNICOS DE KARDEX EN ETIQUETAS DE USUARIO.
+     * ***************************************************************************
+     */
+    private function traducirTipoMovimiento(string $tipo): string
+    {
+        return [
+            'SALDO_INICIAL' => 'Ingreso',
+            'VENTA' => 'Salida',
+            'COMPRA' => 'Ingreso',
+            'AJUSTE_IN' => 'Ajuste ingreso',
+            'AJUSTE_OUT' => 'Ajuste salida',
+            'TRANS_IN' => 'Transferencia ingreso',
+            'TRANS_OUT' => 'Transferencia salida',
+        ][$tipo] ?? $tipo;
+    }
+
+    private function normalizarFecha(mixed $fecha): ?string
+    {
+        $valor = trim((string) $fecha);
+        if ($valor === '') {
+            return null;
+        }
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $valor)) {
+            throw new \InvalidArgumentException('Fecha no valida.');
+        }
+
+        return $valor;
+    }
+
+    private function obtenerEmpresaPermitida(array $usuario, int $empresaId): int
+    {
+        if (!$this->esSuperusuario($usuario)) {
+            return (int) $usuario['empresa_id'];
+        }
+        if ($empresaId <= 0) {
+            return (int) $usuario['empresa_id'];
+        }
+
+        return $empresaId;
+    }
+
+    private function esSuperusuario(array $usuario): bool
+    {
+        return strtoupper((string) ($usuario['perfil_codigo'] ?? $usuario['perfil'] ?? '')) === 'SUPERUSUARIO';
+    }
+
+    private function exigirSesion(): array
+    {
+        $usuario = $this->sesion->usuario();
+        if (!$usuario) {
+            $this->redirigir('/login');
+        }
+
+        return $usuario;
+    }
+
+    private function exigirSesionJson(): array
+    {
+        $usuario = $this->sesion->usuario();
+        if (!$usuario) {
+            $this->responderJson(false, 'ERROR_SESION', 'Sesion no activa.');
+        }
+
+        return $usuario;
+    }
+
+    private function exigirPermiso(string $url): void
+    {
+        $usuario = $this->exigirSesion();
+        if (!$this->menuModelo->tienePermiso((int) $usuario['empresa_id'], (int) $usuario['perfil_id'], $url)) {
+            $this->sesion->guardarMensaje('error', 'Acceso restringido', 'Su perfil no tiene permiso para esta accion.');
+            $this->redirigir('/dashboard');
+        }
+    }
+
+    private function exigirPermisoJson(string $url): void
+    {
+        $usuario = $this->exigirSesionJson();
+        if (!$this->menuModelo->tienePermiso((int) $usuario['empresa_id'], (int) $usuario['perfil_id'], $url)) {
+            $this->responderJson(false, 'ERROR_SIN_PERMISO', 'Su perfil no tiene permiso para esta accion.');
+        }
+    }
+
+    private function responderJson(bool $ok, string $codigo, string $mensaje, array $data = []): never
+    {
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['ok' => $ok, 'codigo' => $codigo, 'mensaje' => $mensaje, 'data' => $data], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    private function redirigir(string $ruta): never
+    {
+        header('Location: ' . rtrim($this->configuracion->obtener('APP_URL', ''), '/') . $ruta);
+        exit;
+    }
+}

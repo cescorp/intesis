@@ -83,7 +83,8 @@ final class MenuControlador
                 throw new \InvalidArgumentException('Menu no valido.');
             }
 
-            $datos = $this->normalizarDatos();
+            $menuActual = $editar ? $this->menuModelo->buscar($menuId) : null;
+            $datos = $this->normalizarDatos($menuActual, $usuario);
             $this->validarDatos($datos, $editar ? $menuId : null);
             $editar
                 ? $this->menuModelo->actualizar($menuId, $datos, (int) $usuario['id'])
@@ -144,15 +145,25 @@ final class MenuControlador
      * * NORMALIZA CAMPOS DEL FORMULARIO DE MENU.
      * ***************************************************************************
      */
-    private function normalizarDatos(): array
+    private function normalizarDatos(?array $menuActual, array $usuario): array
     {
+        $padre = (int) ($_POST['padre'] ?? 0) ?: null;
+        $tipo = strtoupper(trim((string) ($_POST['tipo'] ?? 'M')));
+        $esHijo = $padre !== null;
+        $estadoActual = $menuActual ? (int) $menuActual['sis_menu_estado'] : 1;
+        $estadoFormulario = (int) ($_POST['estado'] ?? 1) === 1 ? 1 : 0;
+        $estado = $esHijo && $this->esSuperusuario($usuario)
+            ? $estadoFormulario
+            : $estadoActual;
+
         return [
             'nombre' => trim((string) ($_POST['nombre'] ?? '')),
-            'padre' => (int) ($_POST['padre'] ?? 0) ?: null,
+            'padre' => $padre,
             'icono' => trim((string) ($_POST['icono'] ?? 'bi bi-circle')),
             'url' => '/' . trim((string) ($_POST['url'] ?? ''), '/'),
             'orden' => max(1, (int) ($_POST['orden'] ?? 1)),
-            'tipo' => strtoupper(trim((string) ($_POST['tipo'] ?? 'M'))),
+            'tipo' => $tipo,
+            'estado' => $estado,
             'crear_ver' => isset($_POST['crear_ver']),
         ];
     }
@@ -216,6 +227,16 @@ final class MenuControlador
             $this->redirigir('/login');
         }
         return $usuario;
+    }
+
+    /**
+     * ***************************************************************************
+     * * IDENTIFICA SI EL PERFIL ACTUAL ES SUPERUSUARIO.
+     * ***************************************************************************
+     */
+    private function esSuperusuario(array $usuario): bool
+    {
+        return strtoupper((string) ($usuario['perfil_codigo'] ?? $usuario['perfil'] ?? '')) === 'SUPERUSUARIO';
     }
 
     /**
