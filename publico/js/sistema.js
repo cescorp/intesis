@@ -1701,13 +1701,13 @@
         });
         const json = await respuesta.json();
         if (!json.ok) throw new Error(json.mensaje || 'No se pudo cargar kardex.');
-
+        
+        const movimientos = json.data?.movimientos || [];
         const bodegas = json.data?.bodegas || [];
         const columnasBodega = bodegas.flatMap((bodega) => [`Cant ${bodega.inv_bodega_codigo}`, `Saldo ${bodega.inv_bodega_codigo}`]);
-        const columnas = ['#', 'Detalle', 'No. Documento', ...columnasBodega, 'Fecha', 'Hora'];
-        tabla.querySelector('thead').innerHTML = `<tr>${columnas.map((columna) => `<th>${escaparHtml(columna)}</th>`).join('')}</tr>`;
+        const columnas = [ `${movimientos.length}`, 'Detalle', 'No. Documento', ...columnasBodega, 'Fecha', 'Hora'];
+        tabla.querySelector('thead').innerHTML = `<tr>${columnas.map((columna) => `<th class="text-center">${escaparHtml(columna)}</th>`).join('')}</tr>`;
 
-        const movimientos = json.data?.movimientos || [];
         tabla.querySelector('tbody').innerHTML = movimientos.length
             ? movimientos.map((movimiento, indice) => {
                 const celdasBodega = bodegas.map((bodega) => {
@@ -1715,16 +1715,16 @@
                     const cantidad = coincide ? formatearCantidadKardex(movimiento.cantidad) : '0.00';
                     const saldo = coincide ? formatearNumeroKardex(movimiento.saldo) : '0.00';
                     const claseCantidad = Number(movimiento.cantidad || 0) > 0 ? 'text-success' : (Number(movimiento.cantidad || 0) < 0 ? 'text-danger' : '');
-                    return `<td class="text-end ${coincide ? claseCantidad : ''}">${cantidad}</td><td class="text-end">${saldo}</td>`;
+                    return `<td class="text-center ${coincide ? claseCantidad : ''}">${cantidad}</td><td class="text-center">${saldo}</td>`;
                 }).join('');
                 return `
                     <tr>
-                        <td>${indice + 1}</td>
-                        <td>${escaparHtml(movimiento.detalle)}</td>
-                        <td><button type="button" class="btn btn-link btn-sm" title="PDF pendiente">${escaparHtml(movimiento.documento_numero || 'Sin numero')}</button></td>
+                        <td class="text-center">${indice + 1}</td>
+                        <td class="text-center">${escaparHtml(movimiento.detalle)}</td>
+                        <td class="text-center"><button type="button" class="btn btn-link btn-sm" title="PDF pendiente">${escaparHtml(movimiento.documento_numero || 'Sin numero')}</button></td>
                         ${celdasBodega}
-                        <td>${escaparHtml(movimiento.fecha)}</td>
-                        <td>${escaparHtml(movimiento.hora)}</td>
+                        <td class="text-center">${escaparHtml(movimiento.fecha)}</td>
+                        <td class="text-center">${escaparHtml(movimiento.hora)}</td>
                     </tr>
                 `;
             }).join('')
