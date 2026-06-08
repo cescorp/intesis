@@ -26,7 +26,11 @@ require_once __DIR__ . '/src/Modelos/MarcaModelo.php';
 require_once __DIR__ . '/src/Modelos/ProductoModelo.php';
 require_once __DIR__ . '/src/Modelos/StockModelo.php';
 require_once __DIR__ . '/src/Modelos/KardexModelo.php';
+if (is_file(__DIR__ . '/vendor/autoload.php')) {
+    require_once __DIR__ . '/vendor/autoload.php';
+}
 require_once __DIR__ . '/src/Servicios/AutenticacionServicio.php';
+require_once __DIR__ . '/src/Servicios/GeneradorPdf.php';
 require_once __DIR__ . '/src/Servicios/ValidadorIdentificacion.php';
 require_once __DIR__ . '/src/Controladores/AutenticacionControlador.php';
 require_once __DIR__ . '/src/Controladores/PanelControlador.php';

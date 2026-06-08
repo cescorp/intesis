@@ -11,6 +11,7 @@ use Intesis\Nucleo\Configuracion;
 use Intesis\Nucleo\RegistroErrores;
 use Intesis\Nucleo\Sesion;
 use Intesis\Nucleo\Vista;
+use Intesis\Servicios\GeneradorPdf;
 use Throwable;
 
 final class KardexControlador
@@ -22,7 +23,8 @@ final class KardexControlador
         private MenuModelo $menuModelo,
         private MensajeSistemaModelo $mensajeSistemaModelo,
         private Configuracion $configuracion,
-        private RegistroErrores $registroErrores
+        private RegistroErrores $registroErrores,
+        private GeneradorPdf $generadorPdf
     ) {
     }
 
@@ -81,6 +83,41 @@ final class KardexControlador
 
     /**
      * ***************************************************************************
+     * * GENERA PDF DE DOCUMENTO INTERNO RELACIONADO AL KARDEX.
+     * ***************************************************************************
+     */
+    public function documento(): void
+    {
+        $usuario = $this->exigirSesion();
+        $this->exigirPermiso('/inventario/kardex/documento');
+        try {
+            $empresaId = $this->obtenerEmpresaPermitida($usuario, (int) ($_GET['empresa_id'] ?? 0));
+            $documentoTipo = strtoupper(trim((string) ($_GET['documento_tipo'] ?? '')));
+            $documentoId = (int) ($_GET['documento_id'] ?? 0);
+            if ($documentoTipo !== 'INV_MOVIMIENTOS' || $documentoId <= 0) {
+                throw new \InvalidArgumentException('Documento no valido para PDF.');
+            }
+            $documento = $this->kardexModelo->obtenerDocumentoInventario($empresaId, $documentoId);
+            if (!$documento) {
+                throw new \InvalidArgumentException('Documento no encontrado.');
+            }
+            $cabeceraPdf = $this->normalizarCabeceraPdf($documento['cabecera']);
+            $pdf = $this->generadorPdf->generarMovimientoInventario($cabeceraPdf, $documento['detalles']);
+            header('Content-Type: application/pdf');
+            header('Content-Disposition: inline; filename="documento_' . $documentoId . '.pdf"');
+            header('Content-Length: ' . strlen($pdf));
+            echo $pdf;
+            exit;
+        } catch (Throwable $excepcion) {
+            $this->registroErrores->escribir('PDF KARDEX: ' . $excepcion->getMessage());
+            http_response_code(404);
+            echo 'No se pudo generar el PDF.';
+            exit;
+        }
+    }
+
+    /**
+     * ***************************************************************************
      * * PREPARA MOVIMIENTO DE KARDEX PARA RESPUESTA JSON.
      * ***************************************************************************
      */
@@ -121,6 +158,27 @@ final class KardexControlador
             'TRANS_IN' => 'Transferencia ingreso',
             'TRANS_OUT' => 'Transferencia salida',
         ][$tipo] ?? $tipo;
+    }
+
+    /**
+     * ***************************************************************************
+     * * NORMALIZA CABECERA DE DOCUMENTO PARA EL GENERADOR PDF.
+     * ***************************************************************************
+     */
+    private function normalizarCabeceraPdf(array $cabecera): array
+    {
+        return [
+            'empresa_nombre' => $cabecera['sis_empresa_nombre_comercial'] ?: $cabecera['sis_empresa_razon_social'],
+            'empresa_ruc' => $cabecera['sis_empresa_ruc'],
+            'empresa_direccion' => $cabecera['sis_empresa_direccion'],
+            'tipo_documento' => $cabecera['sis_tipo_documento_nombre'],
+            'numero' => $cabecera['inv_movimientos_numero'],
+            'fecha' => (string) $cabecera['inv_movimientos_fecha'],
+            'hora' => (string) $cabecera['hora'],
+            'referencia' => $cabecera['inv_movimientos_referencia'],
+            'observacion' => $cabecera['inv_movimientos_observacion'],
+            'responsable' => $cabecera['responsable'],
+        ];
     }
 
     private function normalizarFecha(mixed $fecha): ?string

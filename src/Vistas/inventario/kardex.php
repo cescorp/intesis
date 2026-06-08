@@ -118,6 +118,18 @@ $appUrl = rtrim($configuracion->obtener('APP_URL', ''), '/');
     </div>
 </div>
 
+<div class="modal fade modal-intesis" id="modalPdfKardex" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header"><div><p class="modal-etiqueta">Inventario</p><h2 class="modal-title" id="modalPdfKardexTitulo">Documento</h2></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button></div>
+            <div class="modal-body p-0">
+                <iframe id="visorPdfKardex" class="visor-pdf-kardex" title="Documento PDF"></iframe>
+            </div>
+            <div class="modal-footer"><button type="button" class="btn btn-secundario" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i> Cerrar</button></div>
+        </div>
+    </div>
+</div>
+
 <?php if (!empty($mensaje)): ?><script>window.INTESIS_MENSAJE = <?= json_encode($mensaje, JSON_UNESCAPED_UNICODE) ?>;</script><?php endif; ?>
 <script>
 window.INTESIS_MENSAJES = <?= json_encode($mensajesSistema ?? [], JSON_UNESCAPED_UNICODE) ?>;

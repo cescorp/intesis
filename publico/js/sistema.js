@@ -1721,7 +1721,7 @@
                     <tr>
                         <td class="text-center">${indice + 1}</td>
                         <td class="text-center">${escaparHtml(movimiento.detalle)}</td>
-                        <td class="text-center"><button type="button" class="btn btn-link btn-sm" title="PDF pendiente">${escaparHtml(movimiento.documento_numero || 'Sin numero')}</button></td>
+                        <td class="text-center"><button type="button" class="btn btn-link btn-sm btn-kardex-pdf" data-empresa="${escaparHtml(empresaId)}" data-documento-tipo="${escaparHtml(movimiento.documento_tipo)}" data-documento-id="${escaparHtml(movimiento.documento_id)}" data-documento-numero="${escaparHtml(movimiento.documento_numero || 'Sin numero')}" title="Ver Documento">${escaparHtml(movimiento.documento_numero || 'Sin numero')}</button></td>
                         ${celdasBodega}
                         <td class="text-center">${escaparHtml(movimiento.fecha)}</td>
                         <td class="text-center">${escaparHtml(movimiento.hora)}</td>
@@ -1753,6 +1753,22 @@
         } catch (error) {
             mostrarAlerta({ icono: 'error', titulo: 'No se pudo consultar', texto: error.message || 'Revise las fechas.' });
         }
+    });
+
+    document.getElementById('tablaDetalleKardex')?.addEventListener('click', (evento) => {
+        const boton = evento.target.closest('.btn-kardex-pdf');
+        if (!boton) return;
+        const modal = document.getElementById('modalPdfKardex');
+        const visor = document.getElementById('visorPdfKardex');
+        if (!modal || !visor) return;
+        const parametros = new URLSearchParams({
+            empresa_id: boton.dataset.empresa || '',
+            documento_tipo: boton.dataset.documentoTipo || '',
+            documento_id: boton.dataset.documentoId || '',
+        });
+        document.getElementById('modalPdfKardexTitulo').textContent = `Documento ${boton.dataset.documentoNumero || ''}`.trim();
+        visor.src = `${window.location.origin}${document.body.dataset.baseUrl || ''}/inventario/kardex/documento?${parametros.toString()}`;
+        bootstrap.Modal.getOrCreateInstance(modal).show();
     });
 
     const actualizarCapasModales = () => {

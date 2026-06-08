@@ -36,6 +36,7 @@ use Intesis\Modelos\TipoDocumentoModelo;
 use Intesis\Modelos\UsuarioEmpresaModelo;
 use Intesis\Modelos\UsuarioModelo;
 use Intesis\Servicios\AutenticacionServicio;
+use Intesis\Servicios\GeneradorPdf;
 
 final class Aplicacion
 {
@@ -77,6 +78,7 @@ final class Aplicacion
         $stockModelo = new StockModelo($conexion);
         $kardexModelo = new KardexModelo($conexion);
         $autenticacionServicio = new AutenticacionServicio($usuarioModelo, $registroErrores);
+        $generadorPdf = new GeneradorPdf();
 
         $this->enrutador = new Enrutador(
             new AutenticacionControlador($vista, $sesion, $autenticacionServicio, $configuracion),
@@ -92,7 +94,7 @@ final class Aplicacion
             new MarcaControlador($vista, $sesion, $marcaModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
             new ProductoControlador($vista, $sesion, $productoModelo, $categoriaModelo, $marcaModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
             new StockControlador($vista, $sesion, $stockModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
-            new KardexControlador($vista, $sesion, $kardexModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
+            new KardexControlador($vista, $sesion, $kardexModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores, $generadorPdf),
             $configuracion
         );
     }

@@ -430,6 +430,11 @@ final class Enrutador
             return;
         }
 
+        if ($metodo === 'GET' && $ruta === '/inventario/kardex/documento') {
+            $this->kardexControlador->documento();
+            return;
+        }
+
         if ($metodo === 'GET' && $ruta === '/inventario/categorias') {
             $this->categoriaControlador->listar();
             return;

@@ -134,6 +134,66 @@ final class KardexModelo
 
     /**
      * ***************************************************************************
+     * * OBTIENE CABECERA Y DETALLE DE DOCUMENTO INTERNO DE INVENTARIO.
+     * ***************************************************************************
+     */
+    public function obtenerDocumentoInventario(int $empresaId, int $movimientoId): ?array
+    {
+        $sentencia = $this->conexionBaseDatos->obtener()->prepare("
+            SELECT
+                m.inv_movimientos_id,
+                m.inv_movimientos_numero,
+                m.inv_movimientos_fecha,
+                to_char(COALESCE(m.fecha_crea, now()), 'HH24:MI:SS') AS hora,
+                COALESCE(m.inv_movimientos_referencia, '') AS inv_movimientos_referencia,
+                COALESCE(m.inv_movimientos_observacion, '') AS inv_movimientos_observacion,
+                e.sis_empresa_ruc,
+                e.sis_empresa_razon_social,
+                e.sis_empresa_nombre_comercial,
+                COALESCE(e.sis_empresa_direccion, '') AS sis_empresa_direccion,
+                td.sis_tipo_documento_nombre,
+                COALESCE(u.sis_usuarios_nombre, 'SIN RESPONSABLE') AS responsable
+            FROM inv_movimientos m
+            INNER JOIN sis_empresa e ON e.sis_empresa_id = m.sis_empresa_id
+            INNER JOIN sis_tipo_documento td ON td.sis_tipo_documento_id = m.sis_tipo_documento_id
+            LEFT JOIN sis_usuarios u ON u.sis_usuarios_id = m.usuario_crea
+            WHERE m.sis_empresa_id = :empresa_id
+              AND m.inv_movimientos_id = :movimiento_id
+            LIMIT 1
+        ");
+        $sentencia->execute(['empresa_id' => $empresaId, 'movimiento_id' => $movimientoId]);
+        $cabecera = $sentencia->fetch();
+        if (!$cabecera) {
+            return null;
+        }
+
+        $sentencia = $this->conexionBaseDatos->obtener()->prepare("
+            SELECT
+                p.inv_producto_codigo_principal AS codigo,
+                p.inv_producto_nombre AS producto,
+                b.inv_bodega_codigo AS bodega,
+                k.inv_kardex_cantidad_entrada AS entrada,
+                k.inv_kardex_cantidad_salida AS salida,
+                k.inv_kardex_saldo_cantidad AS saldo,
+                COALESCE(k.inv_kardex_observacion, '') AS observacion
+            FROM inv_kardex k
+            INNER JOIN inv_producto p ON p.inv_producto_id = k.inv_producto_id
+            INNER JOIN inv_bodega b ON b.inv_bodega_id = k.inv_bodega_id
+            WHERE k.sis_empresa_id = :empresa_id
+              AND k.inv_kardex_documento_tipo = 'INV_MOVIMIENTOS'
+              AND k.inv_kardex_documento_id = :movimiento_id
+            ORDER BY k.inv_kardex_id
+        ");
+        $sentencia->execute(['empresa_id' => $empresaId, 'movimiento_id' => $movimientoId]);
+
+        return [
+            'cabecera' => $cabecera,
+            'detalles' => $sentencia->fetchAll(),
+        ];
+    }
+
+    /**
+     * ***************************************************************************
      * * OBTIENE PRODUCTOS BASE PARA LA CONSULTA KARDEX.
      * ***************************************************************************
      */

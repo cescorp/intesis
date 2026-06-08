@@ -1156,6 +1156,14 @@ body {
     text-decoration: none;
 }
 
+.visor-pdf-kardex {
+    width: 100%;
+    min-height: 72vh;
+    border: 0;
+    display: block;
+    background: #f4f6f7;
+}
+
 @media (max-width: 1050px) {
     .login-contenedor,
     .modulos-grid {
