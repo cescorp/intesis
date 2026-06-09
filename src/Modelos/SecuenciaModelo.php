@@ -161,6 +161,85 @@ final class SecuenciaModelo
 
     /**
      * ***************************************************************************
+     * * OBTIENE Y CONSUME EL SIGUIENTE NUMERO DE SECUENCIA (TRANSACCIONAL).
+     * * DEBE LLAMARSE DENTRO DE UNA TRANSACCION ACTIVA EN EL PDO RECIBIDO.
+     * ***************************************************************************
+     */
+    public function obtenerSiguiente(\PDO $pdo, int $empresaId, string $tipoCodigo, string $modulo): string
+    {
+        /* Busca la secuencia activa para esta empresa + tipo de documento. */
+        $sentencia = $pdo->prepare("
+            SELECT
+                s.sis_secuencias_id,
+                s.sis_secuencias_establecimiento,
+                s.sis_secuencias_punto_emision,
+                s.sis_secuencias_actual,
+                s.sis_secuencias_hasta,
+                td.sis_tipo_documento_codigo
+            FROM sis_secuencias s
+            INNER JOIN sis_tipo_documento td
+                ON td.sis_tipo_documento_id = s.sis_tipo_documento_id
+            INNER JOIN sis_estado e
+                ON e.sis_estado_id = s.sis_estado_id
+            WHERE s.sis_empresa_id = :empresa_id
+              AND td.sis_tipo_documento_codigo = :tipo_codigo
+              AND td.sis_tipo_documento_modulo = :modulo
+              AND e.sis_estado_codigo = 'ACTIVO'
+            ORDER BY s.sis_secuencias_id ASC
+            LIMIT 1
+            FOR UPDATE
+        ");
+        $sentencia->execute([
+            'empresa_id' => $empresaId,
+            'tipo_codigo' => $tipoCodigo,
+            'modulo'      => $modulo,
+        ]);
+        $secuencia = $sentencia->fetch(\PDO::FETCH_ASSOC);
+
+        if (!$secuencia) {
+            throw new \RuntimeException(
+                "No hay una secuencia activa para el tipo de documento {$tipoCodigo}. " .
+                "Configure una en Sistema \u{2192} Configuracion \u{2192} Tipos documento."
+            );
+        }
+
+        $actual = (int) $secuencia['sis_secuencias_actual'];
+        $hasta  = (int) $secuencia['sis_secuencias_hasta'];
+
+        if ($actual > $hasta) {
+            throw new \RuntimeException(
+                "La secuencia de {$tipoCodigo} ha alcanzado su limite ({$hasta}). " .
+                "Configure una nueva secuencia en Sistema \u{2192} Configuracion \u{2192} Tipos documento."
+            );
+        }
+
+        /* Incrementa el contador. */
+        $actualizar = $pdo->prepare("
+            UPDATE sis_secuencias
+            SET sis_secuencias_actual = sis_secuencias_actual + 1,
+                fecha_modifica = now()
+            WHERE sis_secuencias_id = :secuencia_id
+        ");
+        $actualizar->execute(['secuencia_id' => $secuencia['sis_secuencias_id']]);
+
+        /* Formato: PREFIJO-EST-PTO-XXXXXXXXX */
+        $prefijo = match ($tipoCodigo) {
+            'AJUSTE'        => 'AJ',
+            'TRANSFERENCIA' => 'TR',
+            default         => strtoupper(substr($tipoCodigo, 0, 2)),
+        };
+
+        return sprintf(
+            '%s-%s-%s-%09d',
+            $prefijo,
+            $secuencia['sis_secuencias_establecimiento'],
+            $secuencia['sis_secuencias_punto_emision'],
+            $actual
+        );
+    }
+
+    /**
+     * ***************************************************************************
      * * VERIFICA CLAVE REPETIDA DE SECUENCIA POR EMPRESA Y PUNTO.
      * ***************************************************************************
      */

@@ -1579,7 +1579,8 @@
     if (modalSecuenciasTipo) {
         const renderizarSecuenciasTipo = (tipoId) => {
             const destino = document.getElementById('tablaSecuenciasTipo');
-            const filas = Array.from(document.querySelectorAll('.fila-secuencia-fuente'))
+            const fuente = document.getElementById('filasSecuenciasFuente');
+            const filas = Array.from(fuente ? fuente.querySelectorAll('.fila-secuencia-fuente') : [])
                 .filter((fila) => fila.dataset.tipo === tipoId);
             destino.innerHTML = '';
             if (!filas.length) {
@@ -1906,6 +1907,7 @@
 
     let indiceLineaMovimiento = 0;
     let lineaProductoMovimientoActiva = null;
+    let terminoPendienteBusquedaMovimiento = null;
     const bodegasMovimiento = window.INTESIS_BODEGAS_MOVIMIENTO || [];
     const permisosMovimiento = window.INTESIS_MOVIMIENTO_PERMISOS || {};
 
@@ -2055,11 +2057,8 @@
             const codigoBuscar = fila.querySelector('.mov-linea-codigo')?.value?.trim() || '';
             const inputBuscarModal = document.getElementById('buscar_producto_movimiento_texto');
             if (inputBuscarModal) inputBuscarModal.value = codigoBuscar;
-            if (codigoBuscar) {
-                buscarProductosMovimiento(codigoBuscar).then(renderizarBusquedaMovimiento).catch(() => renderizarBusquedaMovimiento([]));
-            } else {
-                renderizarBusquedaMovimiento([]);
-            }
+            terminoPendienteBusquedaMovimiento = codigoBuscar;
+            renderizarBusquedaMovimiento([]);
             bootstrap.Modal.getOrCreateInstance(document.getElementById('modalBuscarProductoMovimiento')).show();
         }
     });
@@ -2087,6 +2086,7 @@
         if (!codigo) {
             lineaProductoMovimientoActiva = fila;
             if (inputBuscarFocusout) inputBuscarFocusout.value = '';
+            terminoPendienteBusquedaMovimiento = null;
             renderizarBusquedaMovimiento([]);
             bootstrap.Modal.getOrCreateInstance(document.getElementById('modalBuscarProductoMovimiento')).show();
             return;
@@ -2098,6 +2098,7 @@
             } else {
                 lineaProductoMovimientoActiva = fila;
                 if (inputBuscarFocusout) inputBuscarFocusout.value = codigo;
+                terminoPendienteBusquedaMovimiento = null;
                 renderizarBusquedaMovimiento(productos);
                 bootstrap.Modal.getOrCreateInstance(document.getElementById('modalBuscarProductoMovimiento')).show();
             }
@@ -2109,6 +2110,9 @@
     document.getElementById('modalBuscarProductoMovimiento')?.addEventListener('shown.bs.modal', () => {
         const inputBuscar = document.getElementById('buscar_producto_movimiento_texto');
         if (inputBuscar) { inputBuscar.focus(); inputBuscar.select(); }
+        setTimeout(() => { document.getElementById('btnBuscarProductoMovimiento')?.click();
+            $("#buscar_producto_movimiento_texto").focus();
+         }, 700);
     });
 
     document.getElementById('buscar_producto_movimiento_texto')?.addEventListener('keydown', (evento) => {
@@ -2270,46 +2274,105 @@
         const permisos = window.INTESIS_MOVIMIENTO_PERMISOS || {};
         const appUrl = window.INTESIS_APP_URL || '';
 
-        // Cabecera del movimiento
-        const filasDetalle = `
-            <div class="row g-2 mb-3">
-                <div class="col-md-3"><small class="text-muted d-block">Numero</small><strong>${escaparHtml(cab.inv_movimientos_numero || '')}</strong></div>
-                <div class="col-md-2"><small class="text-muted d-block">Fecha</small>${escaparHtml(String(cab.inv_movimientos_fecha || ''))}</div>
-                <div class="col-md-2"><small class="text-muted d-block">Tipo</small>${escaparHtml(cab.sis_tipo_documento_nombre || '')}</div>
-                <div class="col-md-2"><small class="text-muted d-block">Estado</small>${etiquetaEstado(cab.sis_estado_codigo, cab.sis_estado_nombre)}</div>
-                <div class="col-md-3"><small class="text-muted d-block">Usuario</small>${escaparHtml(cab.usuario_nombre || '')}</div>
-                ${cab.inv_bodega_origen_id ? `<div class="col-md-3"><small class="text-muted d-block">Bodega origen</small>${escaparHtml(cab.bodega_origen || '')}</div>` : ''}
-                ${cab.inv_bodega_destino_id ? `<div class="col-md-3"><small class="text-muted d-block">Bodega destino</small>${escaparHtml(cab.bodega_destino || '')}</div>` : ''}
-                <div class="col-12"><small class="text-muted d-block">Detalle / Observacion</small>${escaparHtml(cab.inv_movimientos_observacion || '')}</div>
-            </div>
-        `;
+        const totalMov = lineas.reduce((s, l) => s + Number(l.inv_movimientos_detalle_total || 0), 0);
 
-        // Tabla de lineas
+
+        // ── Accion badge ──
+        const iconoAccion = (tipo) => {
+            if (tipo === 'INGRESO')       return '<span class="badge bg-success-subtle text-success"><i class="bi bi-plus-lg"></i> Ingreso</span>';
+            if (tipo === 'EGRESO')        return '<span class="badge bg-danger-subtle text-danger"><i class="bi bi-dash-lg"></i> Egreso</span>';
+            if (tipo === 'TRANSFERENCIA') return '<span class="badge bg-primary-subtle text-primary"><i class="bi bi-arrow-left-right"></i> Transfer.</span>';
+            return `<span class="badge bg-secondary-subtle text-secondary">${escaparHtml(tipo)}</span>`;
+        };
+
+        // ── Filas de productos ──
         const filas = lineas.map((l) => `
             <tr>
-                <td>${escaparHtml(l.producto_codigo || '')}</td>
+                <td><code class="text-body">${escaparHtml(l.producto_codigo || '')}</code></td>
                 <td>${escaparHtml(l.producto_nombre || '')}</td>
-                <td>${escaparHtml(l.inv_movimientos_detalle_tipo || '')}</td>
-                <td>${escaparHtml(l.bodega_origen || '')}</td>
-                <td>${escaparHtml(l.bodega_destino || '')}</td>
+                <td>${iconoAccion(l.inv_movimientos_detalle_tipo)}</td>
+                <td class="text-muted small">${escaparHtml(l.bodega_origen || '—')}</td>
+                <td class="text-muted small">${escaparHtml(l.bodega_destino || '—')}</td>
                 <td class="text-end">${Number(l.inv_movimientos_detalle_cantidad || 0).toFixed(2)}</td>
-                <td class="text-end">${Number(l.inv_movimientos_detalle_costo || 0).toFixed(2)}</td>
-                <td class="text-end">${Number(l.inv_movimientos_detalle_total || 0).toFixed(2)}</td>
-                <td>${escaparHtml(l.usuario_nombre || '')}</td>
-                <td>${escaparHtml(String(l.fecha_crea || '').slice(0, 10))}</td>
+                <td class="text-end text-muted small">${Number(l.inv_movimientos_detalle_costo || 0).toFixed(2)}</td>
+                <td class="text-end fw-semibold">${Number(l.inv_movimientos_detalle_total || 0).toFixed(2)}</td>
             </tr>
         `).join('');
 
+        // ── Layout tipo documento formal ──
+        const filasDetalle = `
+        <div class="doc-contenedor">
+
+            <!-- FILA 1: tipo + numero + estado -->
+            <div class="doc-cabecera">
+                <div class="doc-cabecera-izq">
+                    <div class="doc-tipo-label">MOVIMIENTO DE INVENTARIO</div>
+                    <div class="doc-tipo-valor">${escaparHtml(cab.sis_tipo_documento_nombre || '')}</div>
+                </div>
+                <div class="doc-cabecera-der">
+                    <div class="doc-etiqueta">Numero</div>
+                    <div class="doc-numero">${escaparHtml(cab.inv_movimientos_numero || '')}</div>
+                    <div class="mt-1">${etiquetaEstado(cab.sis_estado_codigo, cab.sis_estado_nombre)}</div>
+                </div>
+            </div>
+
+            <!-- FILAS DE CAMPOS: tabla con rowspan en Observacion -->
+            <table class="doc-tabla-campos">
+                <tr>
+                    <td class="doc-celda-t" style="width:13%">
+                        <div class="doc-etiqueta">Fecha</div>
+                        <div class="doc-valor">${escaparHtml(String(cab.inv_movimientos_fecha || ''))}</div>
+                    </td>
+                    <td class="doc-celda-t" style="width:22%">
+                        <div class="doc-etiqueta">Usuario crea</div>
+                        <div class="doc-valor">${escaparHtml(cab.usuario_nombre || '')}</div>
+                    </td>
+                    <td class="doc-celda-t" style="width:22%">
+                        <div class="doc-etiqueta">Registrado</div>
+                        <div class="doc-valor">${escaparHtml(String(cab.fecha_crea || '').slice(0, 16).replace('T', ' '))}</div>
+                    </td>
+                    <td class="doc-celda-t doc-celda-obs" rowspan="2">
+                        <div class="doc-etiqueta">Detalle / Observacion</div>
+                        <div class="doc-valor mt-1">${escaparHtml(cab.inv_movimientos_observacion || '—')}</div>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="doc-celda-t">
+                        <div class="doc-etiqueta">Bodega origen</div>
+                        <div class="doc-valor">${escaparHtml(cab.bodega_origen || '—')}</div>
+                    </td>
+                    <td class="doc-celda-t" colspan="2">
+                        <div class="doc-etiqueta">Bodega destino</div>
+                        <div class="doc-valor">${escaparHtml(cab.bodega_destino || '—')}</div>
+                    </td>
+                </tr>
+            </table>
+
+        </div>
+
+        <!-- LINEAS DEL MOVIMIENTO -->
+        <div class="doc-seccion-titulo mt-3 mb-2">
+            <i class="bi bi-list-ul me-1"></i> Lineas del movimiento
+        </div>
+        `;
+
         const tablaLineas = `
             <div class="table-responsive">
-                <table class="table table-sm table-hover align-middle">
-                    <thead><tr><th>Codigo</th><th>Producto</th><th>Tipo</th><th>Origen</th><th>Destino</th><th class="text-end">Cantidad</th><th class="text-end">Costo</th><th class="text-end">Total</th><th>Usuario</th><th>Fecha</th></tr></thead>
-                    <tbody>${filas || '<tr><td colspan="10" class="text-muted text-center">Sin lineas.</td></tr>'}</tbody>
+                <table class="table table-sm table-hover align-middle mb-0">
+                    <thead class="doc-thead">
+                        <tr>
+                            <th>Codigo</th><th>Producto</th><th>Accion</th>
+                            <th>Origen</th><th>Destino</th>
+                            <th class="text-end">Cantidad</th><th class="text-end">Costo</th><th class="text-end">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>${filas || '<tr><td colspan="8" class="text-muted text-center py-3">Sin lineas registradas.</td></tr>'}</tbody>
+                    ${lineas.length ? `<tfoot><tr class="doc-tfoot"><td colspan="7" class="text-end fw-semibold">Total general</td><td class="text-end fw-bold">${totalMov.toFixed(2)}</td></tr></tfoot>` : ''}
                 </table>
             </div>
         `;
 
-        document.getElementById('detalleMovimientoTitulo').textContent = `Detalle: ${cab.inv_movimientos_numero || ''}`;
+        document.getElementById('detalleMovimientoTitulo').textContent = cab.inv_movimientos_numero || 'Detalle';
         document.getElementById('detalleMovimientoBody').innerHTML = filasDetalle + tablaLineas;
 
         // Botones del footer segun estado y permisos

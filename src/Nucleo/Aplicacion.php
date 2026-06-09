@@ -79,7 +79,7 @@ final class Aplicacion
         $productoModelo = new ProductoModelo($conexion);
         $stockModelo = new StockModelo($conexion);
         $kardexModelo = new KardexModelo($conexion);
-        $movimientoInternoModelo = new MovimientoInternoModelo($conexion);
+        $movimientoInternoModelo = new MovimientoInternoModelo($conexion, $secuenciaModelo);
         $autenticacionServicio = new AutenticacionServicio($usuarioModelo, $registroErrores);
         $generadorPdf = new GeneradorPdf();
 

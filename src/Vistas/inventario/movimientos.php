@@ -63,9 +63,14 @@ $appUrl = rtrim($configuracion->obtener('APP_URL', ''), '/');
                                     <thead><tr><th>#</th><th>Fecha</th><th>Numero</th><th>Tipo</th><th>Origen</th><th>Destino</th><th>Detalle</th><th class="text-end">Total</th><th>Estado</th><th class="text-end">Acciones</th></tr></thead>
                                     <tbody>
                                         <?php foreach ($movimientos as $i => $movimiento): ?>
-                                            <tr data-fecha="<?= htmlspecialchars((string) $movimiento['inv_movimientos_fecha']) ?>" data-estado="<?= htmlspecialchars((string) $movimiento['sis_estado_codigo']) ?>">
+                                            <?php
+                                                $fechaMov = (string) $movimiento['inv_movimientos_fecha'];
+                                                $fechaSolo = substr($fechaMov, 0, 10);
+                                                $horaMov = strlen($fechaMov) > 10 ? substr($fechaMov, 11, 5) : '';
+                                            ?>
+                                            <tr data-fecha="<?= htmlspecialchars($fechaSolo) ?>" data-estado="<?= htmlspecialchars((string) $movimiento['sis_estado_codigo']) ?>">
                                                 <td><?= $i + 1 ?></td>
-                                                <td><?= htmlspecialchars((string) $movimiento['inv_movimientos_fecha']) ?></td>
+                                                <td><?= htmlspecialchars($fechaSolo) ?><?= $horaMov ? ' <span class="text-muted small">' . htmlspecialchars($horaMov) . '</span>' : '' ?></td>
                                                 <td><?= htmlspecialchars($movimiento['inv_movimientos_numero']) ?></td>
                                                 <td><?= htmlspecialchars($movimiento['sis_tipo_documento_nombre']) ?></td>
                                                 <td><?= htmlspecialchars($movimiento['bodega_origen'] ?? '') ?></td>
@@ -90,9 +95,14 @@ $appUrl = rtrim($configuracion->obtener('APP_URL', ''), '/');
                                     <thead><tr><th>#</th><th>Fecha</th><th>Numero</th><th>Origen</th><th>Destino</th><th>Detalle</th><th class="text-end">Acciones</th></tr></thead>
                                     <tbody>
                                         <?php foreach ($transferenciasPendientes as $i => $movimiento): ?>
-                                            <tr data-fecha="<?= htmlspecialchars((string) $movimiento['inv_movimientos_fecha']) ?>">
+                                            <?php
+                                                $fechaMov = (string) $movimiento['inv_movimientos_fecha'];
+                                                $fechaSolo = substr($fechaMov, 0, 10);
+                                                $horaMov = strlen($fechaMov) > 10 ? substr($fechaMov, 11, 5) : '';
+                                            ?>
+                                            <tr data-fecha="<?= htmlspecialchars($fechaSolo) ?>">
                                                 <td><?= $i + 1 ?></td>
-                                                <td><?= htmlspecialchars((string) $movimiento['inv_movimientos_fecha']) ?></td>
+                                                <td><?= htmlspecialchars($fechaSolo) ?><?= $horaMov ? ' <span class="text-muted small">' . htmlspecialchars($horaMov) . '</span>' : '' ?></td>
                                                 <td><?= htmlspecialchars($movimiento['inv_movimientos_numero']) ?></td>
                                                 <td><?= htmlspecialchars($movimiento['bodega_origen']) ?></td>
                                                 <td><?= htmlspecialchars($movimiento['bodega_destino']) ?></td>
@@ -143,7 +153,7 @@ $appUrl = rtrim($configuracion->obtener('APP_URL', ''), '/');
             <div class="modal-header"><div><p class="modal-etiqueta">Inventario</p><h2 class="modal-title" id="modalMovimientoTitulo">Movimiento interno</h2></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button></div>
             <div class="modal-body formulario-compacto">
                 <div class="row g-2 mb-3">
-                    <div class="col-md-3"><label class="form-label">Fecha</label><input type="date" class="form-control form-control-sm" name="fecha" id="movimiento_fecha" value="<?= date('Y-m-d') ?>" required></div>
+                    <div class="col-md-3"><label class="form-label">Fecha y hora</label><input type="text" class="form-control form-control-sm" value="<?= date('d/m/Y H:i') ?>" disabled></div>
                     <div class="col-md-3"><label class="form-label">Usuario</label><input class="form-control form-control-sm" value="<?= htmlspecialchars($usuario['nombre']) ?>" disabled></div>
                     <div class="col-md-6"><label class="form-label">Detalle</label><input class="form-control form-control-sm" name="detalle" id="movimiento_detalle" required maxlength="180"></div>
                 </div>

@@ -8,8 +8,10 @@ use Intesis\Nucleo\ConexionBaseDatos;
 
 final class MovimientoInternoModelo
 {
-    public function __construct(private ConexionBaseDatos $conexionBaseDatos)
-    {
+    public function __construct(
+        private ConexionBaseDatos $conexionBaseDatos,
+        private SecuenciaModelo $secuenciaModelo
+    ) {
     }
 
     /**
@@ -108,9 +110,7 @@ final class MovimientoInternoModelo
     public function listarBodegasPermitidas(int $empresaId, int $usuarioId, bool $superusuario): array
     {
         $pdo = $this->conexionBaseDatos->obtener();
-        // REGLA: las bodegas virtuales participan en todos los movimientos internos.
-        // EXCEPCION FUTURA: en despacho/ventas NO se permite originar desde bodega virtual.
-        // Aplicar ese filtro (inv_bodega_virtual = FALSE) al implementar el modulo de ventas.
+
         if (!$superusuario) {
             $sentencia = $pdo->prepare("
                 SELECT b.*
@@ -121,7 +121,14 @@ final class MovimientoInternoModelo
                   AND bu.sis_usuarios_id = :usuario_id
                   AND bu.inv_bodega_usuarios_estado = 1
                   AND es.sis_estado_codigo = 'ACTIVO'
-                ORDER BY b.inv_bodega_codigo
+                UNION
+                SELECT b.*
+                FROM inv_bodega b
+                INNER JOIN sis_estado es ON es.sis_estado_id = b.sis_estado_id
+                WHERE b.sis_empresa_id = :empresa_id
+                  AND b.inv_bodega_virtual = TRUE
+                  AND es.sis_estado_codigo = 'ACTIVO'
+                ORDER BY inv_bodega_codigo
             ");
             $sentencia->execute(['empresa_id' => $empresaId, 'usuario_id' => $usuarioId]);
             $asignadas = $sentencia->fetchAll();
@@ -233,7 +240,7 @@ final class MovimientoInternoModelo
         try {
             $tipoDocumento = $this->obtenerTipoDocumentoId($datos['tipo']);
             $estado = $datos['autoaprobado'] ? ($datos['tipo'] === 'TRANSFERENCIA' ? 'EN_TRANSITO' : 'PROCESADO') : 'PENDIENTE';
-            $numero = $this->generarNumero($datos['tipo']);
+            $numero = $this->generarNumero($datos['tipo'], (int) $datos['empresa_id'], $pdo);
             $sentencia = $pdo->prepare("
                 INSERT INTO inv_movimientos (
                     sis_empresa_id, sis_tipo_documento_id, inv_movimientos_numero,
@@ -788,13 +795,8 @@ final class MovimientoInternoModelo
         return (int) $sentencia->fetchColumn();
     }
 
-    private function generarNumero(string $tipo): string
+    private function generarNumero(string $tipo, int $empresaId, \PDO $pdo): string
     {
-        return match ($tipo) {
-            'AJUSTE' => 'AJ-',
-            'AJUSTE_IN' => 'AI-',
-            'AJUSTE_OUT' => 'AE-',
-            default => 'TR-',
-        } . date('Ymd-His');
+        return $this->secuenciaModelo->obtenerSiguiente($pdo, $empresaId, $tipo, 'INVENTARIO');
     }
 }

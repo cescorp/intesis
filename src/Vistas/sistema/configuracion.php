@@ -112,25 +112,40 @@ $tituloSeccion = $tituloSeccion ?? 'Configuracion';
                         <?php endif; ?>
                         <div class="table-responsive">
                             <table id="tablaTiposDocumento" class="table table-hover tabla-intesis align-middle w-100">
-                                <thead><tr><th>Modulo</th><th>Codigo</th><th>Nombre</th><th>Contabilidad</th><th>Inventario</th><th>Estado</th><th class="text-end">Acciones</th></tr></thead>
+                                <thead>
+                                    <tr>
+                                        <th>Modulo</th>
+                                        <?php if ($esSuperusuario): ?><th>Codigo</th><?php endif; ?>
+                                        <th>Nombre</th>
+                                        <?php if ($esSuperusuario): ?>
+                                            <th>Contabilidad</th>
+                                            <th>Inventario</th>
+                                            <th>Estado</th>
+                                        <?php endif; ?>
+                                        <th class="text-end">Acciones</th>
+                                    </tr>
+                                </thead>
                                 <tbody>
                                     <?php foreach ($tiposDocumento as $tipo): ?>
+                                        <?php if (!$esSuperusuario && $tipo['sis_estado_codigo'] !== 'ACTIVO') continue; ?>
                                         <tr>
                                             <td><?= htmlspecialchars($tipo['sis_tipo_documento_modulo']) ?></td>
-                                            <td><?= htmlspecialchars($tipo['sis_tipo_documento_codigo']) ?></td>
+                                            <?php if ($esSuperusuario): ?><td><?= htmlspecialchars($tipo['sis_tipo_documento_codigo']) ?></td><?php endif; ?>
                                             <td><?= htmlspecialchars($tipo['sis_tipo_documento_nombre']) ?></td>
-                                            <td><span class="badge estado-badge <?= $tipo['sis_tipo_documento_afecta_contabilidad'] ? 'estado-activo' : 'estado-inactivo' ?>"><?= $tipo['sis_tipo_documento_afecta_contabilidad'] ? 'SI' : 'NO' ?></span></td>
-                                            <td><span class="badge estado-badge <?= $tipo['sis_tipo_documento_afecta_inventario'] ? 'estado-activo' : 'estado-inactivo' ?>"><?= $tipo['sis_tipo_documento_afecta_inventario'] ? 'SI' : 'NO' ?></span></td>
-                                            <td><span class="badge estado-badge <?= $tipo['sis_estado_codigo'] === 'ACTIVO' ? 'estado-activo' : 'estado-inactivo' ?>"><?= htmlspecialchars($tipo['sis_estado_nombre']) ?></span></td>
+                                            <?php if ($esSuperusuario): ?>
+                                                <td><span class="badge estado-badge <?= $tipo['sis_tipo_documento_afecta_contabilidad'] ? 'estado-activo' : 'estado-inactivo' ?>"><?= $tipo['sis_tipo_documento_afecta_contabilidad'] ? 'SI' : 'NO' ?></span></td>
+                                                <td><span class="badge estado-badge <?= $tipo['sis_tipo_documento_afecta_inventario'] ? 'estado-activo' : 'estado-inactivo' ?>"><?= $tipo['sis_tipo_documento_afecta_inventario'] ? 'SI' : 'NO' ?></span></td>
+                                                <td><span class="badge estado-badge <?= $tipo['sis_estado_codigo'] === 'ACTIVO' ? 'estado-activo' : 'estado-inactivo' ?>"><?= htmlspecialchars($tipo['sis_estado_nombre']) ?></span></td>
+                                            <?php endif; ?>
                                             <td class="text-end acciones-tabla">
                                                 <button type="button" class="btn btn-accion btn-secuencias-tipo" title="Secuencias" data-bs-toggle="modal" data-bs-target="#modalSecuenciasTipo" data-tipo="<?= (int) $tipo['sis_tipo_documento_id'] ?>" data-nombre="<?= htmlspecialchars($tipo['sis_tipo_documento_nombre']) ?>"><i class="bi bi-list-ol"></i></button>
-                                                <?php if ($permisos['tipo_editar']): ?>
+                                                <?php if ($esSuperusuario && $permisos['tipo_editar']): ?>
                                                     <button type="button" class="btn btn-accion btn-editar-tipo" title="Editar tipo" data-bs-toggle="modal" data-bs-target="#modalTipoDocumento" data-modo="editar" data-id="<?= (int) $tipo['sis_tipo_documento_id'] ?>" data-modulo="<?= htmlspecialchars($tipo['sis_tipo_documento_modulo']) ?>" data-codigo="<?= htmlspecialchars($tipo['sis_tipo_documento_codigo']) ?>" data-nombre="<?= htmlspecialchars($tipo['sis_tipo_documento_nombre']) ?>" data-descripcion="<?= htmlspecialchars($tipo['sis_tipo_documento_descripcion'] ?? '') ?>" data-contabilidad="<?= $tipo['sis_tipo_documento_afecta_contabilidad'] ? '1' : '0' ?>" data-inventario="<?= $tipo['sis_tipo_documento_afecta_inventario'] ? '1' : '0' ?>"><i class="bi bi-pencil-square"></i></button>
                                                 <?php endif; ?>
-                                                <?php if ($tipo['sis_estado_codigo'] === 'ACTIVO' && $permisos['tipo_inactivar']): ?>
+                                                <?php if ($esSuperusuario && $tipo['sis_estado_codigo'] === 'ACTIVO' && $permisos['tipo_inactivar']): ?>
                                                     <form action="<?= $appUrl ?>/sistema/configuracion/tipos-documento/inactivar" method="post" class="d-inline formulario-confirmar" data-codigo-mensaje="CONFIRMAR_INACTIVAR_TIPO_DOCUMENTO"><input type="hidden" name="tipo_documento_id" value="<?= (int) $tipo['sis_tipo_documento_id'] ?>"><button type="submit" class="btn btn-accion btn-inactivar" title="Inactivar tipo"><i class="bi bi-toggle-off"></i></button></form>
                                                 <?php endif; ?>
-                                                <?php if ($tipo['sis_estado_codigo'] !== 'ACTIVO' && $permisos['tipo_activar']): ?>
+                                                <?php if ($esSuperusuario && $tipo['sis_estado_codigo'] !== 'ACTIVO' && $permisos['tipo_activar']): ?>
                                                     <form action="<?= $appUrl ?>/sistema/configuracion/tipos-documento/activar" method="post" class="d-inline"><input type="hidden" name="tipo_documento_id" value="<?= (int) $tipo['sis_tipo_documento_id'] ?>"><button type="submit" class="btn btn-accion btn-activar" title="Activar tipo"><i class="bi bi-toggle-on"></i></button></form>
                                                 <?php endif; ?>
                                             </td>
@@ -264,12 +279,27 @@ $tituloSeccion = $tituloSeccion ?? 'Configuracion';
                     <?php if ($esSuperusuario): ?>
                         <div class="col-md-6"><label class="form-label" for="secuencia_empresa_id">Empresa</label><select class="form-control form-control-sm" id="secuencia_empresa_id" name="empresa_id" required><option value="">Seleccione</option><?php foreach ($empresasSecuencia as $empresa): ?><option value="<?= (int) $empresa['sis_empresa_id'] ?>"><?= htmlspecialchars($empresa['sis_empresa_nombre_comercial'] ?: $empresa['sis_empresa_razon_social']) ?></option><?php endforeach; ?></select></div>
                     <?php endif; ?>
-                    <div class="<?= $esSuperusuario ? 'col-md-3' : 'col-md-4' ?>"><label class="form-label" for="secuencia_establecimiento">Establecimiento</label><input type="text" class="form-control form-control-sm" id="secuencia_establecimiento" name="establecimiento" maxlength="3" inputmode="numeric" required></div>
-                    <div class="<?= $esSuperusuario ? 'col-md-3' : 'col-md-4' ?>"><label class="form-label" for="secuencia_punto_emision">Punto emision</label><input type="text" class="form-control form-control-sm" id="secuencia_punto_emision" name="punto_emision" maxlength="3" inputmode="numeric" required></div>
-                    <div class="col-md-4"><label class="form-label" for="secuencia_desde">Desde</label><input type="number" class="form-control form-control-sm" id="secuencia_desde" name="desde" min="1" max="999999999" value="1" required></div>
-                    <div class="col-md-4"><label class="form-label" for="secuencia_actual">Actual</label><input type="number" class="form-control form-control-sm" id="secuencia_actual" name="actual" min="1" max="999999999" value="1" required></div>
-                    <div class="col-md-4"><label class="form-label" for="secuencia_hasta">Hasta</label><input type="number" class="form-control form-control-sm" id="secuencia_hasta" name="hasta" min="1" max="999999999" value="999999999" required></div>
-                    <div class="col-12"><label class="form-label" for="secuencia_observacion">Observacion</label><textarea class="form-control form-control-sm" id="secuencia_observacion" name="observacion" rows="2"></textarea></div>
+                    <div class="col-12">
+                        <div class="alert alert-info py-2 px-3 mb-0 small">
+                            <i class="bi bi-info-circle me-1"></i>
+                            <strong>Prefijo del numero:</strong> el numero de documento se genera como <code>PREFIJO-<span id="preview_est">001</span>-<span id="preview_pto">001</span>-000000001</code>.
+                            Para movimientos internos use <strong>001-001</strong> si no tiene multiples sedes o puntos de emision.
+                        </div>
+                    </div>
+                    <div class="<?= $esSuperusuario ? 'col-md-3' : 'col-md-4' ?>">
+                        <label class="form-label" for="secuencia_establecimiento">Sede / Establecimiento <span class="text-muted">(3 dig.)</span></label>
+                        <input type="text" class="form-control form-control-sm" id="secuencia_establecimiento" name="establecimiento" maxlength="3" inputmode="numeric" placeholder="001" required>
+                        <div class="form-text">Numero de local o sede (ej. 001)</div>
+                    </div>
+                    <div class="<?= $esSuperusuario ? 'col-md-3' : 'col-md-4' ?>">
+                        <label class="form-label" for="secuencia_punto_emision">Punto de emision <span class="text-muted">(3 dig.)</span></label>
+                        <input type="text" class="form-control form-control-sm" id="secuencia_punto_emision" name="punto_emision" maxlength="3" inputmode="numeric" placeholder="001" required>
+                        <div class="form-text">Punto o terminal dentro del local (ej. 001)</div>
+                    </div>
+                    <div class="col-md-4"><label class="form-label" for="secuencia_desde">Numero inicial</label><input type="number" class="form-control form-control-sm" id="secuencia_desde" name="desde" min="1" max="999999999" value="1" required><div class="form-text">Primer numero valido</div></div>
+                    <div class="col-md-4"><label class="form-label" for="secuencia_actual">Numero actual</label><input type="number" class="form-control form-control-sm" id="secuencia_actual" name="actual" min="1" max="999999999" value="1" required><div class="form-text">Siguiente a emitir</div></div>
+                    <div class="col-md-4"><label class="form-label" for="secuencia_hasta">Numero final</label><input type="number" class="form-control form-control-sm" id="secuencia_hasta" name="hasta" min="1" max="999999999" value="999999999" required><div class="form-text">Ultimo numero permitido</div></div>
+                    <div class="col-12"><label class="form-label" for="secuencia_observacion">Nota interna</label><textarea class="form-control form-control-sm" id="secuencia_observacion" name="observacion" rows="2" placeholder="Descripcion opcional de esta secuencia..."></textarea></div>
                 </div>
             </div>
             <div class="modal-footer"><button type="button" class="btn btn-secundario" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i> Cancelar</button><button type="submit" class="btn btn-intesis"><i class="bi bi-save2"></i> Guardar</button></div>
@@ -281,5 +311,21 @@ $tituloSeccion = $tituloSeccion ?? 'Configuracion';
 <script>
 window.INTESIS_MENSAJES = <?= json_encode($mensajesSistema ?? [], JSON_UNESCAPED_UNICODE) ?>;
 window.INTESIS_TIPO_SELECCIONADO = '';
+/* Preview en vivo del prefijo al escribir establecimiento/punto_emision */
+(function () {
+    function actualizarPreview() {
+        var est = (document.getElementById('secuencia_establecimiento')?.value || '001').padStart(3, '0');
+        var pto = (document.getElementById('secuencia_punto_emision')?.value || '001').padStart(3, '0');
+        var el1 = document.getElementById('preview_est');
+        var el2 = document.getElementById('preview_pto');
+        if (el1) el1.textContent = est;
+        if (el2) el2.textContent = pto;
+    }
+    document.addEventListener('input', function (e) {
+        if (e.target.id === 'secuencia_establecimiento' || e.target.id === 'secuencia_punto_emision') {
+            actualizarPreview();
+        }
+    });
+})();
 </script>
 <?php require $configuracion->raiz() . '/src/Vistas/plantillas/pie.php'; ?>

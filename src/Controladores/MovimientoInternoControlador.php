@@ -220,7 +220,7 @@ final class MovimientoInternoControlador
         return [
             'empresa_id' => (int) $usuario['empresa_id'],
             'tipo' => $tipo,
-            'fecha' => $_POST['fecha'] ?: date('Y-m-d'),
+            'fecha' => date('Y-m-d H:i:s'),
             'detalle' => $detalle,
             'autoaprobado' => false,
         ];
