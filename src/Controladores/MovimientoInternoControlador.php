@@ -71,7 +71,7 @@ final class MovimientoInternoControlador
             $this->movimientoInternoModelo->crear($datos, $lineas, (int) $usuario['id']);
             $this->sesion->guardarMensaje('success', 'Movimiento guardado', 'El movimiento fue registrado correctamente.');
         } catch (Throwable $excepcion) {
-            $this->registroErrores->escribir('CREAR MOVIMIENTO INTERNO: ' . $excepcion->getMessage());
+            $this->registroErrores->escribirExcepcion('CREAR MOVIMIENTO INTERNO', $excepcion);
             $this->sesion->guardarMensaje('error', 'No se pudo guardar', $excepcion->getMessage());
         }
         $this->redirigir('/inventario/movimientos');
@@ -90,7 +90,7 @@ final class MovimientoInternoControlador
             $this->movimientoInternoModelo->actualizarObservacion((int) $usuario['empresa_id'], (int) ($_POST['movimiento_id'] ?? 0), trim((string) ($_POST['detalle'] ?? '')), (int) $usuario['id']);
             $this->sesion->guardarMensaje('success', 'Movimiento actualizado', 'La observacion fue actualizada.');
         } catch (Throwable $excepcion) {
-            $this->registroErrores->escribir('EDITAR MOVIMIENTO INTERNO: ' . $excepcion->getMessage());
+            $this->registroErrores->escribirExcepcion('EDITAR MOVIMIENTO INTERNO', $excepcion);
             $this->sesion->guardarMensaje('error', 'No se pudo editar', $excepcion->getMessage());
         }
         $this->redirigir('/inventario/movimientos');
@@ -113,7 +113,7 @@ final class MovimientoInternoControlador
             $this->movimientoInternoModelo->recibir((int) $usuario['empresa_id'], $movimientoId, (int) $usuario['id']);
             $this->sesion->guardarMensaje('success', 'Transferencia recibida', 'La accion fue aplicada correctamente.');
         } catch (Throwable $excepcion) {
-            $this->registroErrores->escribir('RECIBIR MOVIMIENTO: ' . $excepcion->getMessage());
+            $this->registroErrores->escribirExcepcion('RECIBIR MOVIMIENTO', $excepcion);
             $this->sesion->guardarMensaje('error', 'No se pudo procesar', $excepcion->getMessage());
         }
         $this->redirigir('/inventario/movimientos');
@@ -145,7 +145,7 @@ final class MovimientoInternoControlador
             );
             $this->responderJson(true, 'DETALLE_OK', 'Detalle del movimiento.', $datos);
         } catch (Throwable $excepcion) {
-            $this->registroErrores->escribir('DETALLE MOVIMIENTO: ' . $excepcion->getMessage());
+            $this->registroErrores->escribirExcepcion('DETALLE MOVIMIENTO', $excepcion);
             $this->responderJson(false, 'ERROR', $excepcion->getMessage());
         }
     }
@@ -164,7 +164,7 @@ final class MovimientoInternoControlador
             $this->movimientoInternoModelo->anularProcesado((int) $usuario['empresa_id'], $movimientoId, (int) $usuario['id']);
             $this->sesion->guardarMensaje('success', 'Movimiento anulado', 'El movimiento fue anulado y el stock fue revertido.');
         } catch (Throwable $excepcion) {
-            $this->registroErrores->escribir('ANULAR PROCESADO MOVIMIENTO: ' . $excepcion->getMessage());
+            $this->registroErrores->escribirExcepcion('ANULAR PROCESADO MOVIMIENTO', $excepcion);
             $this->sesion->guardarMensaje('error', 'No se pudo anular', $excepcion->getMessage());
         }
         $this->redirigir('/inventario/movimientos');
@@ -197,7 +197,7 @@ final class MovimientoInternoControlador
             $this->movimientoInternoModelo->{$accion}((int) $usuario['empresa_id'], $movimientoId, (int) $usuario['id']);
             $this->sesion->guardarMensaje('success', $titulo, 'La accion fue aplicada correctamente.');
         } catch (Throwable $excepcion) {
-            $this->registroErrores->escribir(strtoupper($accion) . ' MOVIMIENTO: ' . $excepcion->getMessage());
+            $this->registroErrores->escribirExcepcion(strtoupper($accion) . ' MOVIMIENTO', $excepcion);
             $this->sesion->guardarMensaje('error', 'No se pudo procesar', $excepcion->getMessage());
         }
         $this->redirigir('/inventario/movimientos');

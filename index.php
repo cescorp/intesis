@@ -28,6 +28,7 @@ require_once __DIR__ . '/src/Modelos/ProductoModelo.php';
 require_once __DIR__ . '/src/Modelos/StockModelo.php';
 require_once __DIR__ . '/src/Modelos/KardexModelo.php';
 require_once __DIR__ . '/src/Modelos/MovimientoInternoModelo.php';
+require_once __DIR__ . '/src/Modelos/ProveedorModelo.php';
 if (is_file(__DIR__ . '/vendor/autoload.php')) {
     require_once __DIR__ . '/vendor/autoload.php';
 }
@@ -49,6 +50,7 @@ require_once __DIR__ . '/src/Controladores/ProductoControlador.php';
 require_once __DIR__ . '/src/Controladores/StockControlador.php';
 require_once __DIR__ . '/src/Controladores/KardexControlador.php';
 require_once __DIR__ . '/src/Controladores/MovimientoInternoControlador.php';
+require_once __DIR__ . '/src/Controladores/ProveedorControlador.php';
 
 use Intesis\Nucleo\Aplicacion;
 

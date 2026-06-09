@@ -39,20 +39,36 @@ ok - Encabezado:
 ok - Fecha [actual] Detalle Usuario[User_Activo] 
 ok - Detalle:
 ok -  Codigo (si esta en blanco o no existe se abra modal y buscador del producto y clic para seleccionary carge toda la informacion, si codigo existe se carga toda la informacion), descripcion (descripcion del prducto, bloqueado), precio (bloqueado), Accion (tipo combo: "Ingreso +"/"Egreso -"), cantidad, Total (abajo)
+ok - 2.8 Permisos de bodega por usuario: CRUD
+ok - Definir qué usuario puede usar cada bodega.
+ok - Este debe agregar un botón de permisos por bodega en Inventario\Bodegas\ (Accion nueva: Usuarios)
+OK - 3. Compras
+OK - 3.1 Proveedores: CRUD
+OK - Identificación, razón social, teléfono, correo, dirección, ect.
 
-
-
-2.8 Permisos de bodega por usuario: CRUD
-Definir qué usuario puede usar cada bodega.
-Este debe agregar un botón de permisos por bodega en Inventario\Bodegas\ (Accion nueva: Usuarios)
-________________________________________
-3. Compras
-3.1 Proveedores: CRUD
-Identificación, razón social, teléfono, correo, dirección.
 3.2 Documento de compra: CRUD
 Cabecera de factura o gasto recibido.
 3.3 Detalle de compra: CRUD
 Productos, cantidades, costos, descuentos, IVA.
+Flujo
+Cebecera don datos basicos: RUC 
+- al da enter RUC  no existe o esta en blanco se levanta un modal
+- Modal "Buscar Proveedor" un input de busqueda (hereda el texto que escribio en RUC)
+- enlista automaticamente resultad de proveedores (da click en toda la fila para cargar el RUC a cabecera)
+Detalle de compra
+- Columnas: # | Cod. Proveedor | Codigo Interno | Descripcion | Marca | Bodega Destino | Cantidad | Costo | PVP
+Ingresa codigo proveedor: 
+- Si no existe cod. Proveedor  abrir Modal "Lista Productos":
+    * Input para buscar (herede el texto)  carge  la Lista de Productos al abrir, columnas  | # | Cod. Proveedor | Codigo | Decripcion | Marca | Cantidad | Acciones |
+    * al dar clic en la toda linea se carga el codigo de proveedor, codigo interno, descripcion, etc, etc en la compra
+- en bodega destino Combo con las bodegas asigandas (predeterminada la pricipal)
+- Codigo Interno: abrir Modal "Lista Productos": (diferente al de cod. proveedores) 
+    * Input para buscar (herede el texto)  carge  la Lista de Productos al abrir, columnas  | # | Cod. Proveedor | Codigo | Decripcion | Marca | Cantidad 
+    * al dar clic en toda la linea se carga el codigo de proveedor, codigo interno, descripcion, etc, etc en la compra
+-campos habilitados: Cod. Porveedor, Codigo Interno, 
+
+- abajo al final  totales de costo y PVP
+
 2. vamos usar  tabla existente inv_codigo_proveedor
 Usar tabla inv_codigo_proveedor  y campos: 
 1.	inv_codigo_proveedor_id

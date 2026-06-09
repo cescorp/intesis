@@ -122,7 +122,7 @@ trait ControladorComun
      */
     private function registrarErrorCrud(string $accion, Throwable $excepcion): void
     {
-        $this->registroErrores->escribir($accion . ': ' . $excepcion->getMessage());
+        $this->registroErrores->escribirExcepcion($accion, $excepcion);
     }
 
     /**

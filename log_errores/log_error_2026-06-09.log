@@ -1,0 +1,41 @@
+[2026-06-09 15:15:16] Error: Class "Intesis\Modelos\ProveedorModelo" not found EN C:\xampp\htdocs\intesis\src\Nucleo\Aplicacion.php:85
+################################################
+Fecha:   2026-06-09 15:22:56
+Archivo: C:\xampp\htdocs\intesis\src\Nucleo\Aplicacion.php
+Detalle: Error
+Error:   Class "Intesis\Modelos\ProveedorModelo" not found
+Linea:   85
+################################################
+
+################################################
+Fecha:   2026-06-09 15:32:48
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_INACTIVAR_PROVEEDOR
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-09 15:35:37
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_INACTIVAR_PROVEEDOR
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-09 15:36:10
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_INACTIVAR_PROVEEDOR
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-09 16:03:07
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_INACTIVAR_PROVEEDOR
+Linea:   N/A
+################################################
+

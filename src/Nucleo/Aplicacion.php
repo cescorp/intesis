@@ -18,6 +18,7 @@ use Intesis\Controladores\ProductoControlador;
 use Intesis\Controladores\StockControlador;
 use Intesis\Controladores\KardexControlador;
 use Intesis\Controladores\MovimientoInternoControlador;
+use Intesis\Controladores\ProveedorControlador;
 use Intesis\Controladores\UsuarioControlador;
 use Intesis\Modelos\EmpresaModelo;
 use Intesis\Modelos\ArchivoProductoModelo;
@@ -34,6 +35,7 @@ use Intesis\Modelos\SecuenciaModelo;
 use Intesis\Modelos\StockModelo;
 use Intesis\Modelos\KardexModelo;
 use Intesis\Modelos\MovimientoInternoModelo;
+use Intesis\Modelos\ProveedorModelo;
 use Intesis\Modelos\TipoDocumentoModelo;
 use Intesis\Modelos\UsuarioEmpresaModelo;
 use Intesis\Modelos\UsuarioModelo;
@@ -80,6 +82,7 @@ final class Aplicacion
         $stockModelo = new StockModelo($conexion);
         $kardexModelo = new KardexModelo($conexion);
         $movimientoInternoModelo = new MovimientoInternoModelo($conexion, $secuenciaModelo);
+        $proveedorModelo = new ProveedorModelo($conexion);
         $autenticacionServicio = new AutenticacionServicio($usuarioModelo, $registroErrores);
         $generadorPdf = new GeneradorPdf();
 
@@ -99,6 +102,7 @@ final class Aplicacion
             new StockControlador($vista, $sesion, $stockModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
             new KardexControlador($vista, $sesion, $kardexModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores, $generadorPdf),
             new MovimientoInternoControlador($vista, $sesion, $movimientoInternoModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
+            new ProveedorControlador($vista, $sesion, $proveedorModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
             $configuracion,
             $vista,
             $sesion

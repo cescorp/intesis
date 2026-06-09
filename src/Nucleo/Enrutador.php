@@ -18,6 +18,7 @@ use Intesis\Controladores\ProductoControlador;
 use Intesis\Controladores\StockControlador;
 use Intesis\Controladores\KardexControlador;
 use Intesis\Controladores\MovimientoInternoControlador;
+use Intesis\Controladores\ProveedorControlador;
 use Intesis\Controladores\UsuarioControlador;
 use Intesis\Nucleo\Sesion;
 use Intesis\Nucleo\Vista;
@@ -40,6 +41,7 @@ final class Enrutador
         private StockControlador $stockControlador,
         private KardexControlador $kardexControlador,
         private MovimientoInternoControlador $movimientoInternoControlador,
+        private ProveedorControlador $proveedorControlador,
         private Configuracion $configuracion,
         private Vista $vista,
         private Sesion $sesion
@@ -573,6 +575,31 @@ final class Enrutador
 
         if ($metodo === 'POST' && $ruta === '/inventario/marcas/inactivar') {
             $this->marcaControlador->inactivar();
+            return;
+        }
+
+        if ($metodo === 'GET' && $ruta === '/compras/proveedores') {
+            $this->proveedorControlador->listar();
+            return;
+        }
+
+        if ($metodo === 'POST' && $ruta === '/compras/proveedores/crear') {
+            $this->proveedorControlador->crear();
+            return;
+        }
+
+        if ($metodo === 'POST' && $ruta === '/compras/proveedores/editar') {
+            $this->proveedorControlador->editar();
+            return;
+        }
+
+        if ($metodo === 'POST' && $ruta === '/compras/proveedores/activar') {
+            $this->proveedorControlador->activar();
+            return;
+        }
+
+        if ($metodo === 'POST' && $ruta === '/compras/proveedores/inactivar') {
+            $this->proveedorControlador->inactivar();
             return;
         }
 

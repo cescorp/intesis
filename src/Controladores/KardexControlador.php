@@ -79,7 +79,7 @@ final class KardexControlador
                 'movimientos' => array_map(fn (array $fila): array => $this->formatearMovimiento($fila), $this->kardexModelo->listarDetalleProducto($empresaId, $productoId, $desde, $hasta)),
             ]);
         } catch (Throwable $excepcion) {
-            $this->registroErrores->escribir('DETALLE KARDEX: ' . $excepcion->getMessage());
+            $this->registroErrores->escribirExcepcion('DETALLE KARDEX', $excepcion);
             $this->responderJson(false, 'ERROR_VALIDACION', $excepcion->getMessage());
         }
     }
@@ -112,7 +112,7 @@ final class KardexControlador
             echo $pdf;
             exit;
         } catch (Throwable $excepcion) {
-            $this->registroErrores->escribir('PDF KARDEX: ' . $excepcion->getMessage());
+            $this->registroErrores->escribirExcepcion('PDF KARDEX', $excepcion);
             http_response_code(404);
             echo 'No se pudo generar el PDF.';
             exit;

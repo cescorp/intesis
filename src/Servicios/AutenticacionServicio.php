@@ -41,7 +41,7 @@ final class AutenticacionServicio
                 'empresas' => $empresas,
             ];
         } catch (Throwable $excepcion) {
-            $this->registroErrores->escribir('FALLO AUTENTICACION: ' . $excepcion->getMessage());
+            $this->registroErrores->escribirExcepcion('FALLO AUTENTICACION', $excepcion);
             return null;
         }
     }
