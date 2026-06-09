@@ -26,7 +26,10 @@ final class BodegaModelo
                 b.*,
                 e.sis_empresa_nombre_comercial,
                 es.sis_estado_codigo,
-                es.sis_estado_nombre
+                es.sis_estado_nombre,
+                (SELECT COUNT(*) FROM inv_bodega_usuarios bu
+                 WHERE bu.inv_bodega_id = b.inv_bodega_id
+                   AND bu.inv_bodega_usuarios_estado = 1) AS total_usuarios
             FROM inv_bodega b
             INNER JOIN sis_empresa e ON e.sis_empresa_id = b.sis_empresa_id
             INNER JOIN sis_estado es ON es.sis_estado_id = b.sis_estado_id
@@ -272,6 +275,7 @@ final class BodegaModelo
                 bu.inv_bodega_id,
                 bu.inv_bodega_usuarios_estado,
                 bu.inv_bodega_usuarios_predeterminada,
+                bu.fecha_crea AS fecha_asignacion,
                 u.sis_usuarios_nombre,
                 u.sis_usuarios_correo
             FROM inv_bodega_usuarios bu

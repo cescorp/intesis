@@ -953,6 +953,46 @@
         }
     };
 
+    /* Modal de solo lectura: usuarios asignados a una bodega */
+    const modalVerUsuariosBodega = document.getElementById('modalVerUsuariosBodega');
+    if (modalVerUsuariosBodega) {
+        document.addEventListener('click', (evento) => {
+            const boton = evento.target.closest('.btn-ver-usuarios-bodega');
+            if (!boton) return;
+            const bodegaId = boton.dataset.id || '';
+            const bodegaNombre = boton.dataset.nombre || '';
+            document.getElementById('modalVerUsuariosBodegaTitulo').textContent = bodegaNombre;
+            const cargando = document.getElementById('verUsuariosBodegaCargando');
+            const contenedor = document.getElementById('verUsuariosBodegaTablaContenedor');
+            const cuerpo = document.getElementById('verUsuariosBodegaCuerpo');
+            cargando.classList.remove('d-none');
+            contenedor.classList.add('d-none');
+            cuerpo.innerHTML = '';
+            bootstrap.Modal.getOrCreateInstance(modalVerUsuariosBodega).show();
+            fetch(`${window.INTESIS_APP_URL || ''}/inventario/bodegas/usuarios?bodega_id=${bodegaId}`)
+                .then((r) => r.json())
+                .then((res) => {
+                    cargando.classList.add('d-none');
+                    if (!res.exito) { cuerpo.innerHTML = `<tr><td colspan="4" class="text-center text-danger">${escaparHtml(res.mensaje || 'Error al cargar.')}</td></tr>`; contenedor.classList.remove('d-none'); return; }
+                    const asignaciones = (res.datos?.asignaciones || []).filter((a) => a.inv_bodega_usuarios_estado == 1);
+                    if (!asignaciones.length) {
+                        cuerpo.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Sin usuarios asignados activos.</td></tr>';
+                    } else {
+                        cuerpo.innerHTML = asignaciones.map((a, i) => {
+                            const fecha = a.fecha_asignacion ? a.fecha_asignacion.substring(0, 10) : '—';
+                            return `<tr><td>${i + 1}</td><td>${escaparHtml(a.sis_usuarios_nombre)}</td><td>${escaparHtml(bodegaNombre)}</td><td>${escaparHtml(fecha)}</td></tr>`;
+                        }).join('');
+                    }
+                    contenedor.classList.remove('d-none');
+                })
+                .catch(() => {
+                    cargando.classList.add('d-none');
+                    cuerpo.innerHTML = '<tr><td colspan="4" class="text-center text-danger">Error de conexion.</td></tr>';
+                    contenedor.classList.remove('d-none');
+                });
+        });
+    }
+
     if (modalBodegaUsuarios) {
         modalBodegaUsuarios.addEventListener('show.bs.modal', async (evento) => {
             const boton = evento.relatedTarget;

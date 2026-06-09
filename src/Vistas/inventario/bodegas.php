@@ -42,7 +42,7 @@ $appUrl = rtrim($configuracion->obtener('APP_URL', ''), '/');
                     <?php endif; ?>
                     <div class="table-responsive">
                         <table id="tablaBodegas" class="table table-hover tabla-intesis align-middle w-100">
-                            <thead><tr><th>Empresa</th><th>Codigo</th><th>Nombre</th><th>Principal</th><th>Virtual</th><th>Neg.</th><th>Autoaprob.</th><th>Estado</th><th class="text-end">Acciones</th></tr></thead>
+                            <thead><tr><th>Empresa</th><th>Codigo</th><th>Nombre</th><th>Principal</th><th>Virtual</th><th>Neg.</th><th>Autoaprob.</th><th>Estado</th><th class="text-center">Usuarios</th><th class="text-end">Acciones</th></tr></thead>
                             <tbody>
                                 <?php foreach ($bodegas as $bodega): ?>
                                     <tr>
@@ -54,6 +54,16 @@ $appUrl = rtrim($configuracion->obtener('APP_URL', ''), '/');
                                         <td><span class="badge estado-badge <?= !empty($bodega['inv_bodega_negativos']) ? 'estado-pendiente' : 'estado-inactivo' ?>"><?= !empty($bodega['inv_bodega_negativos']) ? 'SI' : 'NO' ?></span></td>
                                         <td><span class="badge estado-badge <?= !empty($bodega['inv_bodega_autoaprobado']) ? 'estado-procesado' : 'estado-inactivo' ?>"><?= !empty($bodega['inv_bodega_autoaprobado']) ? 'SI' : 'NO' ?></span></td>
                                         <td><span class="badge estado-badge estado-<?= strtolower((string) $bodega['sis_estado_codigo']) ?>"><?= htmlspecialchars($bodega['sis_estado_nombre']) ?></span></td>
+                                        <td class="text-center">
+                                            <?php $totalUsuarios = (int) ($bodega['total_usuarios'] ?? 0); ?>
+                                            <?php if ($totalUsuarios > 0): ?>
+                                                <button type="button" class="btn btn-link btn-sm p-0 btn-ver-usuarios-bodega" data-id="<?= (int) $bodega['inv_bodega_id'] ?>" data-nombre="<?= htmlspecialchars($bodega['inv_bodega_codigo'] . ' - ' . $bodega['inv_bodega_nombre']) ?>" title="Ver usuarios asignados">
+                                                    <span class="badge bg-primary"><?= $totalUsuarios ?></span>
+                                                </button>
+                                            <?php else: ?>
+                                                <span class="text-muted small">—</span>
+                                            <?php endif; ?>
+                                        </td>
                                         <td class="text-end acciones-tabla">
                                             <?php if ($permisos['editar']): ?>
                                                 <button type="button" class="btn btn-accion btn-editar-bodega" title="Editar bodega" data-bs-toggle="modal" data-bs-target="#modalBodega" data-modo="editar" data-id="<?= (int) $bodega['inv_bodega_id'] ?>" data-empresa="<?= (int) $bodega['sis_empresa_id'] ?>" data-codigo="<?= htmlspecialchars($bodega['inv_bodega_codigo']) ?>" data-nombre="<?= htmlspecialchars($bodega['inv_bodega_nombre']) ?>" data-descripcion="<?= htmlspecialchars($bodega['inv_bodega_descripcion'] ?? '') ?>" data-direccion="<?= htmlspecialchars($bodega['inv_bodega_direccion'] ?? '') ?>" data-principal="<?= $bodega['inv_bodega_es_principal'] ? '1' : '0' ?>" data-virtual="<?= $bodega['inv_bodega_virtual'] ? '1' : '0' ?>" data-negativos="<?= !empty($bodega['inv_bodega_negativos']) ? '1' : '0' ?>" data-autoaprobado="<?= !empty($bodega['inv_bodega_autoaprobado']) ? '1' : '0' ?>"><i class="bi bi-pencil-square"></i></button>
@@ -148,6 +158,28 @@ $appUrl = rtrim($configuracion->obtener('APP_URL', ''), '/');
     </div>
 </div>
 <?php endif; ?>
+
+<!-- MODAL USUARIOS DE BODEGA (SOLO LECTURA) -->
+<div class="modal fade modal-intesis" id="modalVerUsuariosBodega" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div><p class="modal-etiqueta">Inventario</p><h2 class="modal-title" id="modalVerUsuariosBodegaTitulo">Usuarios asignados</h2></div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <div id="verUsuariosBodegaCargando" class="text-center py-4 text-muted"><i class="bi bi-hourglass-split"></i> Cargando...</div>
+                <div class="table-responsive d-none" id="verUsuariosBodegaTablaContenedor">
+                    <table class="table table-sm table-hover align-middle">
+                        <thead><tr><th>#</th><th>Nombre</th><th>Bodega</th><th>Fecha asignacion</th></tr></thead>
+                        <tbody id="verUsuariosBodegaCuerpo"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer"><button type="button" class="btn btn-secundario" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i> Cerrar</button></div>
+        </div>
+    </div>
+</div>
 
 <?php if (!empty($mensaje)): ?><script>window.INTESIS_MENSAJE = <?= json_encode($mensaje, JSON_UNESCAPED_UNICODE) ?>;</script><?php endif; ?>
 <script>window.INTESIS_BODEGA_USUARIO_PERMISOS = <?= json_encode($permisos, JSON_UNESCAPED_UNICODE) ?>;</script>
