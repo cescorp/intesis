@@ -30,9 +30,18 @@ ok - 2.5 Stock inicial: Registro
 ok - Ingresar saldo inicial por producto y bodega formulario de importacion csv para hacerlo masivo (formato de importación csv con títulos y una linea de ejemplo descargable para tener respaldo).
 ok - 2.6 Kardex: Consulta
 ok - Ver entradas, salidas y saldos.
-Y visualización del pdf
+ok - Y visualización del pdf
 2.7 Movimientos internos: CRUD
 Ajuste de entrada, ajuste de salida, transferencia entre bodegas.
+en ajuste por permiso para ajuste en "+ y en "-" 
+Formulario: 
+Encabezado:
+Fecha [actual] Detalle Usuario[User_Activo] 
+Detalle:
+ Codigo (si esta en blanco o no existe se abra modal y buscador del producto y clic para seleccionary carge toda la informacion, si codigo existe se carga toda la informacion), descripcion (descripcion del prducto, bloqueado), precio (bloqueado), Accion (tipo combo: "Ingreso +"/"Egreso -"), cantidad, Total (abajo)
+
+
+
 2.8 Permisos de bodega por usuario: CRUD
 Definir qué usuario puede usar cada bodega.
 Este debe agregar un botón de permisos por bodega en Sistema\Usuarios\

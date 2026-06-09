@@ -56,6 +56,9 @@ $appUrl = rtrim($configuracion->obtener('APP_URL', ''), '/');
                                             <?php if ($permisos['editar']): ?>
                                                 <button type="button" class="btn btn-accion btn-editar-bodega" title="Editar bodega" data-bs-toggle="modal" data-bs-target="#modalBodega" data-modo="editar" data-id="<?= (int) $bodega['inv_bodega_id'] ?>" data-empresa="<?= (int) $bodega['sis_empresa_id'] ?>" data-codigo="<?= htmlspecialchars($bodega['inv_bodega_codigo']) ?>" data-nombre="<?= htmlspecialchars($bodega['inv_bodega_nombre']) ?>" data-descripcion="<?= htmlspecialchars($bodega['inv_bodega_descripcion'] ?? '') ?>" data-direccion="<?= htmlspecialchars($bodega['inv_bodega_direccion'] ?? '') ?>" data-principal="<?= $bodega['inv_bodega_es_principal'] ? '1' : '0' ?>" data-virtual="<?= $bodega['inv_bodega_virtual'] ? '1' : '0' ?>"><i class="bi bi-pencil-square"></i></button>
                                             <?php endif; ?>
+                                            <?php if ($permisos['usuarios']): ?>
+                                                <button type="button" class="btn btn-accion btn-bodega-usuarios" title="Usuarios de bodega" data-bs-toggle="modal" data-bs-target="#modalBodegaUsuarios" data-id="<?= (int) $bodega['inv_bodega_id'] ?>" data-nombre="<?= htmlspecialchars($bodega['inv_bodega_codigo'] . ' - ' . $bodega['inv_bodega_nombre']) ?>"><i class="bi bi-people"></i></button>
+                                            <?php endif; ?>
                                             <?php if ($bodega['sis_estado_codigo'] !== 'ACTIVO' && $permisos['activar']): ?>
                                                 <form action="<?= $appUrl ?>/inventario/bodegas/activar" method="post" class="d-inline"><input type="hidden" name="bodega_id" value="<?= (int) $bodega['inv_bodega_id'] ?>"><button type="submit" class="btn btn-accion btn-activar" title="Activar bodega"><i class="bi bi-toggle-on"></i></button></form>
                                             <?php endif; ?>
@@ -100,6 +103,49 @@ $appUrl = rtrim($configuracion->obtener('APP_URL', ''), '/');
     </div>
 </div>
 
+<?php if ($permisos['usuarios']): ?>
+<div class="modal fade modal-intesis" id="modalBodegaUsuarios" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div><p class="modal-etiqueta">Inventario</p><h2 class="modal-title">Usuarios <span id="bodegaUsuariosTitulo"></span></h2></div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body formulario-compacto">
+                <form id="formularioBodegaUsuarios" class="row g-2 align-items-end">
+                    <input type="hidden" id="bodega_usuarios_bodega_id" name="bodega_id">
+                    <div class="col-md-7">
+                        <label class="form-label" for="bodega_usuarios_usuario_id">Usuario</label>
+                        <select class="form-control form-control-sm" id="bodega_usuarios_usuario_id" name="usuario_id" required>
+                            <option value="">Seleccione</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-check mb-1">
+                            <input class="form-check-input" type="checkbox" id="bodega_usuarios_predeterminada" name="predeterminada" value="1">
+                            <label class="form-check-label" for="bodega_usuarios_predeterminada">Predeterminada</label>
+                        </div>
+                    </div>
+                    <div class="col-md-2 text-end">
+                        <?php if ($permisos['usuariosGuardar']): ?>
+                            <button type="submit" class="btn btn-intesis btn-sm w-100"><i class="bi bi-save2"></i> Agregar</button>
+                        <?php endif; ?>
+                    </div>
+                </form>
+                <div class="table-responsive mt-3">
+                    <table class="table table-hover align-middle w-100" id="tablaBodegaUsuarios">
+                        <thead><tr><th>Usuario</th><th>Correo</th><th>Predeterminada</th><th>Estado</th><th class="text-end">Acciones</th></tr></thead>
+                        <tbody><tr><td colspan="5" class="text-center text-muted">Seleccione una bodega.</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer"><button type="button" class="btn btn-secundario" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i> Cerrar</button></div>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
 <?php if (!empty($mensaje)): ?><script>window.INTESIS_MENSAJE = <?= json_encode($mensaje, JSON_UNESCAPED_UNICODE) ?>;</script><?php endif; ?>
+<script>window.INTESIS_BODEGA_USUARIO_PERMISOS = <?= json_encode($permisos, JSON_UNESCAPED_UNICODE) ?>;</script>
 <script>window.INTESIS_MENSAJES = <?= json_encode($mensajesSistema ?? [], JSON_UNESCAPED_UNICODE) ?>;</script>
 <?php require $configuracion->raiz() . '/src/Vistas/plantillas/pie.php'; ?>

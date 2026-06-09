@@ -903,6 +903,137 @@
         });
     }
 
+    const modalBodegaUsuarios = document.getElementById('modalBodegaUsuarios');
+    const formularioBodegaUsuarios = document.getElementById('formularioBodegaUsuarios');
+    const permisosBodegaUsuarios = window.INTESIS_BODEGA_USUARIO_PERMISOS || {};
+    let bodegaUsuariosActual = '';
+
+    const urlBodegaUsuarios = (ruta = '') => `${window.location.origin}${document.body.dataset.baseUrl || ''}/inventario/bodegas/usuarios${ruta}`;
+
+    const cargarUsuariosBodega = async () => {
+        if (!bodegaUsuariosActual) return;
+        const respuesta = await fetch(`${urlBodegaUsuarios()}?bodega_id=${encodeURIComponent(bodegaUsuariosActual)}`, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        });
+        const json = await respuesta.json();
+        if (!json.ok) {
+            throw new Error(json.mensaje || 'No se pudo cargar usuarios de bodega.');
+        }
+
+        const usuarios = json.data?.usuarios || [];
+        const asignaciones = json.data?.asignaciones || [];
+        const usuariosAsignadosActivos = new Set(asignaciones.filter((fila) => Number(fila.inv_bodega_usuarios_estado) === 1).map((fila) => String(fila.sis_usuarios_id)));
+        const selectUsuario = document.getElementById('bodega_usuarios_usuario_id');
+        if (selectUsuario) {
+            const opciones = usuarios
+                .filter((usuario) => !usuariosAsignadosActivos.has(String(usuario.sis_usuarios_id)))
+                .map((usuario) => `<option value="${usuario.sis_usuarios_id}">${escaparHtml(usuario.sis_usuarios_nombre)} - ${escaparHtml(usuario.sis_usuarios_correo)}</option>`)
+                .join('');
+            selectUsuario.innerHTML = `<option value="">Seleccione</option>${opciones}`;
+        }
+
+        const cuerpo = document.querySelector('#tablaBodegaUsuarios tbody');
+        if (cuerpo) {
+            cuerpo.innerHTML = asignaciones.length ? asignaciones.map((asignacion) => {
+                const activo = Number(asignacion.inv_bodega_usuarios_estado) === 1;
+                const predeterminada = asignacion.inv_bodega_usuarios_predeterminada === true || asignacion.inv_bodega_usuarios_predeterminada === 't' || Number(asignacion.inv_bodega_usuarios_predeterminada) === 1;
+                const botonEstado = activo
+                    ? (permisosBodegaUsuarios.usuariosInactivar ? `<button type="button" class="btn btn-accion btn-bodega-usuario-estado" data-ruta="/inactivar" data-id="${asignacion.inv_bodega_usuarios_id}" title="Inactivar usuario"><i class="bi bi-toggle-off"></i></button>` : '')
+                    : (permisosBodegaUsuarios.usuariosActivar ? `<button type="button" class="btn btn-accion btn-bodega-usuario-estado" data-ruta="/activar" data-id="${asignacion.inv_bodega_usuarios_id}" title="Activar usuario"><i class="bi bi-toggle-on"></i></button>` : '');
+                return `<tr>
+                    <td>${escaparHtml(asignacion.sis_usuarios_nombre)}</td>
+                    <td>${escaparHtml(asignacion.sis_usuarios_correo)}</td>
+                    <td><span class="badge estado-badge ${predeterminada ? 'estado-activo' : 'estado-inactivo'}">${predeterminada ? 'SI' : 'NO'}</span></td>
+                    <td><span class="badge estado-badge ${activo ? 'estado-activo' : 'estado-inactivo'}">${activo ? 'ACTIVO' : 'INACTIVO'}</span></td>
+                    <td class="text-end">${botonEstado}</td>
+                </tr>`;
+            }).join('') : '<tr><td colspan="5" class="text-center text-muted">Sin usuarios asignados.</td></tr>';
+        }
+    };
+
+    if (modalBodegaUsuarios) {
+        modalBodegaUsuarios.addEventListener('show.bs.modal', async (evento) => {
+            const boton = evento.relatedTarget;
+            bodegaUsuariosActual = boton?.dataset.id || '';
+            document.getElementById('bodega_usuarios_bodega_id').value = bodegaUsuariosActual;
+            document.getElementById('bodegaUsuariosTitulo').textContent = boton?.dataset.nombre ? `- ${boton.dataset.nombre}` : '';
+            document.querySelector('#tablaBodegaUsuarios tbody').innerHTML = '<tr><td colspan="5" class="text-center text-muted">Cargando...</td></tr>';
+            try {
+                await cargarUsuariosBodega();
+            } catch (error) {
+                mostrarAlerta({ icono: 'error', titulo: 'No se pudo cargar', texto: error.message });
+            }
+        });
+    }
+
+    if (formularioBodegaUsuarios) {
+        formularioBodegaUsuarios.addEventListener('submit', async (evento) => {
+            evento.preventDefault();
+            const usuarioId = document.getElementById('bodega_usuarios_usuario_id')?.value || '';
+            if (!usuarioId) {
+                mostrarAlerta({ icono: 'error', titulo: 'Datos incompletos', texto: 'Seleccione un usuario.' });
+                return;
+            }
+            try {
+                const datos = new FormData(formularioBodegaUsuarios);
+                const respuesta = await fetch(urlBodegaUsuarios('/guardar'), {
+                    method: 'POST',
+                    body: datos,
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                const json = await respuesta.json();
+                if (!json.ok) {
+                    throw new Error(json.mensaje || 'No se pudo guardar.');
+                }
+                formularioBodegaUsuarios.reset();
+                document.getElementById('bodega_usuarios_bodega_id').value = bodegaUsuariosActual;
+                await cargarUsuariosBodega();
+                mostrarAlerta({ icono: 'success', titulo: 'Guardado', texto: json.mensaje || 'Cambios guardados.', posicion: 2, tiempo: 1800 });
+            } catch (error) {
+                mostrarAlerta({ icono: 'error', titulo: 'No se pudo guardar', texto: error.message });
+            }
+        });
+    }
+
+    document.addEventListener('click', async (evento) => {
+        const boton = evento.target.closest('.btn-bodega-usuario-estado');
+        if (!boton) return;
+        const confirmar = await mostrarAlerta({
+            icono: 'warning',
+            titulo: 'Confirmar cambio',
+            texto: 'El permiso de la bodega cambiara para este usuario.',
+        }, {
+            omitirTimer: true,
+            extra: {
+                showCancelButton: true,
+                showConfirmButton: true,
+                cancelButtonText: 'Cancelar',
+                cancelButtonColor: '#263a5f',
+            },
+            confirmButtonText: 'Confirmar',
+            confirmButtonColor: '#d65f5f',
+        });
+        if (!confirmar.isConfirmed) return;
+        try {
+            const datos = new FormData();
+            datos.append('bodega_id', bodegaUsuariosActual);
+            datos.append('asignacion_id', boton.dataset.id || '');
+            const respuesta = await fetch(urlBodegaUsuarios(boton.dataset.ruta || ''), {
+                method: 'POST',
+                body: datos,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            });
+            const json = await respuesta.json();
+            if (!json.ok) {
+                throw new Error(json.mensaje || 'No se pudo cambiar estado.');
+            }
+            await cargarUsuariosBodega();
+            mostrarAlerta({ icono: 'success', titulo: 'Actualizado', texto: json.mensaje || 'Cambio aplicado.', posicion: 2, tiempo: 1800 });
+        } catch (error) {
+            mostrarAlerta({ icono: 'error', titulo: 'No se pudo actualizar', texto: error.message });
+        }
+    });
+
     const obtenerEmpresaProducto = () => document.getElementById('producto_empresa_id')?.value || String(window.INTESIS_EMPRESA_ACTIVA || '');
 
     const filtrarSelectsProductoPorEmpresa = () => {
@@ -1770,6 +1901,241 @@
         visor.src = `${window.location.origin}${document.body.dataset.baseUrl || ''}/inventario/kardex/documento?${parametros.toString()}`;
         bootstrap.Modal.getOrCreateInstance(modal).show();
     });
+
+    let indiceLineaMovimiento = 0;
+    let lineaProductoMovimientoActiva = null;
+    const bodegasMovimiento = window.INTESIS_BODEGAS_MOVIMIENTO || [];
+    const permisosMovimiento = window.INTESIS_MOVIMIENTO_PERMISOS || {};
+
+    const opcionesBodegaMovimiento = (seleccionado = '') => bodegasMovimiento.map((bodega) => `<option value="${bodega.inv_bodega_id}" ${String(seleccionado) === String(bodega.inv_bodega_id) ? 'selected' : ''}>${escaparHtml(bodega.inv_bodega_codigo)} - ${escaparHtml(bodega.inv_bodega_nombre)}</option>`).join('');
+
+    const accionesMovimiento = (tipo) => {
+        if (tipo === 'AJUSTE') {
+            const opciones = [];
+            if (permisosMovimiento.ajusteIngreso) opciones.push('<option value="INGRESO">Ingreso +</option>');
+            if (permisosMovimiento.ajusteEgreso) opciones.push('<option value="EGRESO">Egreso -</option>');
+            return opciones.join('');
+        }
+        return '<option value="TRANSFERENCIA">Transferencia</option>';
+    };
+
+    const configurarBodegasLineaMovimiento = (fila) => {
+        const tipo = document.getElementById('movimiento_tipo')?.value || '';
+        const accion = fila.querySelector('.mov-linea-accion')?.value || '';
+        const origen = fila.querySelector('.mov-linea-origen');
+        const destino = fila.querySelector('.mov-linea-destino');
+        origen.disabled = tipo === 'AJUSTE' && accion === 'INGRESO';
+        destino.disabled = tipo === 'AJUSTE' && accion === 'EGRESO';
+        if (tipo === 'AJUSTE' && accion === 'INGRESO') origen.value = '';
+        if (tipo === 'AJUSTE' && accion === 'EGRESO') destino.value = '';
+        if (tipo === 'TRANSFERENCIA') {
+            origen.disabled = false;
+            destino.disabled = false;
+        }
+    };
+
+    const recalcularMovimiento = () => {
+        let total = 0;
+        document.querySelectorAll('#tablaLineasMovimiento tbody tr').forEach((fila) => {
+            const cantidad = Number(fila.querySelector('.mov-linea-cantidad')?.value || 0);
+            const costo = Number(fila.dataset.costo || 0);
+            const subtotal = cantidad * costo;
+            total += subtotal;
+            const celda = fila.querySelector('.mov-linea-total');
+            if (celda) celda.textContent = subtotal.toFixed(2);
+        });
+        const totalNodo = document.getElementById('movimiento_total');
+        if (totalNodo) totalNodo.textContent = total.toFixed(2);
+    };
+
+    const agregarLineaMovimiento = (producto = {}) => {
+        const cuerpo = document.querySelector('#tablaLineasMovimiento tbody');
+        if (!cuerpo) return;
+        indiceLineaMovimiento += 1;
+        const tipo = document.getElementById('movimiento_tipo')?.value || 'AJUSTE_IN';
+        const fila = document.createElement('tr');
+        fila.dataset.indice = String(indiceLineaMovimiento);
+        fila.dataset.producto = producto.inv_producto_id || '';
+        fila.dataset.costo = producto.costo_promedio || 0;
+        fila.dataset.pvp = producto.pvp || 0;
+        fila.innerHTML = `
+            <td><div class="input-group input-group-sm"><input class="form-control mov-linea-codigo" value="${escaparHtml(producto.inv_producto_codigo_principal || '')}"><button class="btn btn-secundario btn-buscar-linea-movimiento" type="button"><i class="bi bi-search"></i></button></div></td>
+            <td><input class="form-control form-control-sm mov-linea-descripcion" value="${escaparHtml(producto.inv_producto_nombre || '')}" disabled></td>
+            <td><input class="form-control form-control-sm text-end mov-linea-costo" value="${Number(producto.costo_promedio || 0).toFixed(2)}" disabled></td>
+            <td><input class="form-control form-control-sm text-end mov-linea-pvp" value="${Number(producto.pvp || 0).toFixed(2)}" disabled></td>
+            <td><select class="form-control form-control-sm mov-linea-accion" ${tipo === 'TRANSFERENCIA' ? 'disabled' : ''}>${accionesMovimiento(tipo)}</select></td>
+            <td><select class="form-control form-control-sm mov-linea-origen"><option value="">Origen</option>${opcionesBodegaMovimiento()}</select></td>
+            <td><select class="form-control form-control-sm mov-linea-destino"><option value="">Destino</option>${opcionesBodegaMovimiento()}</select></td>
+            <td><input type="number" min="0.0001" step="0.0001" class="form-control form-control-sm text-end mov-linea-cantidad" value="1"></td>
+            <td class="text-end mov-linea-total">0.00</td>
+            <td><button type="button" class="btn btn-accion btn-eliminar-linea-movimiento"><i class="bi bi-trash3"></i></button></td>
+        `;
+        cuerpo.appendChild(fila);
+        configurarBodegasLineaMovimiento(fila);
+        recalcularMovimiento();
+    };
+
+    const cargarProductoEnLineaMovimiento = (fila, producto) => {
+        fila.dataset.producto = producto.inv_producto_id || '';
+        fila.dataset.costo = producto.costo_promedio || 0;
+        fila.dataset.pvp = producto.pvp || 0;
+        fila.querySelector('.mov-linea-codigo').value = producto.inv_producto_codigo_principal || '';
+        fila.querySelector('.mov-linea-descripcion').value = producto.inv_producto_nombre || '';
+        fila.querySelector('.mov-linea-costo').value = Number(producto.costo_promedio || 0).toFixed(2);
+        fila.querySelector('.mov-linea-pvp').value = Number(producto.pvp || 0).toFixed(2);
+        recalcularMovimiento();
+    };
+
+    const buscarProductosMovimiento = async (termino = '', codigo = '') => {
+        const parametros = new URLSearchParams();
+        if (termino) parametros.set('q', termino);
+        if (codigo) parametros.set('codigo', codigo);
+        const respuesta = await fetch(`${window.location.origin}${document.body.dataset.baseUrl || ''}/inventario/movimientos/productos?${parametros.toString()}`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+        const json = await respuesta.json();
+        if (!json.ok) throw new Error(json.mensaje || 'No se pudo buscar productos.');
+        return json.data?.productos || [];
+    };
+
+    const renderizarBusquedaMovimiento = (productos) => {
+        const cuerpo = document.getElementById('tablaBuscarProductoMovimiento');
+        if (!cuerpo) return;
+        cuerpo.innerHTML = productos.length ? productos.map((producto, indice) => {
+            const stock = (producto.saldos || []).map((saldo) => `${escaparHtml(saldo.inv_bodega_codigo)}: ${Number(saldo.inv_stock_cantidad_disponible || 0).toFixed(2)}`).join('<br>');
+            const imagen = producto.imagen_principal_id ? `<img src="${window.location.origin}${document.body.dataset.baseUrl || ''}/inventario/productos/archivos/ver?archivo_id=${producto.imagen_principal_id}" alt="" style="width:34px;height:34px;object-fit:cover;border-radius:5px;">` : '<i class="bi bi-image"></i>';
+            return `<tr>
+                <td>${imagen}</td>
+                <td>${escaparHtml(producto.inv_producto_codigo_principal)}</td>
+                <td>${escaparHtml(producto.inv_producto_nombre)}</td>
+                <td>${escaparHtml(producto.inv_marca_nombre)}</td>
+                <td class="text-end">${Number(producto.pvp || 0).toFixed(2)}</td>
+                <td>${stock || '0.00'}</td>
+                <td><button type="button" class="btn btn-accion btn-seleccionar-producto-movimiento" data-indice="${indice}"><i class="bi bi-check2"></i></button></td>
+            </tr>`;
+        }).join('') : '<tr><td colspan="7" class="text-muted">Sin productos.</td></tr>';
+        window.INTESIS_PRODUCTOS_MOVIMIENTO = productos;
+    };
+
+    const modalMovimiento = document.getElementById('modalMovimientoInterno');
+    if (modalMovimiento) {
+        modalMovimiento.addEventListener('show.bs.modal', (evento) => {
+            const tipo = evento.relatedTarget?.dataset.tipo || 'AJUSTE_IN';
+            document.getElementById('formularioMovimientoInterno').reset();
+            document.getElementById('movimiento_tipo').value = tipo;
+            document.getElementById('movimiento_fecha').value = new Date().toISOString().slice(0, 10);
+            document.getElementById('modalMovimientoTitulo').textContent = tipo === 'TRANSFERENCIA' ? 'Transferencia entre bodegas' : 'Ajuste de inventario';
+            document.querySelector('#tablaLineasMovimiento tbody').innerHTML = '';
+            agregarLineaMovimiento();
+        });
+    }
+
+    document.getElementById('btnAgregarLineaMovimiento')?.addEventListener('click', () => agregarLineaMovimiento());
+
+    document.getElementById('tablaLineasMovimiento')?.addEventListener('click', async (evento) => {
+        const fila = evento.target.closest('tr');
+        if (!fila) return;
+        if (evento.target.closest('.btn-eliminar-linea-movimiento')) {
+            fila.remove();
+            recalcularMovimiento();
+            return;
+        }
+        if (evento.target.closest('.btn-buscar-linea-movimiento')) {
+            lineaProductoMovimientoActiva = fila;
+            renderizarBusquedaMovimiento([]);
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('modalBuscarProductoMovimiento')).show();
+        }
+    });
+
+    document.getElementById('tablaLineasMovimiento')?.addEventListener('change', (evento) => {
+        const fila = evento.target.closest('tr');
+        if (!fila) return;
+        if (evento.target.classList.contains('mov-linea-origen') && fila.querySelector('.mov-linea-destino')?.value === evento.target.value) {
+            fila.querySelector('.mov-linea-destino').value = '';
+        }
+        if (evento.target.classList.contains('mov-linea-destino') && fila.querySelector('.mov-linea-origen')?.value === evento.target.value) {
+            fila.querySelector('.mov-linea-origen').value = '';
+        }
+        if (evento.target.classList.contains('mov-linea-accion')) {
+            configurarBodegasLineaMovimiento(fila);
+        }
+        recalcularMovimiento();
+    });
+
+    document.getElementById('tablaLineasMovimiento')?.addEventListener('focusout', async (evento) => {
+        if (!evento.target.classList.contains('mov-linea-codigo')) return;
+        const fila = evento.target.closest('tr');
+        const codigo = evento.target.value.trim();
+        if (!codigo) {
+            lineaProductoMovimientoActiva = fila;
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('modalBuscarProductoMovimiento')).show();
+            return;
+        }
+        try {
+            const productos = await buscarProductosMovimiento('', codigo);
+            if (productos.length === 1) {
+                cargarProductoEnLineaMovimiento(fila, productos[0]);
+            } else {
+                lineaProductoMovimientoActiva = fila;
+                renderizarBusquedaMovimiento(productos);
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('modalBuscarProductoMovimiento')).show();
+            }
+        } catch (error) {
+            mostrarAlerta({ icono: 'error', titulo: 'No se pudo buscar', texto: error.message || 'Revise producto.' });
+        }
+    });
+
+    document.getElementById('btnBuscarProductoMovimiento')?.addEventListener('click', async () => {
+        try {
+            renderizarBusquedaMovimiento(await buscarProductosMovimiento(document.getElementById('buscar_producto_movimiento_texto')?.value || ''));
+        } catch (error) {
+            mostrarAlerta({ icono: 'error', titulo: 'No se pudo buscar', texto: error.message || 'Revise producto.' });
+        }
+    });
+
+    document.getElementById('tablaBuscarProductoMovimiento')?.addEventListener('click', (evento) => {
+        const boton = evento.target.closest('.btn-seleccionar-producto-movimiento');
+        if (!boton || !lineaProductoMovimientoActiva) return;
+        cargarProductoEnLineaMovimiento(lineaProductoMovimientoActiva, (window.INTESIS_PRODUCTOS_MOVIMIENTO || [])[Number(boton.dataset.indice)] || {});
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('modalBuscarProductoMovimiento')).hide();
+    });
+
+    document.getElementById('formularioMovimientoInterno')?.addEventListener('submit', (evento) => {
+        const lineas = [];
+        document.querySelectorAll('#tablaLineasMovimiento tbody tr').forEach((fila) => {
+            lineas.push({
+                producto_id: fila.dataset.producto || '',
+                codigo: fila.querySelector('.mov-linea-codigo')?.value || '',
+                accion: fila.querySelector('.mov-linea-accion')?.value || '',
+                origen_id: fila.querySelector('.mov-linea-origen')?.value || '',
+                destino_id: fila.querySelector('.mov-linea-destino')?.value || '',
+                cantidad: fila.querySelector('.mov-linea-cantidad')?.value || '0',
+                costo: fila.dataset.costo || '0',
+                pvp: fila.dataset.pvp || '0',
+                observacion: document.getElementById('movimiento_detalle')?.value || '',
+            });
+        });
+        document.getElementById('movimiento_lineas_json').value = JSON.stringify(lineas);
+        const tipoMovimiento = document.getElementById('movimiento_tipo')?.value || '';
+        const lineasInvalidas = lineas.some((linea) => {
+            if (!linea.producto_id || Number(linea.cantidad) <= 0) return true;
+            if (tipoMovimiento === 'TRANSFERENCIA') return !linea.origen_id || !linea.destino_id || linea.origen_id === linea.destino_id;
+            if (linea.accion === 'INGRESO') return !linea.destino_id;
+            if (linea.accion === 'EGRESO') return !linea.origen_id;
+            return true;
+        });
+        if (!document.getElementById('movimiento_detalle').value.trim() || !lineas.length || lineasInvalidas) {
+            evento.preventDefault();
+            mostrarAlerta({ icono: 'error', titulo: 'Datos incompletos', texto: 'Revise detalle, producto, accion, bodega y cantidad.' });
+        }
+    });
+
+    const modalEditarMovimiento = document.getElementById('modalEditarMovimiento');
+    if (modalEditarMovimiento) {
+        modalEditarMovimiento.addEventListener('show.bs.modal', (evento) => {
+            const boton = evento.relatedTarget;
+            document.getElementById('editar_movimiento_id').value = boton?.dataset.id || '';
+            document.getElementById('editar_movimiento_detalle').value = boton?.dataset.detalle || '';
+        });
+    }
 
     const actualizarCapasModales = () => {
         const modalesAbiertos = Array.from(document.querySelectorAll('.modal.show'));

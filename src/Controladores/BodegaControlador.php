@@ -146,6 +146,86 @@ final class BodegaControlador
 
     /**
      * ***************************************************************************
+     * * LISTA USUARIOS Y PERMISOS DE UNA BODEGA EN FORMATO JSON.
+     * ***************************************************************************
+     */
+    public function usuarios(): void
+    {
+        $usuario = $this->exigirSesionJson();
+        $this->exigirPermisoJson('/inventario/bodegas/usuarios');
+        try {
+            $bodega = $this->obtenerBodegaPermitida((int) ($_GET['bodega_id'] ?? 0), $usuario);
+            $empresaId = (int) $bodega['sis_empresa_id'];
+            $this->responderJson([
+                'ok' => true,
+                'data' => [
+                    'bodega' => [
+                        'id' => (int) $bodega['inv_bodega_id'],
+                        'nombre' => (string) $bodega['inv_bodega_nombre'],
+                        'codigo' => (string) $bodega['inv_bodega_codigo'],
+                    ],
+                    'usuarios' => $this->bodegaModelo->listarUsuariosEmpresa($empresaId),
+                    'asignaciones' => $this->bodegaModelo->listarUsuariosBodega($empresaId, (int) $bodega['inv_bodega_id']),
+                    'permisos' => $this->obtenerPermisos($usuario),
+                ],
+            ]);
+        } catch (Throwable $excepcion) {
+            $this->registrarErrorCrud('LISTAR USUARIOS BODEGA', $excepcion);
+            $this->responderJson(['ok' => false, 'mensaje' => $excepcion->getMessage()], 400);
+        }
+    }
+
+    /**
+     * ***************************************************************************
+     * * GUARDA PERMISO DE USUARIO PARA UNA BODEGA.
+     * ***************************************************************************
+     */
+    public function guardarUsuario(): void
+    {
+        $usuario = $this->exigirSesionJson();
+        $this->exigirPermisoJson('/inventario/bodegas/usuarios/guardar');
+        try {
+            $bodega = $this->obtenerBodegaPermitida((int) ($_POST['bodega_id'] ?? 0), $usuario);
+            $usuarioAsignadoId = (int) ($_POST['usuario_id'] ?? 0);
+            if ($usuarioAsignadoId <= 0) {
+                throw new \InvalidArgumentException('Seleccione un usuario valido.');
+            }
+            $this->bodegaModelo->guardarUsuarioBodega(
+                (int) $bodega['sis_empresa_id'],
+                (int) $bodega['inv_bodega_id'],
+                $usuarioAsignadoId,
+                !empty($_POST['predeterminada']),
+                (int) $usuario['id']
+            );
+            $this->responderJson(['ok' => true, 'mensaje' => 'Usuario asignado a la bodega.']);
+        } catch (Throwable $excepcion) {
+            $this->registrarErrorCrud('GUARDAR USUARIO BODEGA', $excepcion);
+            $this->responderJson(['ok' => false, 'mensaje' => $excepcion->getMessage()], 400);
+        }
+    }
+
+    /**
+     * ***************************************************************************
+     * * ACTIVA PERMISO DE USUARIO PARA UNA BODEGA.
+     * ***************************************************************************
+     */
+    public function activarUsuario(): void
+    {
+        $this->cambiarEstadoUsuario('/inventario/bodegas/usuarios/activar', 1, 'Usuario activado para la bodega.');
+    }
+
+    /**
+     * ***************************************************************************
+     * * INACTIVA PERMISO DE USUARIO PARA UNA BODEGA.
+     * ***************************************************************************
+     */
+    public function inactivarUsuario(): void
+    {
+        $this->cambiarEstadoUsuario('/inventario/bodegas/usuarios/inactivar', 0, 'Usuario inactivado para la bodega.');
+    }
+
+    /**
+     * ***************************************************************************
      * * CAMBIA ESTADO ACTIVO O INACTIVO DE BODEGA.
      * ***************************************************************************
      */
@@ -162,6 +242,30 @@ final class BodegaControlador
             $this->guardarMensajeError($excepcion);
         }
         $this->redirigir('/inventario/bodegas');
+    }
+
+    /**
+     * ***************************************************************************
+     * * CAMBIA ESTADO JSON DE PERMISO USUARIO BODEGA.
+     * ***************************************************************************
+     */
+    private function cambiarEstadoUsuario(string $permiso, int $estado, string $mensaje): void
+    {
+        $usuario = $this->exigirSesionJson();
+        $this->exigirPermisoJson($permiso);
+        try {
+            $bodega = $this->obtenerBodegaPermitida((int) ($_POST['bodega_id'] ?? 0), $usuario);
+            $this->bodegaModelo->cambiarEstadoUsuarioBodega(
+                (int) $bodega['sis_empresa_id'],
+                (int) ($_POST['asignacion_id'] ?? 0),
+                $estado,
+                (int) $usuario['id']
+            );
+            $this->responderJson(['ok' => true, 'mensaje' => $mensaje]);
+        } catch (Throwable $excepcion) {
+            $this->registrarErrorCrud('CAMBIAR USUARIO BODEGA', $excepcion);
+            $this->responderJson(['ok' => false, 'mensaje' => $excepcion->getMessage()], 400);
+        }
     }
 
     /**
@@ -241,6 +345,10 @@ final class BodegaControlador
             'activar' => $this->menuModelo->tienePermiso($empresaId, $perfilId, '/inventario/bodegas/activar'),
             'inactivar' => $this->menuModelo->tienePermiso($empresaId, $perfilId, '/inventario/bodegas/inactivar'),
             'eliminar' => $this->menuModelo->tienePermiso($empresaId, $perfilId, '/inventario/bodegas/eliminar'),
+            'usuarios' => $this->menuModelo->tienePermiso($empresaId, $perfilId, '/inventario/bodegas/usuarios'),
+            'usuariosGuardar' => $this->menuModelo->tienePermiso($empresaId, $perfilId, '/inventario/bodegas/usuarios/guardar'),
+            'usuariosActivar' => $this->menuModelo->tienePermiso($empresaId, $perfilId, '/inventario/bodegas/usuarios/activar'),
+            'usuariosInactivar' => $this->menuModelo->tienePermiso($empresaId, $perfilId, '/inventario/bodegas/usuarios/inactivar'),
         ];
     }
 
@@ -271,6 +379,21 @@ final class BodegaControlador
 
     /**
      * ***************************************************************************
+     * * EXIGE SESION ACTIVA PARA RESPUESTAS JSON.
+     * ***************************************************************************
+     */
+    private function exigirSesionJson(): array
+    {
+        $usuario = $this->sesion->usuario();
+        if (!$usuario) {
+            $this->responderJson(['ok' => false, 'mensaje' => 'Sesion no activa.'], 401);
+        }
+
+        return $usuario;
+    }
+
+    /**
+     * ***************************************************************************
      * * VALIDA PERMISO BACKEND PARA ACCION.
      * ***************************************************************************
      */
@@ -281,6 +404,32 @@ final class BodegaControlador
             $this->sesion->guardarMensaje('error', 'Acceso restringido', 'Su perfil no tiene permiso para esta accion.');
             $this->redirigir('/dashboard');
         }
+    }
+
+    /**
+     * ***************************************************************************
+     * * VALIDA PERMISO BACKEND PARA ACCIONES JSON.
+     * ***************************************************************************
+     */
+    private function exigirPermisoJson(string $url): void
+    {
+        $usuario = $this->exigirSesionJson();
+        if (!$this->menuModelo->tienePermiso((int) $usuario['empresa_id'], (int) $usuario['perfil_id'], $url)) {
+            $this->responderJson(['ok' => false, 'mensaje' => 'Su perfil no tiene permiso para esta accion.'], 403);
+        }
+    }
+
+    /**
+     * ***************************************************************************
+     * * RESPONDE JSON Y FINALIZA LA PETICION.
+     * ***************************************************************************
+     */
+    private function responderJson(array $datos, int $estado = 200): never
+    {
+        http_response_code($estado);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode($datos, JSON_UNESCAPED_UNICODE);
+        exit;
     }
 
     /**

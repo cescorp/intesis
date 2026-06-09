@@ -17,6 +17,7 @@ use Intesis\Controladores\PerfilControlador;
 use Intesis\Controladores\ProductoControlador;
 use Intesis\Controladores\StockControlador;
 use Intesis\Controladores\KardexControlador;
+use Intesis\Controladores\MovimientoInternoControlador;
 use Intesis\Controladores\UsuarioControlador;
 
 final class Enrutador
@@ -36,6 +37,7 @@ final class Enrutador
         private ProductoControlador $productoControlador,
         private StockControlador $stockControlador,
         private KardexControlador $kardexControlador,
+        private MovimientoInternoControlador $movimientoInternoControlador,
         private Configuracion $configuracion
     ) {
     }
@@ -335,6 +337,26 @@ final class Enrutador
             return;
         }
 
+        if ($metodo === 'GET' && $ruta === '/inventario/bodegas/usuarios') {
+            $this->bodegaControlador->usuarios();
+            return;
+        }
+
+        if ($metodo === 'POST' && $ruta === '/inventario/bodegas/usuarios/guardar') {
+            $this->bodegaControlador->guardarUsuario();
+            return;
+        }
+
+        if ($metodo === 'POST' && $ruta === '/inventario/bodegas/usuarios/activar') {
+            $this->bodegaControlador->activarUsuario();
+            return;
+        }
+
+        if ($metodo === 'POST' && $ruta === '/inventario/bodegas/usuarios/inactivar') {
+            $this->bodegaControlador->inactivarUsuario();
+            return;
+        }
+
         if ($metodo === 'GET' && $ruta === '/inventario/productos/archivos/listar') {
             $this->archivoProductoControlador->listar();
             return;
@@ -432,6 +454,41 @@ final class Enrutador
 
         if ($metodo === 'GET' && $ruta === '/inventario/kardex/documento') {
             $this->kardexControlador->documento();
+            return;
+        }
+
+        if ($metodo === 'GET' && $ruta === '/inventario/movimientos') {
+            $this->movimientoInternoControlador->listar();
+            return;
+        }
+
+        if ($metodo === 'POST' && $ruta === '/inventario/movimientos/crear') {
+            $this->movimientoInternoControlador->crear();
+            return;
+        }
+
+        if ($metodo === 'POST' && $ruta === '/inventario/movimientos/editar') {
+            $this->movimientoInternoControlador->editar();
+            return;
+        }
+
+        if ($metodo === 'POST' && $ruta === '/inventario/movimientos/aprobar') {
+            $this->movimientoInternoControlador->aprobar();
+            return;
+        }
+
+        if ($metodo === 'POST' && $ruta === '/inventario/movimientos/recibir') {
+            $this->movimientoInternoControlador->recibir();
+            return;
+        }
+
+        if ($metodo === 'POST' && $ruta === '/inventario/movimientos/anular') {
+            $this->movimientoInternoControlador->anular();
+            return;
+        }
+
+        if ($metodo === 'GET' && $ruta === '/inventario/movimientos/productos') {
+            $this->movimientoInternoControlador->productos();
             return;
         }
 

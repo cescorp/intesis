@@ -227,6 +227,154 @@ final class BodegaModelo
 
     /**
      * ***************************************************************************
+     * * LISTA USUARIOS ACTIVOS ASIGNADOS A UNA EMPRESA.
+     * ***************************************************************************
+     */
+    public function listarUsuariosEmpresa(int $empresaId): array
+    {
+        $sentencia = $this->conexionBaseDatos->obtener()->prepare("
+            SELECT DISTINCT
+                u.sis_usuarios_id,
+                u.sis_usuarios_nombre,
+                u.sis_usuarios_correo,
+                p.sis_perfil_nombre
+            FROM sis_usuario_empresa ue
+            INNER JOIN sis_usuarios u ON u.sis_usuarios_id = ue.sis_usuarios_id
+            INNER JOIN sis_perfil p ON p.sis_perfil_id = ue.sis_perfil_id
+            INNER JOIN sis_estado eu ON eu.sis_estado_id = u.sis_estado_id
+            INNER JOIN sis_estado eue ON eue.sis_estado_id = ue.sis_estado_id
+            WHERE ue.sis_empresa_id = :empresa_id
+              AND eu.sis_estado_codigo = 'ACTIVO'
+              AND eue.sis_estado_codigo = 'ACTIVO'
+              AND p.sis_perfil_estado = 1
+            ORDER BY u.sis_usuarios_nombre, u.sis_usuarios_correo
+        ");
+        $sentencia->execute(['empresa_id' => $empresaId]);
+
+        return $sentencia->fetchAll();
+    }
+
+    /**
+     * ***************************************************************************
+     * * LISTA USUARIOS PERMITIDOS PARA UNA BODEGA.
+     * ***************************************************************************
+     */
+    public function listarUsuariosBodega(int $empresaId, int $bodegaId): array
+    {
+        $sentencia = $this->conexionBaseDatos->obtener()->prepare("
+            SELECT
+                bu.inv_bodega_usuarios_id,
+                bu.sis_usuarios_id,
+                bu.inv_bodega_id,
+                bu.inv_bodega_usuarios_estado,
+                bu.inv_bodega_usuarios_predeterminada,
+                u.sis_usuarios_nombre,
+                u.sis_usuarios_correo
+            FROM inv_bodega_usuarios bu
+            INNER JOIN sis_usuarios u ON u.sis_usuarios_id = bu.sis_usuarios_id
+            WHERE bu.sis_empresa_id = :empresa_id
+              AND bu.inv_bodega_id = :bodega_id
+              AND bu.inv_bodega_usuarios_estado <> -1
+            ORDER BY bu.inv_bodega_usuarios_estado DESC, bu.inv_bodega_usuarios_predeterminada DESC, u.sis_usuarios_nombre
+        ");
+        $sentencia->execute([
+            'empresa_id' => $empresaId,
+            'bodega_id' => $bodegaId,
+        ]);
+
+        return $sentencia->fetchAll();
+    }
+
+    /**
+     * ***************************************************************************
+     * * GUARDA O REACTIVA PERMISO DE USUARIO PARA UNA BODEGA.
+     * ***************************************************************************
+     */
+    public function guardarUsuarioBodega(int $empresaId, int $bodegaId, int $usuarioAsignadoId, bool $predeterminada, int $usuarioActualId): void
+    {
+        $pdo = $this->conexionBaseDatos->obtener();
+        $pdo->beginTransaction();
+        try {
+            if (!$this->usuarioPerteneceEmpresa($empresaId, $usuarioAsignadoId)) {
+                throw new \InvalidArgumentException('El usuario no pertenece a la empresa activa.');
+            }
+            if ($predeterminada) {
+                $this->limpiarBodegaPredeterminadaUsuario($empresaId, $usuarioAsignadoId, $usuarioActualId);
+            }
+
+            $registro = $this->buscarUsuarioBodega($empresaId, $bodegaId, $usuarioAsignadoId);
+            if ($registro) {
+                $sentencia = $pdo->prepare("
+                    UPDATE inv_bodega_usuarios
+                    SET inv_bodega_usuarios_estado = 1,
+                        inv_bodega_usuarios_predeterminada = :predeterminada,
+                        usuario_modifica = :usuario_modifica,
+                        fecha_modifica = now()
+                    WHERE inv_bodega_usuarios_id = :asignacion_id
+                ");
+                $sentencia->bindValue(':asignacion_id', (int) $registro['inv_bodega_usuarios_id'], PDO::PARAM_INT);
+                $sentencia->bindValue(':predeterminada', $predeterminada, PDO::PARAM_BOOL);
+                $sentencia->bindValue(':usuario_modifica', $usuarioActualId, PDO::PARAM_INT);
+                $sentencia->execute();
+            } else {
+                $sentencia = $pdo->prepare("
+                    INSERT INTO inv_bodega_usuarios (
+                        sis_empresa_id, sis_usuarios_id, inv_bodega_id,
+                        inv_bodega_usuarios_estado, inv_bodega_usuarios_predeterminada,
+                        usuario_crea
+                    )
+                    VALUES (
+                        :empresa_id, :usuario_id, :bodega_id,
+                        1, :predeterminada,
+                        :usuario_crea
+                    )
+                ");
+                $sentencia->bindValue(':empresa_id', $empresaId, PDO::PARAM_INT);
+                $sentencia->bindValue(':usuario_id', $usuarioAsignadoId, PDO::PARAM_INT);
+                $sentencia->bindValue(':bodega_id', $bodegaId, PDO::PARAM_INT);
+                $sentencia->bindValue(':predeterminada', $predeterminada, PDO::PARAM_BOOL);
+                $sentencia->bindValue(':usuario_crea', $usuarioActualId, PDO::PARAM_INT);
+                $sentencia->execute();
+            }
+            $pdo->commit();
+        } catch (\Throwable $excepcion) {
+            $pdo->rollBack();
+            throw $excepcion;
+        }
+    }
+
+    /**
+     * ***************************************************************************
+     * * CAMBIA ESTADO DE PERMISO USUARIO BODEGA.
+     * ***************************************************************************
+     */
+    public function cambiarEstadoUsuarioBodega(int $empresaId, int $asignacionId, int $estado, int $usuarioActualId): void
+    {
+        $asignacion = $this->buscarAsignacionUsuarioBodega($empresaId, $asignacionId);
+        if (!$asignacion) {
+            throw new \InvalidArgumentException('Asignacion de bodega no valida.');
+        }
+
+        $sentencia = $this->conexionBaseDatos->obtener()->prepare("
+            UPDATE inv_bodega_usuarios
+            SET inv_bodega_usuarios_estado = :estado,
+                inv_bodega_usuarios_predeterminada = CASE WHEN :estado_predeterminado = 1 THEN inv_bodega_usuarios_predeterminada ELSE FALSE END,
+                usuario_modifica = :usuario_modifica,
+                fecha_modifica = now()
+            WHERE inv_bodega_usuarios_id = :asignacion_id
+              AND sis_empresa_id = :empresa_id
+        ");
+        $sentencia->execute([
+            'estado' => $estado,
+            'estado_predeterminado' => $estado,
+            'usuario_modifica' => $usuarioActualId,
+            'asignacion_id' => $asignacionId,
+            'empresa_id' => $empresaId,
+        ]);
+    }
+
+    /**
+     * ***************************************************************************
      * * OBTIENE ESTADO DE BODEGA POR CODIGO.
      * ***************************************************************************
      */
@@ -266,6 +414,104 @@ final class BodegaModelo
         }
         $sentencia = $this->conexionBaseDatos->obtener()->prepare($sql);
         $sentencia->execute($parametros);
+    }
+
+    /**
+     * ***************************************************************************
+     * * VERIFICA SI UN USUARIO TIENE ASIGNACION ACTIVA EN LA EMPRESA.
+     * ***************************************************************************
+     */
+    private function usuarioPerteneceEmpresa(int $empresaId, int $usuarioAsignadoId): bool
+    {
+        $sentencia = $this->conexionBaseDatos->obtener()->prepare("
+            SELECT 1
+            FROM sis_usuario_empresa ue
+            INNER JOIN sis_estado es ON es.sis_estado_id = ue.sis_estado_id
+            WHERE ue.sis_empresa_id = :empresa_id
+              AND ue.sis_usuarios_id = :usuario_id
+              AND es.sis_estado_codigo = 'ACTIVO'
+            LIMIT 1
+        ");
+        $sentencia->execute([
+            'empresa_id' => $empresaId,
+            'usuario_id' => $usuarioAsignadoId,
+        ]);
+
+        return (bool) $sentencia->fetchColumn();
+    }
+
+    /**
+     * ***************************************************************************
+     * * BUSCA PERMISO USUARIO BODEGA EXISTENTE.
+     * ***************************************************************************
+     */
+    private function buscarUsuarioBodega(int $empresaId, int $bodegaId, int $usuarioAsignadoId): ?array
+    {
+        $sentencia = $this->conexionBaseDatos->obtener()->prepare("
+            SELECT *
+            FROM inv_bodega_usuarios
+            WHERE sis_empresa_id = :empresa_id
+              AND inv_bodega_id = :bodega_id
+              AND sis_usuarios_id = :usuario_id
+              AND inv_bodega_usuarios_estado <> -1
+            ORDER BY inv_bodega_usuarios_estado DESC, inv_bodega_usuarios_id DESC
+            LIMIT 1
+        ");
+        $sentencia->execute([
+            'empresa_id' => $empresaId,
+            'bodega_id' => $bodegaId,
+            'usuario_id' => $usuarioAsignadoId,
+        ]);
+        $registro = $sentencia->fetch();
+
+        return $registro ?: null;
+    }
+
+    /**
+     * ***************************************************************************
+     * * BUSCA ASIGNACION USUARIO BODEGA POR ID.
+     * ***************************************************************************
+     */
+    private function buscarAsignacionUsuarioBodega(int $empresaId, int $asignacionId): ?array
+    {
+        $sentencia = $this->conexionBaseDatos->obtener()->prepare("
+            SELECT *
+            FROM inv_bodega_usuarios
+            WHERE sis_empresa_id = :empresa_id
+              AND inv_bodega_usuarios_id = :asignacion_id
+              AND inv_bodega_usuarios_estado <> -1
+            LIMIT 1
+        ");
+        $sentencia->execute([
+            'empresa_id' => $empresaId,
+            'asignacion_id' => $asignacionId,
+        ]);
+        $asignacion = $sentencia->fetch();
+
+        return $asignacion ?: null;
+    }
+
+    /**
+     * ***************************************************************************
+     * * LIMPIA BODEGA PREDETERMINADA PREVIA DEL USUARIO EN UNA EMPRESA.
+     * ***************************************************************************
+     */
+    private function limpiarBodegaPredeterminadaUsuario(int $empresaId, int $usuarioAsignadoId, int $usuarioActualId): void
+    {
+        $sentencia = $this->conexionBaseDatos->obtener()->prepare("
+            UPDATE inv_bodega_usuarios
+            SET inv_bodega_usuarios_predeterminada = FALSE,
+                usuario_modifica = :usuario_modifica,
+                fecha_modifica = now()
+            WHERE sis_empresa_id = :empresa_id
+              AND sis_usuarios_id = :usuario_id
+              AND inv_bodega_usuarios_estado = 1
+        ");
+        $sentencia->execute([
+            'empresa_id' => $empresaId,
+            'usuario_id' => $usuarioAsignadoId,
+            'usuario_modifica' => $usuarioActualId,
+        ]);
     }
 
     /**
