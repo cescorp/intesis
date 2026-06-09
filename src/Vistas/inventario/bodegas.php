@@ -42,7 +42,7 @@ $appUrl = rtrim($configuracion->obtener('APP_URL', ''), '/');
                     <?php endif; ?>
                     <div class="table-responsive">
                         <table id="tablaBodegas" class="table table-hover tabla-intesis align-middle w-100">
-                            <thead><tr><th>Empresa</th><th>Codigo</th><th>Nombre</th><th>Principal</th><th>Virtual</th><th>Estado</th><th class="text-end">Acciones</th></tr></thead>
+                            <thead><tr><th>Empresa</th><th>Codigo</th><th>Nombre</th><th>Principal</th><th>Virtual</th><th>Neg.</th><th>Autoaprob.</th><th>Estado</th><th class="text-end">Acciones</th></tr></thead>
                             <tbody>
                                 <?php foreach ($bodegas as $bodega): ?>
                                     <tr>
@@ -51,10 +51,12 @@ $appUrl = rtrim($configuracion->obtener('APP_URL', ''), '/');
                                         <td><?= htmlspecialchars($bodega['inv_bodega_nombre']) ?></td>
                                         <td><span class="badge estado-badge <?= $bodega['inv_bodega_es_principal'] ? 'estado-activo' : 'estado-inactivo' ?>"><?= $bodega['inv_bodega_es_principal'] ? 'SI' : 'NO' ?></span></td>
                                         <td><span class="badge estado-badge <?= $bodega['inv_bodega_virtual'] ? 'estado-activo' : 'estado-inactivo' ?>"><?= $bodega['inv_bodega_virtual'] ? 'SI' : 'NO' ?></span></td>
+                                        <td><span class="badge estado-badge <?= !empty($bodega['inv_bodega_negativos']) ? 'estado-pendiente' : 'estado-inactivo' ?>"><?= !empty($bodega['inv_bodega_negativos']) ? 'SI' : 'NO' ?></span></td>
+                                        <td><span class="badge estado-badge <?= !empty($bodega['inv_bodega_autoaprobado']) ? 'estado-procesado' : 'estado-inactivo' ?>"><?= !empty($bodega['inv_bodega_autoaprobado']) ? 'SI' : 'NO' ?></span></td>
                                         <td><span class="badge estado-badge estado-<?= strtolower((string) $bodega['sis_estado_codigo']) ?>"><?= htmlspecialchars($bodega['sis_estado_nombre']) ?></span></td>
                                         <td class="text-end acciones-tabla">
                                             <?php if ($permisos['editar']): ?>
-                                                <button type="button" class="btn btn-accion btn-editar-bodega" title="Editar bodega" data-bs-toggle="modal" data-bs-target="#modalBodega" data-modo="editar" data-id="<?= (int) $bodega['inv_bodega_id'] ?>" data-empresa="<?= (int) $bodega['sis_empresa_id'] ?>" data-codigo="<?= htmlspecialchars($bodega['inv_bodega_codigo']) ?>" data-nombre="<?= htmlspecialchars($bodega['inv_bodega_nombre']) ?>" data-descripcion="<?= htmlspecialchars($bodega['inv_bodega_descripcion'] ?? '') ?>" data-direccion="<?= htmlspecialchars($bodega['inv_bodega_direccion'] ?? '') ?>" data-principal="<?= $bodega['inv_bodega_es_principal'] ? '1' : '0' ?>" data-virtual="<?= $bodega['inv_bodega_virtual'] ? '1' : '0' ?>"><i class="bi bi-pencil-square"></i></button>
+                                                <button type="button" class="btn btn-accion btn-editar-bodega" title="Editar bodega" data-bs-toggle="modal" data-bs-target="#modalBodega" data-modo="editar" data-id="<?= (int) $bodega['inv_bodega_id'] ?>" data-empresa="<?= (int) $bodega['sis_empresa_id'] ?>" data-codigo="<?= htmlspecialchars($bodega['inv_bodega_codigo']) ?>" data-nombre="<?= htmlspecialchars($bodega['inv_bodega_nombre']) ?>" data-descripcion="<?= htmlspecialchars($bodega['inv_bodega_descripcion'] ?? '') ?>" data-direccion="<?= htmlspecialchars($bodega['inv_bodega_direccion'] ?? '') ?>" data-principal="<?= $bodega['inv_bodega_es_principal'] ? '1' : '0' ?>" data-virtual="<?= $bodega['inv_bodega_virtual'] ? '1' : '0' ?>" data-negativos="<?= !empty($bodega['inv_bodega_negativos']) ? '1' : '0' ?>" data-autoaprobado="<?= !empty($bodega['inv_bodega_autoaprobado']) ? '1' : '0' ?>"><i class="bi bi-pencil-square"></i></button>
                                             <?php endif; ?>
                                             <?php if ($permisos['usuarios']): ?>
                                                 <button type="button" class="btn btn-accion btn-bodega-usuarios" title="Usuarios de bodega" data-bs-toggle="modal" data-bs-target="#modalBodegaUsuarios" data-id="<?= (int) $bodega['inv_bodega_id'] ?>" data-nombre="<?= htmlspecialchars($bodega['inv_bodega_codigo'] . ' - ' . $bodega['inv_bodega_nombre']) ?>"><i class="bi bi-people"></i></button>
@@ -95,6 +97,8 @@ $appUrl = rtrim($configuracion->obtener('APP_URL', ''), '/');
                     <div class="col-md-6"><label class="form-label" for="bodega_direccion">Direccion</label><input type="text" class="form-control form-control-sm" id="bodega_direccion" name="direccion" maxlength="180"></div>
                     <div class="col-md-3"><div class="form-check mt-4"><input class="form-check-input" type="checkbox" id="bodega_principal" name="principal" value="1"><label class="form-check-label" for="bodega_principal">Principal</label></div></div>
                     <div class="col-md-3"><div class="form-check mt-4"><input class="form-check-input" type="checkbox" id="bodega_virtual" name="virtual" value="1"><label class="form-check-label" for="bodega_virtual">Virtual</label></div></div>
+                    <div class="col-md-3"><div class="form-check mt-4"><input class="form-check-input" type="checkbox" id="bodega_negativos" name="negativos" value="1"><label class="form-check-label" for="bodega_negativos">Stock negativo</label></div></div>
+                    <div class="col-md-3"><div class="form-check mt-4"><input class="form-check-input" type="checkbox" id="bodega_autoaprobado" name="autoaprobado" value="1"><label class="form-check-label" for="bodega_autoaprobado">Autoaprobado</label></div></div>
                     <div class="col-12"><label class="form-label" for="bodega_descripcion">Descripcion</label><textarea class="form-control form-control-sm" id="bodega_descripcion" name="descripcion" rows="2"></textarea></div>
                 </div>
             </div>

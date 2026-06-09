@@ -99,7 +99,9 @@ final class Aplicacion
             new StockControlador($vista, $sesion, $stockModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
             new KardexControlador($vista, $sesion, $kardexModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores, $generadorPdf),
             new MovimientoInternoControlador($vista, $sesion, $movimientoInternoModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
-            $configuracion
+            $configuracion,
+            $vista,
+            $sesion
         );
     }
 

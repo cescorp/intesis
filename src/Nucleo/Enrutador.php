@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Intesis\Nucleo;
 
-use Intesis\Controladores\AutenticacionControlador;
 use Intesis\Controladores\ArchivoProductoControlador;
+use Intesis\Controladores\AutenticacionControlador;
 use Intesis\Controladores\BodegaControlador;
 use Intesis\Controladores\CategoriaControlador;
 use Intesis\Controladores\ConfiguracionControlador;
@@ -19,6 +19,8 @@ use Intesis\Controladores\StockControlador;
 use Intesis\Controladores\KardexControlador;
 use Intesis\Controladores\MovimientoInternoControlador;
 use Intesis\Controladores\UsuarioControlador;
+use Intesis\Nucleo\Sesion;
+use Intesis\Nucleo\Vista;
 
 final class Enrutador
 {
@@ -38,7 +40,9 @@ final class Enrutador
         private StockControlador $stockControlador,
         private KardexControlador $kardexControlador,
         private MovimientoInternoControlador $movimientoInternoControlador,
-        private Configuracion $configuracion
+        private Configuracion $configuracion,
+        private Vista $vista,
+        private Sesion $sesion
     ) {
     }
 
@@ -492,6 +496,16 @@ final class Enrutador
             return;
         }
 
+        if ($metodo === 'GET' && $ruta === '/inventario/movimientos/detalle') {
+            $this->movimientoInternoControlador->detalle();
+            return;
+        }
+
+        if ($metodo === 'POST' && $ruta === '/inventario/movimientos/anular-procesado') {
+            $this->movimientoInternoControlador->anularProcesado();
+            return;
+        }
+
         if ($metodo === 'GET' && $ruta === '/inventario/categorias') {
             $this->categoriaControlador->listar();
             return;
@@ -563,7 +577,10 @@ final class Enrutador
         }
 
         http_response_code(404);
-        echo 'Ruta no encontrada.';
+        $this->vista->renderizar('errores/error404', [
+            'titulo' => 'Pagina no encontrada',
+            'usuario' => $this->sesion->usuario(),
+        ]);
     }
 
     /**

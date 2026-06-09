@@ -8,12 +8,15 @@ use Intesis\Modelos\ArchivoProductoModelo;
 use Intesis\Modelos\MenuModelo;
 use Intesis\Modelos\ProductoModelo;
 use Intesis\Nucleo\Configuracion;
+use Intesis\Nucleo\ControladorComun;
 use Intesis\Nucleo\RegistroErrores;
 use Intesis\Nucleo\Sesion;
 use Throwable;
 
 final class ArchivoProductoControlador
 {
+    use ControladorComun;
+
     private const EXTENSIONES = ['jpg', 'jpeg', 'png', 'webp'];
     private const MAX_BYTES = 7340032;
 
@@ -262,17 +265,7 @@ final class ArchivoProductoControlador
 
     /**
      * ***************************************************************************
-     * * IDENTIFICA PERFIL SUPERUSUARIO.
-     * ***************************************************************************
-     */
-    private function esSuperusuario(array $usuario): bool
-    {
-        return strtoupper((string) ($usuario['perfil_codigo'] ?? $usuario['perfil'] ?? '')) === 'SUPERUSUARIO';
-    }
-
-    /**
-     * ***************************************************************************
-     * * EXIGE SESION ACTIVA PARA VISTA DE IMAGEN.
+     * * EXIGE SESION ACTIVA PARA VISTA DE IMAGEN. DEVUELVE 403 SI NO HAY SESION.
      * ***************************************************************************
      */
     private function exigirSesion(): array

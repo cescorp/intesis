@@ -7,11 +7,13 @@ namespace Intesis\Controladores;
 use Intesis\Modelos\ModuloModelo;
 use Intesis\Modelos\MenuModelo;
 use Intesis\Nucleo\Configuracion;
+use Intesis\Nucleo\ControladorComun;
 use Intesis\Nucleo\Sesion;
 use Intesis\Nucleo\Vista;
 
 final class PanelControlador
 {
+    use ControladorComun;
     public function __construct(
         private Vista $vista,
         private Sesion $sesion,
@@ -43,14 +45,4 @@ final class PanelControlador
         ]);
     }
 
-    /**
-     * ***************************************************************************
-     * * ENVIA UNA REDIRECCION HTTP USANDO LA URL BASE CONFIGURADA.
-     * ***************************************************************************
-     */
-    private function redirigir(string $ruta): never
-    {
-        header('Location: ' . rtrim($this->configuracion->obtener('APP_URL', ''), '/') . $ruta);
-        exit;
-    }
 }

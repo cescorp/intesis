@@ -8,6 +8,7 @@ use Intesis\Modelos\BodegaModelo;
 use Intesis\Modelos\MenuModelo;
 use Intesis\Modelos\MensajeSistemaModelo;
 use Intesis\Nucleo\Configuracion;
+use Intesis\Nucleo\ControladorComun;
 use Intesis\Nucleo\RegistroErrores;
 use Intesis\Nucleo\Sesion;
 use Intesis\Nucleo\Vista;
@@ -15,6 +16,8 @@ use Throwable;
 
 final class BodegaControlador
 {
+    use ControladorComun;
+
     public function __construct(
         private Vista $vista,
         private Sesion $sesion,
@@ -156,22 +159,19 @@ final class BodegaControlador
         try {
             $bodega = $this->obtenerBodegaPermitida((int) ($_GET['bodega_id'] ?? 0), $usuario);
             $empresaId = (int) $bodega['sis_empresa_id'];
-            $this->responderJson([
-                'ok' => true,
-                'data' => [
-                    'bodega' => [
-                        'id' => (int) $bodega['inv_bodega_id'],
-                        'nombre' => (string) $bodega['inv_bodega_nombre'],
-                        'codigo' => (string) $bodega['inv_bodega_codigo'],
-                    ],
-                    'usuarios' => $this->bodegaModelo->listarUsuariosEmpresa($empresaId),
-                    'asignaciones' => $this->bodegaModelo->listarUsuariosBodega($empresaId, (int) $bodega['inv_bodega_id']),
-                    'permisos' => $this->obtenerPermisos($usuario),
+            $this->responderJson(true, 'USUARIOS_OK', 'Usuarios de bodega listados.', [
+                'bodega' => [
+                    'id' => (int) $bodega['inv_bodega_id'],
+                    'nombre' => (string) $bodega['inv_bodega_nombre'],
+                    'codigo' => (string) $bodega['inv_bodega_codigo'],
                 ],
+                'usuarios' => $this->bodegaModelo->listarUsuariosEmpresa($empresaId),
+                'asignaciones' => $this->bodegaModelo->listarUsuariosBodega($empresaId, (int) $bodega['inv_bodega_id']),
+                'permisos' => $this->obtenerPermisos($usuario),
             ]);
         } catch (Throwable $excepcion) {
             $this->registrarErrorCrud('LISTAR USUARIOS BODEGA', $excepcion);
-            $this->responderJson(['ok' => false, 'mensaje' => $excepcion->getMessage()], 400);
+            $this->responderJson(false, 'ERROR', $excepcion->getMessage());
         }
     }
 
@@ -197,10 +197,10 @@ final class BodegaControlador
                 !empty($_POST['predeterminada']),
                 (int) $usuario['id']
             );
-            $this->responderJson(['ok' => true, 'mensaje' => 'Usuario asignado a la bodega.']);
+            $this->responderJson(true, 'OK', 'Usuario asignado a la bodega.');
         } catch (Throwable $excepcion) {
             $this->registrarErrorCrud('GUARDAR USUARIO BODEGA', $excepcion);
-            $this->responderJson(['ok' => false, 'mensaje' => $excepcion->getMessage()], 400);
+            $this->responderJson(false, 'ERROR', $excepcion->getMessage());
         }
     }
 
@@ -261,10 +261,10 @@ final class BodegaControlador
                 $estado,
                 (int) $usuario['id']
             );
-            $this->responderJson(['ok' => true, 'mensaje' => $mensaje]);
+            $this->responderJson(true, 'OK', $mensaje);
         } catch (Throwable $excepcion) {
             $this->registrarErrorCrud('CAMBIAR USUARIO BODEGA', $excepcion);
-            $this->responderJson(['ok' => false, 'mensaje' => $excepcion->getMessage()], 400);
+            $this->responderJson(false, 'ERROR', $excepcion->getMessage());
         }
     }
 
@@ -287,6 +287,8 @@ final class BodegaControlador
             'direccion' => trim((string) ($_POST['direccion'] ?? '')),
             'principal' => !empty($_POST['principal']),
             'virtual' => !empty($_POST['virtual']),
+            'negativos' => !empty($_POST['negativos']),
+            'autoaprobado' => !empty($_POST['autoaprobado']),
         ];
     }
 
@@ -352,114 +354,4 @@ final class BodegaControlador
         ];
     }
 
-    /**
-     * ***************************************************************************
-     * * IDENTIFICA PERFIL SUPERUSUARIO.
-     * ***************************************************************************
-     */
-    private function esSuperusuario(array $usuario): bool
-    {
-        return strtoupper((string) ($usuario['perfil_codigo'] ?? $usuario['perfil'] ?? '')) === 'SUPERUSUARIO';
-    }
-
-    /**
-     * ***************************************************************************
-     * * EXIGE SESION ACTIVA.
-     * ***************************************************************************
-     */
-    private function exigirSesion(): array
-    {
-        $usuario = $this->sesion->usuario();
-        if (!$usuario) {
-            $this->redirigir('/login');
-        }
-
-        return $usuario;
-    }
-
-    /**
-     * ***************************************************************************
-     * * EXIGE SESION ACTIVA PARA RESPUESTAS JSON.
-     * ***************************************************************************
-     */
-    private function exigirSesionJson(): array
-    {
-        $usuario = $this->sesion->usuario();
-        if (!$usuario) {
-            $this->responderJson(['ok' => false, 'mensaje' => 'Sesion no activa.'], 401);
-        }
-
-        return $usuario;
-    }
-
-    /**
-     * ***************************************************************************
-     * * VALIDA PERMISO BACKEND PARA ACCION.
-     * ***************************************************************************
-     */
-    private function exigirPermiso(string $url): void
-    {
-        $usuario = $this->exigirSesion();
-        if (!$this->menuModelo->tienePermiso((int) $usuario['empresa_id'], (int) $usuario['perfil_id'], $url)) {
-            $this->sesion->guardarMensaje('error', 'Acceso restringido', 'Su perfil no tiene permiso para esta accion.');
-            $this->redirigir('/dashboard');
-        }
-    }
-
-    /**
-     * ***************************************************************************
-     * * VALIDA PERMISO BACKEND PARA ACCIONES JSON.
-     * ***************************************************************************
-     */
-    private function exigirPermisoJson(string $url): void
-    {
-        $usuario = $this->exigirSesionJson();
-        if (!$this->menuModelo->tienePermiso((int) $usuario['empresa_id'], (int) $usuario['perfil_id'], $url)) {
-            $this->responderJson(['ok' => false, 'mensaje' => 'Su perfil no tiene permiso para esta accion.'], 403);
-        }
-    }
-
-    /**
-     * ***************************************************************************
-     * * RESPONDE JSON Y FINALIZA LA PETICION.
-     * ***************************************************************************
-     */
-    private function responderJson(array $datos, int $estado = 200): never
-    {
-        http_response_code($estado);
-        header('Content-Type: application/json; charset=utf-8');
-        echo json_encode($datos, JSON_UNESCAPED_UNICODE);
-        exit;
-    }
-
-    /**
-     * ***************************************************************************
-     * * REDIRIGE A RUTA LIMPIA.
-     * ***************************************************************************
-     */
-    private function redirigir(string $ruta): never
-    {
-        header('Location: ' . rtrim($this->configuracion->obtener('APP_URL', ''), '/') . $ruta);
-        exit;
-    }
-
-    /**
-     * ***************************************************************************
-     * * REGISTRA ERRORES DEL CRUD BODEGA.
-     * ***************************************************************************
-     */
-    private function registrarErrorCrud(string $accion, Throwable $excepcion): void
-    {
-        $this->registroErrores->escribir($accion . ': ' . $excepcion->getMessage());
-    }
-
-    /**
-     * ***************************************************************************
-     * * GUARDA MENSAJE DE ERROR CONTROLADO.
-     * ***************************************************************************
-     */
-    private function guardarMensajeError(Throwable $excepcion): void
-    {
-        $this->sesion->guardarMensaje('error', 'No se pudo guardar', $excepcion->getMessage());
-    }
 }

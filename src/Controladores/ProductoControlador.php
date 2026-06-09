@@ -10,6 +10,7 @@ use Intesis\Modelos\MenuModelo;
 use Intesis\Modelos\MensajeSistemaModelo;
 use Intesis\Modelos\ProductoModelo;
 use Intesis\Nucleo\Configuracion;
+use Intesis\Nucleo\ControladorComun;
 use Intesis\Nucleo\RegistroErrores;
 use Intesis\Nucleo\Sesion;
 use Intesis\Nucleo\Vista;
@@ -17,6 +18,7 @@ use Throwable;
 
 final class ProductoControlador
 {
+    use ControladorComun;
     public function __construct(
         private Vista $vista,
         private Sesion $sesion,
@@ -256,45 +258,6 @@ final class ProductoControlador
 
     /**
      * ***************************************************************************
-     * * IDENTIFICA PERFIL SUPERUSUARIO.
-     * ***************************************************************************
-     */
-    private function esSuperusuario(array $usuario): bool
-    {
-        return strtoupper((string) ($usuario['perfil_codigo'] ?? $usuario['perfil'] ?? '')) === 'SUPERUSUARIO';
-    }
-
-    /**
-     * ***************************************************************************
-     * * EXIGE SESION ACTIVA.
-     * ***************************************************************************
-     */
-    private function exigirSesion(): array
-    {
-        $usuario = $this->sesion->usuario();
-        if (!$usuario) {
-            $this->redirigir('/login');
-        }
-
-        return $usuario;
-    }
-
-    /**
-     * ***************************************************************************
-     * * VALIDA PERMISO BACKEND PARA ACCION.
-     * ***************************************************************************
-     */
-    private function exigirPermiso(string $url): void
-    {
-        $usuario = $this->exigirSesion();
-        if (!$this->menuModelo->tienePermiso((int) $usuario['empresa_id'], (int) $usuario['perfil_id'], $url)) {
-            $this->sesion->guardarMensaje('error', 'Acceso restringido', 'Su perfil no tiene permiso para esta accion.');
-            $this->redirigir('/dashboard');
-        }
-    }
-
-    /**
-     * ***************************************************************************
      * * IDENTIFICA SI EL GUARDADO VIENE DESDE AJAX.
      * ***************************************************************************
      */
@@ -305,7 +268,7 @@ final class ProductoControlador
 
     /**
      * ***************************************************************************
-     * * ENVIA RESPUESTA JSON ESTANDAR.
+     * * ENVIA RESPUESTA JSON CON CAMPO ERRORES PARA VALIDACIONES EN FRONTEND.
      * ***************************************************************************
      */
     private function responderJson(bool $ok, string $codigo, string $mensaje, array $data = []): never
@@ -317,27 +280,6 @@ final class ProductoControlador
         }
         echo json_encode($respuesta, JSON_UNESCAPED_UNICODE);
         exit;
-    }
-
-    /**
-     * ***************************************************************************
-     * * REDIRIGE A RUTA LIMPIA.
-     * ***************************************************************************
-     */
-    private function redirigir(string $ruta): never
-    {
-        header('Location: ' . rtrim($this->configuracion->obtener('APP_URL', ''), '/') . $ruta);
-        exit;
-    }
-
-    /**
-     * ***************************************************************************
-     * * REGISTRA ERRORES DEL CRUD PRODUCTO.
-     * ***************************************************************************
-     */
-    private function registrarErrorCrud(string $accion, Throwable $excepcion): void
-    {
-        $this->registroErrores->escribir($accion . ': ' . $excepcion->getMessage());
     }
 
     /**

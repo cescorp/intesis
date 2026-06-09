@@ -880,6 +880,8 @@
                 document.getElementById('bodega_direccion').value = boton.dataset.direccion || '';
                 document.getElementById('bodega_principal').checked = boton.dataset.principal === '1';
                 document.getElementById('bodega_virtual').checked = boton.dataset.virtual === '1';
+                document.getElementById('bodega_negativos').checked = boton.dataset.negativos === '1';
+                document.getElementById('bodega_autoaprobado').checked = boton.dataset.autoaprobado === '1';
             }
         });
     }
@@ -1990,6 +1992,8 @@
         const parametros = new URLSearchParams();
         if (termino) parametros.set('q', termino);
         if (codigo) parametros.set('codigo', codigo);
+        const bodegaId = lineaProductoMovimientoActiva?.querySelector('.mov-linea-origen')?.value || '';
+        if (bodegaId) parametros.set('bodega_id', bodegaId);
         const respuesta = await fetch(`${window.location.origin}${document.body.dataset.baseUrl || ''}/inventario/movimientos/productos?${parametros.toString()}`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
         const json = await respuesta.json();
         if (!json.ok) throw new Error(json.mensaje || 'No se pudo buscar productos.');
@@ -2030,6 +2034,14 @@
 
     document.getElementById('btnAgregarLineaMovimiento')?.addEventListener('click', () => agregarLineaMovimiento());
 
+    document.getElementById('formularioMovimientoInterno')?.addEventListener('keydown', (evento) => {
+        if (evento.key !== 'Enter') return;
+        evento.preventDefault();
+        if (evento.target.classList.contains('mov-linea-codigo')) {
+            evento.target.blur();
+        }
+    });
+
     document.getElementById('tablaLineasMovimiento')?.addEventListener('click', async (evento) => {
         const fila = evento.target.closest('tr');
         if (!fila) return;
@@ -2040,7 +2052,14 @@
         }
         if (evento.target.closest('.btn-buscar-linea-movimiento')) {
             lineaProductoMovimientoActiva = fila;
-            renderizarBusquedaMovimiento([]);
+            const codigoBuscar = fila.querySelector('.mov-linea-codigo')?.value?.trim() || '';
+            const inputBuscarModal = document.getElementById('buscar_producto_movimiento_texto');
+            if (inputBuscarModal) inputBuscarModal.value = codigoBuscar;
+            if (codigoBuscar) {
+                buscarProductosMovimiento(codigoBuscar).then(renderizarBusquedaMovimiento).catch(() => renderizarBusquedaMovimiento([]));
+            } else {
+                renderizarBusquedaMovimiento([]);
+            }
             bootstrap.Modal.getOrCreateInstance(document.getElementById('modalBuscarProductoMovimiento')).show();
         }
     });
@@ -2064,8 +2083,11 @@
         if (!evento.target.classList.contains('mov-linea-codigo')) return;
         const fila = evento.target.closest('tr');
         const codigo = evento.target.value.trim();
+        const inputBuscarFocusout = document.getElementById('buscar_producto_movimiento_texto');
         if (!codigo) {
             lineaProductoMovimientoActiva = fila;
+            if (inputBuscarFocusout) inputBuscarFocusout.value = '';
+            renderizarBusquedaMovimiento([]);
             bootstrap.Modal.getOrCreateInstance(document.getElementById('modalBuscarProductoMovimiento')).show();
             return;
         }
@@ -2075,11 +2097,24 @@
                 cargarProductoEnLineaMovimiento(fila, productos[0]);
             } else {
                 lineaProductoMovimientoActiva = fila;
+                if (inputBuscarFocusout) inputBuscarFocusout.value = codigo;
                 renderizarBusquedaMovimiento(productos);
                 bootstrap.Modal.getOrCreateInstance(document.getElementById('modalBuscarProductoMovimiento')).show();
             }
         } catch (error) {
             mostrarAlerta({ icono: 'error', titulo: 'No se pudo buscar', texto: error.message || 'Revise producto.' });
+        }
+    });
+
+    document.getElementById('modalBuscarProductoMovimiento')?.addEventListener('shown.bs.modal', () => {
+        const inputBuscar = document.getElementById('buscar_producto_movimiento_texto');
+        if (inputBuscar) { inputBuscar.focus(); inputBuscar.select(); }
+    });
+
+    document.getElementById('buscar_producto_movimiento_texto')?.addEventListener('keydown', (evento) => {
+        if (evento.key === 'Enter') {
+            evento.preventDefault();
+            document.getElementById('btnBuscarProductoMovimiento')?.click();
         }
     });
 
@@ -2136,6 +2171,258 @@
             document.getElementById('editar_movimiento_detalle').value = boton?.dataset.detalle || '';
         });
     }
+
+    // ─── FILTROS Y DATATABLES: MOVIMIENTOS INTERNOS ───────────────────────────
+
+    if (window.jQuery && jQuery.fn.DataTable && document.getElementById('tablaMovimientosLista')) {
+        const idiomaTablaMovimiento = {
+            search: 'Filtrar:',
+            lengthMenu: 'Mostrar _MENU_ registros',
+            info: 'Mostrando _START_ a _END_ de _TOTAL_ registros',
+            infoEmpty: 'Sin registros',
+            infoFiltered: '(filtrado de _MAX_)',
+            zeroRecords: 'No se encontraron resultados',
+            paginate: { first: 'Primero', last: 'Ultimo', next: 'Siguiente', previous: 'Anterior' },
+        };
+
+        /*
+         * Funcion de filtrado por rango de fechas y estado.
+         * Se registra una vez y usa el ID de la tabla para no afectar otras tablas.
+         */
+        if (!window.INTESIS_MOV_FILTRO_REGISTRADO) {
+            window.INTESIS_MOV_FILTRO_REGISTRADO = true;
+            jQuery.fn.dataTable.ext.search.push(function (settings, _data, dataIndex) {
+                const tableId = settings.nTable?.id;
+                if (tableId !== 'tablaMovimientosLista' && tableId !== 'tablaTransferenciasLista') {
+                    return true;
+                }
+                const fila = settings.aoData[dataIndex]?.nTr;
+                const fechaFila = fila ? (fila.dataset.fecha || '') : '';
+                const desde = document.getElementById('filtroMovDesde')?.value || '';
+                const hasta = document.getElementById('filtroMovHasta')?.value || '';
+                if (desde && fechaFila < desde) { return false; }
+                if (hasta && fechaFila > hasta) { return false; }
+                if (tableId === 'tablaMovimientosLista') {
+                    const estadoFiltro = document.getElementById('filtroMovEstado')?.value || '';
+                    if (estadoFiltro) {
+                        const estadoFila = fila ? (fila.dataset.estado || '') : '';
+                        if (estadoFila !== estadoFiltro) { return false; }
+                    }
+                }
+                return true;
+            });
+        }
+
+        jQuery('#tablaMovimientosLista').DataTable({
+            language: idiomaTablaMovimiento,
+            pageLength: 25,
+            order: [[1, 'desc']],
+        });
+        jQuery('#tablaTransferenciasLista').DataTable({
+            language: idiomaTablaMovimiento,
+            pageLength: 25,
+            order: [[1, 'asc']],
+        });
+
+        // Valores predeterminados: ultimos 30 dias y estado PENDIENTE
+        const hoyMov = new Date();
+        const hace30Mov = new Date(hoyMov);
+        hace30Mov.setDate(hace30Mov.getDate() - 30);
+        const isoFecha = (d) => d.toISOString().slice(0, 10);
+        const elDesde = document.getElementById('filtroMovDesde');
+        const elHasta = document.getElementById('filtroMovHasta');
+        const elEstado = document.getElementById('filtroMovEstado');
+        if (elDesde && !elDesde.value) { elDesde.value = isoFecha(hace30Mov); }
+        if (elHasta && !elHasta.value) { elHasta.value = isoFecha(hoyMov); }
+        if (elEstado && !elEstado.value) { elEstado.value = 'PENDIENTE'; }
+
+        // Redibujar con filtros iniciales
+        jQuery('#tablaMovimientosLista').DataTable().draw();
+        jQuery('#tablaTransferenciasLista').DataTable().draw();
+
+        // Listeners de filtros
+        ['filtroMovDesde', 'filtroMovHasta'].forEach((id) => {
+            document.getElementById(id)?.addEventListener('change', () => {
+                jQuery('#tablaMovimientosLista').DataTable().draw();
+                jQuery('#tablaTransferenciasLista').DataTable().draw();
+            });
+        });
+        document.getElementById('filtroMovEstado')?.addEventListener('change', () => {
+            jQuery('#tablaMovimientosLista').DataTable().draw();
+        });
+    }
+
+    // ─── MODAL VER DETALLE DE MOVIMIENTO ──────────────────────────────────────
+
+    const modalDetalleMovimiento = document.getElementById('modalDetalleMovimiento');
+
+    const etiquetaEstado = (codigo, nombre) => {
+        const clase = `estado-${String(codigo).toLowerCase()}`;
+        return `<span class="badge estado-badge ${escaparHtml(clase)}">${escaparHtml(nombre)}</span>`;
+    };
+
+    const renderizarDetalleMovimiento = (datos) => {
+        const cab = datos.cabecera;
+        const lineas = datos.lineas || [];
+        const puedeAnularProcesado = Boolean(datos.puede_anular_procesado);
+        const puedeRecibir = Boolean(datos.puede_recibir);
+        const estado = String(cab.sis_estado_codigo || '');
+        const permisos = window.INTESIS_MOVIMIENTO_PERMISOS || {};
+        const appUrl = window.INTESIS_APP_URL || '';
+
+        // Cabecera del movimiento
+        const filasDetalle = `
+            <div class="row g-2 mb-3">
+                <div class="col-md-3"><small class="text-muted d-block">Numero</small><strong>${escaparHtml(cab.inv_movimientos_numero || '')}</strong></div>
+                <div class="col-md-2"><small class="text-muted d-block">Fecha</small>${escaparHtml(String(cab.inv_movimientos_fecha || ''))}</div>
+                <div class="col-md-2"><small class="text-muted d-block">Tipo</small>${escaparHtml(cab.sis_tipo_documento_nombre || '')}</div>
+                <div class="col-md-2"><small class="text-muted d-block">Estado</small>${etiquetaEstado(cab.sis_estado_codigo, cab.sis_estado_nombre)}</div>
+                <div class="col-md-3"><small class="text-muted d-block">Usuario</small>${escaparHtml(cab.usuario_nombre || '')}</div>
+                ${cab.inv_bodega_origen_id ? `<div class="col-md-3"><small class="text-muted d-block">Bodega origen</small>${escaparHtml(cab.bodega_origen || '')}</div>` : ''}
+                ${cab.inv_bodega_destino_id ? `<div class="col-md-3"><small class="text-muted d-block">Bodega destino</small>${escaparHtml(cab.bodega_destino || '')}</div>` : ''}
+                <div class="col-12"><small class="text-muted d-block">Detalle / Observacion</small>${escaparHtml(cab.inv_movimientos_observacion || '')}</div>
+            </div>
+        `;
+
+        // Tabla de lineas
+        const filas = lineas.map((l) => `
+            <tr>
+                <td>${escaparHtml(l.producto_codigo || '')}</td>
+                <td>${escaparHtml(l.producto_nombre || '')}</td>
+                <td>${escaparHtml(l.inv_movimientos_detalle_tipo || '')}</td>
+                <td>${escaparHtml(l.bodega_origen || '')}</td>
+                <td>${escaparHtml(l.bodega_destino || '')}</td>
+                <td class="text-end">${Number(l.inv_movimientos_detalle_cantidad || 0).toFixed(2)}</td>
+                <td class="text-end">${Number(l.inv_movimientos_detalle_costo || 0).toFixed(2)}</td>
+                <td class="text-end">${Number(l.inv_movimientos_detalle_total || 0).toFixed(2)}</td>
+                <td>${escaparHtml(l.usuario_nombre || '')}</td>
+                <td>${escaparHtml(String(l.fecha_crea || '').slice(0, 10))}</td>
+            </tr>
+        `).join('');
+
+        const tablaLineas = `
+            <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle">
+                    <thead><tr><th>Codigo</th><th>Producto</th><th>Tipo</th><th>Origen</th><th>Destino</th><th class="text-end">Cantidad</th><th class="text-end">Costo</th><th class="text-end">Total</th><th>Usuario</th><th>Fecha</th></tr></thead>
+                    <tbody>${filas || '<tr><td colspan="10" class="text-muted text-center">Sin lineas.</td></tr>'}</tbody>
+                </table>
+            </div>
+        `;
+
+        document.getElementById('detalleMovimientoTitulo').textContent = `Detalle: ${cab.inv_movimientos_numero || ''}`;
+        document.getElementById('detalleMovimientoBody').innerHTML = filasDetalle + tablaLineas;
+
+        // Botones del footer segun estado y permisos
+        const movId = String(cab.inv_movimientos_id);
+
+        const botonAccion = (icono, texto, claseBtn, accion) =>
+            `<button type="button" class="btn ${claseBtn} btn-detalle-accion" data-accion="${accion}" data-id="${escaparHtml(movId)}"><i class="bi ${icono}"></i> ${texto}</button>`;
+
+        let botonesHtml = '';
+
+        if (estado === 'PENDIENTE') {
+            if (permisos.editar) {
+                botonesHtml += `<button type="button" class="btn btn-secundario btn-detalle-editar" data-id="${escaparHtml(movId)}" data-detalle="${escaparHtml(cab.inv_movimientos_observacion || '')}" data-bs-target="#modalEditarMovimiento" data-bs-toggle="modal"><i class="bi bi-pencil-square"></i> Editar obs.</button>`;
+            }
+            if (permisos.aprobar) {
+                botonesHtml += botonAccion('bi-check2-square', 'Aprobar', 'btn-activar', 'aprobar');
+            }
+            if (permisos.anular) {
+                botonesHtml += botonAccion('bi-x-octagon', 'Anular', 'btn-inactivar', 'anular');
+            }
+        } else if (estado === 'EN_TRANSITO') {
+            if (permisos.recibir && puedeRecibir) {
+                botonesHtml += botonAccion('bi-box-arrow-in-down', 'Recibir', 'btn-activar', 'recibir');
+            }
+            if (permisos.anular) {
+                botonesHtml += botonAccion('bi-x-octagon', 'Anular', 'btn-inactivar', 'anular');
+            }
+        } else if ((estado === 'PROCESADO' || estado === 'RECIBIDO') && permisos.anularProcesado && puedeAnularProcesado) {
+            botonesHtml += botonAccion('bi-x-octagon-fill', 'Anular (revertir stock)', 'btn-eliminar', 'anular-procesado');
+        }
+
+        const footer = document.getElementById('detalleMovimientoFooter');
+        footer.innerHTML = botonesHtml + '<button type="button" class="btn btn-secundario" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i> Cerrar</button>';
+
+        // Evento editar observacion desde detalle
+        footer.querySelector('.btn-detalle-editar')?.addEventListener('click', () => {
+            document.getElementById('editar_movimiento_id').value = movId;
+            document.getElementById('editar_movimiento_detalle').value = cab.inv_movimientos_observacion || '';
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('modalEditarMovimiento')).show();
+        });
+
+        // Eventos de acciones con confirmacion SweetAlert
+        footer.querySelectorAll('.btn-detalle-accion').forEach((boton) => {
+            boton.addEventListener('click', async () => {
+                const accion = boton.dataset.accion;
+                const id = boton.dataset.id;
+
+                const mensajes = {
+                    aprobar: { titulo: '¿Aprobar movimiento?', texto: 'Se procesara el stock. Esta accion no se puede revertir facilmente.', icono: 'question' },
+                    anular: { titulo: '¿Anular movimiento?', texto: 'El movimiento quedara anulado.', icono: 'warning' },
+                    recibir: { titulo: '¿Confirmar recepcion?', texto: 'Se registrara el ingreso en bodega destino.', icono: 'question' },
+                    'anular-procesado': { titulo: '¿Anular y revertir stock?', texto: 'Se crearan lineas de kardex de reversa. Solo es posible el mismo dia.', icono: 'warning' },
+                };
+
+                const msg = mensajes[accion] || { titulo: '¿Continuar?', texto: '', icono: 'question' };
+
+                if (window.Swal) {
+                    const confirmacion = await Swal.fire({
+                        icon: msg.icono,
+                        title: msg.titulo,
+                        text: msg.texto,
+                        showCancelButton: true,
+                        confirmButtonText: 'Si, continuar',
+                        cancelButtonText: 'Cancelar',
+                    });
+                    if (!confirmacion.isConfirmed) { return; }
+                }
+
+                try {
+                    boton.disabled = true;
+                    const formData = new FormData();
+                    formData.append('movimiento_id', id);
+                    const url = `${appUrl}/inventario/movimientos/${accion}`;
+                    const respuesta = await fetch(url, { method: 'POST', body: formData, headers: { 'X-Requested-With': 'XMLHttpRequest' }, redirect: 'manual' });
+                    // La accion redirige tras ejecutar; cerramos modal y recargamos
+                    bootstrap.Modal.getOrCreateInstance(modalDetalleMovimiento).hide();
+                    window.location.href = `${appUrl}/inventario/movimientos`;
+                } catch (_e) {
+                    boton.disabled = false;
+                    if (window.Swal) { Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo completar la accion. Intente nuevamente.' }); }
+                }
+            });
+        });
+    };
+
+    if (modalDetalleMovimiento) {
+        modalDetalleMovimiento.addEventListener('show.bs.modal', async (evento) => {
+            const boton = evento.relatedTarget;
+            const movimientoId = boton?.dataset.id;
+            if (!movimientoId) { return; }
+
+            document.getElementById('detalleMovimientoTitulo').textContent = 'Detalle del movimiento';
+            document.getElementById('detalleMovimientoBody').innerHTML = '<div class="text-center py-4 text-muted"><i class="bi bi-hourglass-split"></i> Cargando...</div>';
+            document.getElementById('detalleMovimientoFooter').innerHTML = '<button type="button" class="btn btn-secundario" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i> Cerrar</button>';
+
+            try {
+                const appUrl = window.INTESIS_APP_URL || '';
+                const respuesta = await fetch(`${appUrl}/inventario/movimientos/detalle?movimiento_id=${encodeURIComponent(movimientoId)}`, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                const json = await respuesta.json();
+                if (json.ok) {
+                    renderizarDetalleMovimiento(json.data || {});
+                } else {
+                    document.getElementById('detalleMovimientoBody').innerHTML = `<div class="alert alert-danger">${escaparHtml(json.mensaje || 'Error al cargar el detalle.')}</div>`;
+                }
+            } catch (_e) {
+                document.getElementById('detalleMovimientoBody').innerHTML = '<div class="alert alert-danger">Error de conexion al cargar el detalle.</div>';
+            }
+        });
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
 
     const actualizarCapasModales = () => {
         const modalesAbiertos = Array.from(document.querySelectorAll('.modal.show'));

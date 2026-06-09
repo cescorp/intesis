@@ -8,6 +8,7 @@ use Intesis\Modelos\MenuModelo;
 use Intesis\Modelos\MensajeSistemaModelo;
 use Intesis\Modelos\UsuarioEmpresaModelo;
 use Intesis\Nucleo\Configuracion;
+use Intesis\Nucleo\ControladorComun;
 use Intesis\Nucleo\RegistroErrores;
 use Intesis\Nucleo\Sesion;
 use Intesis\Nucleo\Vista;
@@ -15,6 +16,8 @@ use Throwable;
 
 final class UsuarioControlador
 {
+    use ControladorComun;
+
     public function __construct(
         private Vista $vista,
         private Sesion $sesion,
@@ -359,16 +362,6 @@ final class UsuarioControlador
 
     /**
      * ***************************************************************************
-     * * IDENTIFICA PERFIL SUPERUSUARIO USANDO CODIGO ESTABLE DEL PERFIL.
-     * ***************************************************************************
-     */
-    private function esSuperusuario(array $usuario): bool
-    {
-        return strtoupper((string) ($usuario['perfil_codigo'] ?? $usuario['perfil'] ?? '')) === 'SUPERUSUARIO';
-    }
-
-    /**
-     * ***************************************************************************
      * * IMPIDE BLOQUEAR EL USUARIO ACTUAL O EL ULTIMO SUPERUSUARIO ACTIVO.
      * ***************************************************************************
      */
@@ -432,21 +425,6 @@ final class UsuarioControlador
 
     /**
      * ***************************************************************************
-     * * EXIGE SESION ACTIVA PARA ACCEDER AL CRUD.
-     * ***************************************************************************
-     */
-    private function exigirSesion(): array
-    {
-        $usuario = $this->sesion->usuario();
-        if (!$usuario) {
-            $this->redirigir('/login');
-        }
-
-        return $usuario;
-    }
-
-    /**
-     * ***************************************************************************
      * * VALIDA PERMISO DEL PERFIL ACTUAL PARA UNA RUTA DE ACCION.
      * ***************************************************************************
      */
@@ -457,27 +435,6 @@ final class UsuarioControlador
             $this->guardarMensajeCodigo('ERROR_SIN_PERMISO');
             $this->redirigir('/dashboard');
         }
-    }
-
-    /**
-     * ***************************************************************************
-     * * REDIRIGE A UNA RUTA LIMPIA DEL SISTEMA.
-     * ***************************************************************************
-     */
-    private function redirigir(string $ruta): never
-    {
-        header('Location: ' . rtrim($this->configuracion->obtener('APP_URL', ''), '/') . $ruta);
-        exit;
-    }
-
-    /**
-     * ***************************************************************************
-     * * REGISTRA ERRORES CONTROLADOS DEL CRUD USUARIO EN EL LOG DEL SISTEMA.
-     * ***************************************************************************
-     */
-    private function registrarErrorCrud(string $accion, Throwable $excepcion): void
-    {
-        $this->registroErrores->escribir($accion . ': ' . $excepcion->getMessage());
     }
 
     /**

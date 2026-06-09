@@ -5,12 +5,15 @@ declare(strict_types=1);
 namespace Intesis\Controladores;
 
 use Intesis\Nucleo\Configuracion;
+use Intesis\Nucleo\ControladorComun;
 use Intesis\Nucleo\Sesion;
 use Intesis\Nucleo\Vista;
 use Intesis\Servicios\AutenticacionServicio;
 
 final class AutenticacionControlador
 {
+    use ControladorComun;
+
     public function __construct(
         private Vista $vista,
         private Sesion $sesion,
@@ -103,16 +106,6 @@ final class AutenticacionControlador
         $this->redirigir('/login');
     }
 
-    /**
-     * ***************************************************************************
-     * * ENVIA UNA REDIRECCION HTTP USANDO LA URL BASE CONFIGURADA.
-     * ***************************************************************************
-     */
-    private function redirigir(string $ruta): never
-    {
-        header('Location: ' . rtrim($this->configuracion->obtener('APP_URL', ''), '/') . $ruta);
-        exit;
-    }
 
     /**
      * ***************************************************************************

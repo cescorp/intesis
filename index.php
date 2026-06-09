@@ -8,6 +8,7 @@ require_once __DIR__ . '/src/Nucleo/RegistroErrores.php';
 require_once __DIR__ . '/src/Nucleo/ConexionBaseDatos.php';
 require_once __DIR__ . '/src/Nucleo/Sesion.php';
 require_once __DIR__ . '/src/Nucleo/Vista.php';
+require_once __DIR__ . '/src/Nucleo/ControladorComun.php';
 require_once __DIR__ . '/src/Nucleo/Enrutador.php';
 require_once __DIR__ . '/src/Modelos/UsuarioModelo.php';
 require_once __DIR__ . '/src/Modelos/ModuloModelo.php';

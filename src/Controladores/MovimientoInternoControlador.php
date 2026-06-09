@@ -8,6 +8,7 @@ use Intesis\Modelos\MenuModelo;
 use Intesis\Modelos\MensajeSistemaModelo;
 use Intesis\Modelos\MovimientoInternoModelo;
 use Intesis\Nucleo\Configuracion;
+use Intesis\Nucleo\ControladorComun;
 use Intesis\Nucleo\RegistroErrores;
 use Intesis\Nucleo\Sesion;
 use Intesis\Nucleo\Vista;
@@ -15,6 +16,8 @@ use Throwable;
 
 final class MovimientoInternoControlador
 {
+    use ControladorComun;
+
     public function __construct(
         private Vista $vista,
         private Sesion $sesion,
@@ -123,6 +126,52 @@ final class MovimientoInternoControlador
 
     /**
      * ***************************************************************************
+     * * RETORNA DETALLE DE MOVIMIENTO EN JSON PARA EL MODAL DE DETALLE.
+     * ***************************************************************************
+     */
+    public function detalle(): void
+    {
+        $usuario = $this->exigirSesionJson();
+        $this->exigirPermisoJson('/inventario/movimientos/detalle');
+        try {
+            $movimientoId = (int) ($_GET['movimiento_id'] ?? 0);
+            $empresaId = (int) $usuario['empresa_id'];
+            $datos = $this->movimientoInternoModelo->detalle($empresaId, $movimientoId);
+            $datos['puede_recibir'] = $this->movimientoInternoModelo->usuarioPuedeRecibir(
+                $empresaId,
+                $movimientoId,
+                (int) $usuario['id'],
+                $this->esSuperusuario($usuario)
+            );
+            $this->responderJson(true, 'DETALLE_OK', 'Detalle del movimiento.', $datos);
+        } catch (Throwable $excepcion) {
+            $this->registroErrores->escribir('DETALLE MOVIMIENTO: ' . $excepcion->getMessage());
+            $this->responderJson(false, 'ERROR', $excepcion->getMessage());
+        }
+    }
+
+    /**
+     * ***************************************************************************
+     * * ANULA MOVIMIENTO PROCESADO O RECIBIDO REVIRTIENDO STOCK Y KARDEX.
+     * ***************************************************************************
+     */
+    public function anularProcesado(): void
+    {
+        $usuario = $this->exigirSesion();
+        $this->exigirPermiso('/inventario/movimientos/anular-procesado');
+        try {
+            $movimientoId = (int) ($_POST['movimiento_id'] ?? 0);
+            $this->movimientoInternoModelo->anularProcesado((int) $usuario['empresa_id'], $movimientoId, (int) $usuario['id']);
+            $this->sesion->guardarMensaje('success', 'Movimiento anulado', 'El movimiento fue anulado y el stock fue revertido.');
+        } catch (Throwable $excepcion) {
+            $this->registroErrores->escribir('ANULAR PROCESADO MOVIMIENTO: ' . $excepcion->getMessage());
+            $this->sesion->guardarMensaje('error', 'No se pudo anular', $excepcion->getMessage());
+        }
+        $this->redirigir('/inventario/movimientos');
+    }
+
+    /**
+     * ***************************************************************************
      * * BUSCA PRODUCTOS PARA EL MODAL DE SELECCION.
      * ***************************************************************************
      */
@@ -132,9 +181,10 @@ final class MovimientoInternoControlador
         $this->exigirPermisoJson('/inventario/movimientos/productos');
         $termino = trim((string) ($_GET['q'] ?? ''));
         $codigo = trim((string) ($_GET['codigo'] ?? ''));
+        $bodegaId = (int) ($_GET['bodega_id'] ?? 0);
         $productos = $codigo !== ''
-            ? array_filter([$this->movimientoInternoModelo->buscarProductoPorCodigo((int) $usuario['empresa_id'], $codigo)])
-            : $this->movimientoInternoModelo->buscarProductos((int) $usuario['empresa_id'], $termino);
+            ? array_filter([$this->movimientoInternoModelo->buscarProductoPorCodigo((int) $usuario['empresa_id'], $codigo, $bodegaId)])
+            : $this->movimientoInternoModelo->buscarProductos((int) $usuario['empresa_id'], $termino, $bodegaId);
         $this->responderJson(true, 'PRODUCTOS_OK', 'Productos listados.', ['productos' => array_values($productos)]);
     }
 
@@ -293,6 +343,8 @@ final class MovimientoInternoControlador
             'aprobar' => '/inventario/movimientos/aprobar',
             'recibir' => '/inventario/movimientos/recibir',
             'anular' => '/inventario/movimientos/anular',
+            'detalle' => '/inventario/movimientos/detalle',
+            'anularProcesado' => '/inventario/movimientos/anular-procesado',
         ];
         $permisos = [];
         foreach ($urls as $clave => $url) {
@@ -302,58 +354,4 @@ final class MovimientoInternoControlador
         return $permisos;
     }
 
-    private function esSuperusuario(array $usuario): bool
-    {
-        return strtoupper((string) ($usuario['perfil_codigo'] ?? $usuario['perfil'] ?? '')) === 'SUPERUSUARIO';
-    }
-
-    private function exigirSesion(): array
-    {
-        $usuario = $this->sesion->usuario();
-        if (!$usuario) {
-            $this->redirigir('/login');
-        }
-
-        return $usuario;
-    }
-
-    private function exigirSesionJson(): array
-    {
-        $usuario = $this->sesion->usuario();
-        if (!$usuario) {
-            $this->responderJson(false, 'ERROR_SESION', 'Sesion no activa.');
-        }
-
-        return $usuario;
-    }
-
-    private function exigirPermiso(string $url): void
-    {
-        $usuario = $this->exigirSesion();
-        if (!$this->menuModelo->tienePermiso((int) $usuario['empresa_id'], (int) $usuario['perfil_id'], $url)) {
-            $this->sesion->guardarMensaje('error', 'Acceso restringido', 'Su perfil no tiene permiso para esta accion.');
-            $this->redirigir('/dashboard');
-        }
-    }
-
-    private function exigirPermisoJson(string $url): void
-    {
-        $usuario = $this->exigirSesionJson();
-        if (!$this->menuModelo->tienePermiso((int) $usuario['empresa_id'], (int) $usuario['perfil_id'], $url)) {
-            $this->responderJson(false, 'ERROR_SIN_PERMISO', 'Su perfil no tiene permiso para esta accion.');
-        }
-    }
-
-    private function responderJson(bool $ok, string $codigo, string $mensaje, array $data = []): never
-    {
-        header('Content-Type: application/json; charset=utf-8');
-        echo json_encode(['ok' => $ok, 'codigo' => $codigo, 'mensaje' => $mensaje, 'data' => $data], JSON_UNESCAPED_UNICODE);
-        exit;
-    }
-
-    private function redirigir(string $ruta): never
-    {
-        header('Location: ' . rtrim($this->configuracion->obtener('APP_URL', ''), '/') . $ruta);
-        exit;
-    }
 }

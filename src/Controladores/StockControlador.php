@@ -8,6 +8,7 @@ use Intesis\Modelos\MenuModelo;
 use Intesis\Modelos\MensajeSistemaModelo;
 use Intesis\Modelos\StockModelo;
 use Intesis\Nucleo\Configuracion;
+use Intesis\Nucleo\ControladorComun;
 use Intesis\Nucleo\RegistroErrores;
 use Intesis\Nucleo\Sesion;
 use Intesis\Nucleo\Vista;
@@ -15,6 +16,8 @@ use Throwable;
 
 final class StockControlador
 {
+    use ControladorComun;
+
     private const COLUMNAS_CSV = ['codigo_producto', 'nombre_producto', 'marca', 'codigo_bodega', 'cantidad_inicial', 'costo_unitario', 'descripcion'];
 
     public function __construct(
@@ -445,68 +448,4 @@ final class StockControlador
         ];
     }
 
-    private function esSuperusuario(array $usuario): bool
-    {
-        return strtoupper((string) ($usuario['perfil_codigo'] ?? $usuario['perfil'] ?? '')) === 'SUPERUSUARIO';
-    }
-
-    private function exigirSesion(): array
-    {
-        $usuario = $this->sesion->usuario();
-        if (!$usuario) {
-            $this->redirigir('/login');
-        }
-
-        return $usuario;
-    }
-
-    private function exigirSesionJson(): array
-    {
-        $usuario = $this->sesion->usuario();
-        if (!$usuario) {
-            $this->responderJson(false, 'ERROR_SESION', 'Sesion no activa.');
-        }
-
-        return $usuario;
-    }
-
-    private function exigirPermiso(string $url): void
-    {
-        $usuario = $this->exigirSesion();
-        if (!$this->menuModelo->tienePermiso((int) $usuario['empresa_id'], (int) $usuario['perfil_id'], $url)) {
-            $this->sesion->guardarMensaje('error', 'Acceso restringido', 'Su perfil no tiene permiso para esta accion.');
-            $this->redirigir('/dashboard');
-        }
-    }
-
-    private function exigirPermisoJson(string $url): void
-    {
-        $usuario = $this->exigirSesionJson();
-        if (!$this->menuModelo->tienePermiso((int) $usuario['empresa_id'], (int) $usuario['perfil_id'], $url)) {
-            $this->responderJson(false, 'ERROR_SIN_PERMISO', 'Su perfil no tiene permiso para esta accion.');
-        }
-    }
-
-    private function responderJson(bool $ok, string $codigo, string $mensaje, array $data = []): never
-    {
-        header('Content-Type: application/json; charset=utf-8');
-        echo json_encode(['ok' => $ok, 'codigo' => $codigo, 'mensaje' => $mensaje, 'data' => $data], JSON_UNESCAPED_UNICODE);
-        exit;
-    }
-
-    private function redirigir(string $ruta): never
-    {
-        header('Location: ' . rtrim($this->configuracion->obtener('APP_URL', ''), '/') . $ruta);
-        exit;
-    }
-
-    private function registrarErrorCrud(string $accion, Throwable $excepcion): void
-    {
-        $this->registroErrores->escribir($accion . ': ' . $excepcion->getMessage());
-    }
-
-    private function guardarMensajeError(Throwable $excepcion): void
-    {
-        $this->sesion->guardarMensaje('error', 'No se pudo guardar', $excepcion->getMessage());
-    }
 }

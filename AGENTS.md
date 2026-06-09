@@ -64,7 +64,6 @@ o	Si tiene empresa predeterminada, puede usarse como sugerencia o entrada autom�
 40.	Usar consultas preparadas con PDO.
 41.	Empresas nuevas crean perfiles base automáticamente.
 42.	Perfiles base:
-o	SUPERUSUARIO
 o	GERENCIA
 o	CONTADOR
 o	GERENTE_VENTAS
@@ -143,3 +142,7 @@ o	index.php
 89.	Directorios propios del sistema deben estar en español cuando sea posible.
 90.	Funciones propias necesarias deben estar en español.
 91.	Comentarios técnicos deben usar formato de cuadro con *
+92.	Bodegas virtuales
+o	Las bodegas virtuales (inv_bodega_virtual = TRUE) participan en todos los movimientos internos (ajustes y transferencias).
+o	EXCEPCION: en despacho o ventas NO se puede originar salida desde una bodega virtual.
+o	Al implementar el modulo de ventas, aplicar el filtro inv_bodega_virtual = FALSE unicamente en la consulta de bodegas disponibles para despacho.

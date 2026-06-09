@@ -108,6 +108,9 @@ final class MovimientoInternoModelo
     public function listarBodegasPermitidas(int $empresaId, int $usuarioId, bool $superusuario): array
     {
         $pdo = $this->conexionBaseDatos->obtener();
+        // REGLA: las bodegas virtuales participan en todos los movimientos internos.
+        // EXCEPCION FUTURA: en despacho/ventas NO se permite originar desde bodega virtual.
+        // Aplicar ese filtro (inv_bodega_virtual = FALSE) al implementar el modulo de ventas.
         if (!$superusuario) {
             $sentencia = $pdo->prepare("
                 SELECT b.*
@@ -117,7 +120,6 @@ final class MovimientoInternoModelo
                 WHERE bu.sis_empresa_id = :empresa_id
                   AND bu.sis_usuarios_id = :usuario_id
                   AND bu.inv_bodega_usuarios_estado = 1
-                  AND b.inv_bodega_virtual = FALSE
                   AND es.sis_estado_codigo = 'ACTIVO'
                 ORDER BY b.inv_bodega_codigo
             ");
@@ -133,7 +135,6 @@ final class MovimientoInternoModelo
             FROM inv_bodega b
             INNER JOIN sis_estado es ON es.sis_estado_id = b.sis_estado_id
             WHERE b.sis_empresa_id = :empresa_id
-              AND b.inv_bodega_virtual = FALSE
               AND es.sis_estado_codigo = 'ACTIVO'
             ORDER BY b.inv_bodega_codigo
         ");
@@ -144,10 +145,11 @@ final class MovimientoInternoModelo
 
     /**
      * ***************************************************************************
-     * * BUSCA PRODUCTOS PARA MODAL DE SELECCION CON SALDOS.
+     * * BUSCA PRODUCTOS PARA MODAL DE SELECCION. FILTRA SALDOS POR BODEGA.
+     * * SI bodegaId > 0, SOLO MUESTRA SALDO DE ESA BODEGA Y NO DE TODA LA EMPRESA.
      * ***************************************************************************
      */
-    public function buscarProductos(int $empresaId, string $termino): array
+    public function buscarProductos(int $empresaId, string $termino, int $bodegaId = 0): array
     {
         $sentencia = $this->conexionBaseDatos->obtener()->prepare("
             SELECT
@@ -189,7 +191,11 @@ final class MovimientoInternoModelo
         ");
         $sentencia->execute(['empresa_id' => $empresaId, 'termino' => '%' . $termino . '%']);
         $productos = $sentencia->fetchAll();
-        $saldos = $this->listarSaldos($empresaId);
+        if (!$productos) {
+            return [];
+        }
+        $idsProducto = array_map(fn (array $p): int => (int) $p['inv_producto_id'], $productos);
+        $saldos = $this->listarSaldosPorProductos($empresaId, $idsProducto, $bodegaId);
         foreach ($productos as &$producto) {
             $producto['saldos'] = $saldos[(int) $producto['inv_producto_id']] ?? [];
         }
@@ -200,12 +206,12 @@ final class MovimientoInternoModelo
 
     /**
      * ***************************************************************************
-     * * BUSCA PRODUCTO EXACTO POR CODIGO.
+     * * BUSCA PRODUCTO EXACTO POR CODIGO. PASA BODEGA AL BUSCADOR DE SALDOS.
      * ***************************************************************************
      */
-    public function buscarProductoPorCodigo(int $empresaId, string $codigo): ?array
+    public function buscarProductoPorCodigo(int $empresaId, string $codigo, int $bodegaId = 0): ?array
     {
-        $productos = $this->buscarProductos($empresaId, $codigo);
+        $productos = $this->buscarProductos($empresaId, $codigo, $bodegaId);
         foreach ($productos as $producto) {
             if (strtoupper((string) $producto['inv_producto_codigo_principal']) === strtoupper($codigo)) {
                 return $producto;
@@ -363,6 +369,124 @@ final class MovimientoInternoModelo
 
     /**
      * ***************************************************************************
+     * * RETORNA CABECERA, LINEAS Y FLAGS DE PERMISO PARA EL MODAL DE DETALLE.
+     * ***************************************************************************
+     */
+    public function detalle(int $empresaId, int $movimientoId): array
+    {
+        $sentencia = $this->conexionBaseDatos->obtener()->prepare("
+            SELECT
+                m.*,
+                es.sis_estado_codigo,
+                es.sis_estado_nombre,
+                td.sis_tipo_documento_nombre,
+                u.sis_usuarios_nombre AS usuario_nombre,
+                bo.inv_bodega_codigo AS bodega_origen,
+                bd.inv_bodega_codigo AS bodega_destino,
+                COALESCE((
+                    SELECT sum(d.inv_movimientos_detalle_total)
+                    FROM inv_movimientos_detalle d
+                    WHERE d.inv_movimientos_id = m.inv_movimientos_id
+                      AND d.inv_movimientos_detalle_estado = 1
+                ), 0) AS total
+            FROM inv_movimientos m
+            INNER JOIN sis_estado es ON es.sis_estado_id = m.sis_estado_id
+            INNER JOIN sis_tipo_documento td ON td.sis_tipo_documento_id = m.sis_tipo_documento_id
+            LEFT JOIN sis_usuarios u ON u.sis_usuarios_id = m.usuario_crea
+            LEFT JOIN inv_bodega bo ON bo.inv_bodega_id = m.inv_bodega_origen_id
+            LEFT JOIN inv_bodega bd ON bd.inv_bodega_id = m.inv_bodega_destino_id
+            WHERE m.sis_empresa_id = :empresa_id
+              AND m.inv_movimientos_id = :movimiento_id
+            LIMIT 1
+        ");
+        $sentencia->execute(['empresa_id' => $empresaId, 'movimiento_id' => $movimientoId]);
+        $cabecera = $sentencia->fetch();
+        if (!$cabecera) {
+            throw new \InvalidArgumentException('Movimiento no valido.');
+        }
+
+        $sentencia = $this->conexionBaseDatos->obtener()->prepare("
+            SELECT
+                d.*,
+                p.inv_producto_codigo_principal AS producto_codigo,
+                p.inv_producto_nombre AS producto_nombre,
+                bo.inv_bodega_codigo AS bodega_origen,
+                bd.inv_bodega_codigo AS bodega_destino,
+                u.sis_usuarios_nombre AS usuario_nombre
+            FROM inv_movimientos_detalle d
+            INNER JOIN inv_producto p ON p.inv_producto_id = d.inv_producto_id
+            LEFT JOIN inv_bodega bo ON bo.inv_bodega_id = d.inv_bodega_origen_id
+            LEFT JOIN inv_bodega bd ON bd.inv_bodega_id = d.inv_bodega_destino_id
+            LEFT JOIN sis_usuarios u ON u.sis_usuarios_id = d.usuario_crea
+            WHERE d.inv_movimientos_id = :movimiento_id
+              AND d.inv_movimientos_detalle_estado = 1
+            ORDER BY d.inv_movimientos_detalle_id
+        ");
+        $sentencia->execute(['movimiento_id' => $movimientoId]);
+        $lineas = $sentencia->fetchAll();
+
+        /*
+         * Verificacion de mismo dia para anular procesado/recibido.
+         * PROCESADO: se usa fecha_modifica (momento en que cambio al estado PROCESADO).
+         * RECIBIDO:  se usa inv_movimientos_recibido_fecha.
+         */
+        $puedeAnularProcesado = false;
+        $estado = (string) $cabecera['sis_estado_codigo'];
+        if ($estado === 'PROCESADO') {
+            $fechaRef = substr((string) ($cabecera['fecha_modifica'] ?? $cabecera['fecha_crea']), 0, 10);
+            $puedeAnularProcesado = ($fechaRef === date('Y-m-d'));
+        } elseif ($estado === 'RECIBIDO') {
+            $fechaRef = substr((string) ($cabecera['inv_movimientos_recibido_fecha'] ?? ''), 0, 10);
+            $puedeAnularProcesado = ($fechaRef === date('Y-m-d'));
+        }
+
+        return [
+            'cabecera'               => $cabecera,
+            'lineas'                 => $lineas,
+            'puede_anular_procesado' => $puedeAnularProcesado,
+        ];
+    }
+
+    /**
+     * ***************************************************************************
+     * * ANULA MOVIMIENTO PROCESADO O RECIBIDO REVIRTIENDO STOCK Y KARDEX.
+     * * SOLO PERMITE LA ANULACION EL MISMO DIA DE PROCESADO/RECIBIDO.
+     * ***************************************************************************
+     */
+    public function anularProcesado(int $empresaId, int $movimientoId, int $usuarioId): void
+    {
+        $pdo = $this->conexionBaseDatos->obtener();
+        $pdo->beginTransaction();
+        try {
+            $movimiento = $this->obtenerMovimientoBloqueado($empresaId, $movimientoId);
+            $estado = (string) $movimiento['sis_estado_codigo'];
+
+            if ($estado === 'PROCESADO') {
+                $fechaRef = substr((string) ($movimiento['fecha_modifica'] ?? $movimiento['fecha_crea']), 0, 10);
+                if ($fechaRef !== date('Y-m-d')) {
+                    throw new \InvalidArgumentException('Solo se puede anular un ajuste procesado el mismo dia en que fue procesado.');
+                }
+                $this->procesarMovimiento($movimientoId, $usuarioId, 'REVERSA_AJUSTE');
+            } elseif ($estado === 'RECIBIDO') {
+                $fechaRef = substr((string) ($movimiento['inv_movimientos_recibido_fecha'] ?? ''), 0, 10);
+                if ($fechaRef !== date('Y-m-d')) {
+                    throw new \InvalidArgumentException('Solo se puede anular una transferencia recibida el mismo dia en que fue recibida.');
+                }
+                $this->procesarMovimiento($movimientoId, $usuarioId, 'REVERSA_TRANSFERENCIA_RECIBIDO');
+            } else {
+                throw new \InvalidArgumentException('Solo se pueden anular movimientos en estado procesado o recibido.');
+            }
+
+            $this->cambiarEstado($movimientoId, 'ANULADO', $usuarioId);
+            $pdo->commit();
+        } catch (\Throwable $excepcion) {
+            $pdo->rollBack();
+            throw $excepcion;
+        }
+    }
+
+    /**
+     * ***************************************************************************
      * * ANULA MOVIMIENTO PENDIENTE O REVERSA TRANSFERENCIA EN TRANSITO.
      * ***************************************************************************
      */
@@ -444,11 +568,30 @@ final class MovimientoInternoModelo
                 $this->aplicarStock($linea, (int) $linea['inv_bodega_destino_id'], 'TRANS_IN', true, $usuarioId);
             } elseif ($modo === 'ANULAR_TRANSITO') {
                 $this->aplicarStock($linea, (int) $linea['inv_bodega_origen_id'], 'TRANS_IN', true, $usuarioId);
+            } elseif ($modo === 'REVERSA_AJUSTE') {
+                /*
+                 * REVERSA_AJUSTE: deshace un ajuste ya procesado.
+                 * INGRESO fue: AJUSTE_IN al destino  → reversa: AJUSTE_OUT del destino.
+                 * EGRESO  fue: AJUSTE_OUT del origen → reversa: AJUSTE_IN al origen.
+                 */
+                if ($linea['inv_movimientos_detalle_tipo'] === 'INGRESO') {
+                    $this->aplicarStock($linea, (int) $linea['inv_bodega_destino_id'], 'AJUSTE_OUT', false, $usuarioId, 'REVERSA: ');
+                } else {
+                    $this->aplicarStock($linea, (int) $linea['inv_bodega_origen_id'], 'AJUSTE_IN', true, $usuarioId, 'REVERSA: ');
+                }
+            } elseif ($modo === 'REVERSA_TRANSFERENCIA_RECIBIDO') {
+                /*
+                 * REVERSA_TRANSFERENCIA_RECIBIDO: deshace transferencia completamente recibida.
+                 * Fue: TRANS_OUT del origen + TRANS_IN al destino.
+                 * Reversa: TRANS_OUT del destino + TRANS_IN al origen.
+                 */
+                $this->aplicarStock($linea, (int) $linea['inv_bodega_destino_id'], 'TRANS_OUT', false, $usuarioId, 'REVERSA: ');
+                $this->aplicarStock($linea, (int) $linea['inv_bodega_origen_id'], 'TRANS_IN', true, $usuarioId, 'REVERSA: ');
             }
         }
     }
 
-    private function aplicarStock(array $linea, int $bodegaId, string $tipoKardex, bool $entrada, int $usuarioId): void
+    private function aplicarStock(array $linea, int $bodegaId, string $tipoKardex, bool $entrada, int $usuarioId, string $prefijo = ''): void
     {
         $stock = $this->obtenerStockBloqueado((int) $linea['sis_empresa_id'], $bodegaId, (int) $linea['inv_producto_id']);
         $actual = $stock ? (float) $stock['inv_stock_cantidad_disponible'] : 0.0;
@@ -485,10 +628,10 @@ final class MovimientoInternoModelo
                 'usuario' => $usuarioId,
             ]);
         }
-        $this->crearKardex($linea, $bodegaId, $tipoKardex, $entrada ? $cantidad : 0, $entrada ? 0 : $cantidad, $nuevo, $usuarioId);
+        $this->crearKardex($linea, $bodegaId, $tipoKardex, $entrada ? $cantidad : 0, $entrada ? 0 : $cantidad, $nuevo, $usuarioId, $prefijo);
     }
 
-    private function crearKardex(array $linea, int $bodegaId, string $tipo, float $entrada, float $salida, float $saldo, int $usuarioId): void
+    private function crearKardex(array $linea, int $bodegaId, string $tipo, float $entrada, float $salida, float $saldo, int $usuarioId, string $prefijo = ''): void
     {
         $sentencia = $this->conexionBaseDatos->obtener()->prepare("
             INSERT INTO inv_kardex (
@@ -520,21 +663,40 @@ final class MovimientoInternoModelo
             'costo' => $linea['inv_movimientos_detalle_costo'],
             'saldo' => $saldo,
             'saldo_valor' => $saldo * (float) $linea['inv_movimientos_detalle_costo'],
-            'observacion' => $linea['inv_movimientos_detalle_observacion'] ?? '',
+            'observacion' => $prefijo . ($linea['inv_movimientos_detalle_observacion'] ?? ''),
             'usuario' => $usuarioId,
         ]);
     }
 
-    private function listarSaldos(int $empresaId): array
+    /**
+     * ***************************************************************************
+     * * OBTIENE SALDOS SOLO PARA LOS PRODUCTOS DADOS Y OPCIONALMENTE UNA BODEGA.
+     * * EVITA TRAER EL STOCK COMPLETO DE LA EMPRESA EN CADA BUSQUEDA DEL MODAL.
+     * ***************************************************************************
+     */
+    private function listarSaldosPorProductos(int $empresaId, array $idsProducto, int $bodegaId = 0): array
     {
-        $sentencia = $this->conexionBaseDatos->obtener()->prepare("
-            SELECT s.inv_producto_id, b.inv_bodega_codigo, s.inv_stock_cantidad_disponible
+        if (!$idsProducto) {
+            return [];
+        }
+        $pdo = $this->conexionBaseDatos->obtener();
+        $marcadores = implode(',', array_fill(0, count($idsProducto), '?'));
+        $params = array_merge([$empresaId], $idsProducto);
+        $filtroBodega = '';
+        if ($bodegaId > 0) {
+            $filtroBodega = ' AND s.inv_bodega_id = ?';
+            $params[] = $bodegaId;
+        }
+        $sentencia = $pdo->prepare("
+            SELECT s.inv_producto_id, b.inv_bodega_codigo, b.inv_bodega_id, s.inv_stock_cantidad_disponible
             FROM inv_stock s
             INNER JOIN inv_bodega b ON b.inv_bodega_id = s.inv_bodega_id
-            WHERE s.sis_empresa_id = :empresa_id
+            WHERE s.sis_empresa_id = ?
+              AND s.inv_producto_id IN ({$marcadores})
+              {$filtroBodega}
             ORDER BY b.inv_bodega_codigo
         ");
-        $sentencia->execute(['empresa_id' => $empresaId]);
+        $sentencia->execute($params);
         $saldos = [];
         foreach ($sentencia->fetchAll() as $saldo) {
             $saldos[(int) $saldo['inv_producto_id']][] = $saldo;

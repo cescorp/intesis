@@ -25,10 +25,20 @@ $appUrl = rtrim($configuracion->obtener('APP_URL', ''), '/');
         <div class="app-content">
             <div class="container-fluid">
                 <section class="panel-crud">
-                    <div class="panel-crud-cabecera gap-2 flex-wrap">
+                    <div class="panel-crud-cabecera gap-2 flex-wrap align-items-end">
+                        <div class="d-flex gap-2 align-items-end flex-wrap">
+                            <div>
+                                <label class="form-label mb-1 small text-muted">Desde</label>
+                                <input type="date" id="filtroMovDesde" class="form-control form-control-sm" style="width:135px">
+                            </div>
+                            <div>
+                                <label class="form-label mb-1 small text-muted">Hasta</label>
+                                <input type="date" id="filtroMovHasta" class="form-control form-control-sm" style="width:135px">
+                            </div>
+                        </div>
                         <div class="nav nav-pills tabs-intesis" role="tablist">
                             <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabMovimientos" type="button">Movimientos</button>
-                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabTransferencias" type="button">Transferencias pendientes</button>
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabTransferencias" type="button">Transferencias Pendientes (<span id="contadorTransferencias"><?= count($transferenciasPendientes) ?></span>)</button>
                         </div>
                         <div class="ms-auto d-flex gap-2 flex-wrap">
                             <?php if ($permisos['ajusteIngreso'] || $permisos['ajusteEgreso']): ?><button class="btn btn-secundario btn-crud btn-nuevo-movimiento" data-bs-toggle="modal" data-bs-target="#modalMovimientoInterno" data-tipo="AJUSTE"><i class="bi bi-plus-slash-minus"></i> Ajuste</button><?php endif; ?>
@@ -37,12 +47,23 @@ $appUrl = rtrim($configuracion->obtener('APP_URL', ''), '/');
                     </div>
                     <div class="tab-content">
                         <div class="tab-pane fade show active" id="tabMovimientos">
+                            <div class="d-flex gap-2 align-items-center py-2 flex-wrap">
+                                <label class="form-label mb-0 small text-muted">Estado:</label>
+                                <select id="filtroMovEstado" class="form-control form-control-sm" style="width:160px">
+                                    <option value="">Todos</option>
+                                    <option value="PENDIENTE">Pendiente</option>
+                                    <option value="EN_TRANSITO">En Transito</option>
+                                    <option value="PROCESADO">Procesado</option>
+                                    <option value="RECIBIDO">Recibido</option>
+                                    <option value="ANULADO">Anulado</option>
+                                </select>
+                            </div>
                             <div class="table-responsive stock-tabla-contenedor">
-                                <table class="table table-hover tabla-intesis align-middle w-100">
-                                    <thead><tr><th>#</th><th>Fecha</th><th>Numero</th><th>Tipo</th><th>Origen</th><th>Destino</th><th>Detalle</th><th>Total</th><th>Estado</th><th class="text-end">Acciones</th></tr></thead>
+                                <table id="tablaMovimientosLista" class="table table-hover align-middle w-100">
+                                    <thead><tr><th>#</th><th>Fecha</th><th>Numero</th><th>Tipo</th><th>Origen</th><th>Destino</th><th>Detalle</th><th class="text-end">Total</th><th>Estado</th><th class="text-end">Acciones</th></tr></thead>
                                     <tbody>
                                         <?php foreach ($movimientos as $i => $movimiento): ?>
-                                            <tr>
+                                            <tr data-fecha="<?= htmlspecialchars((string) $movimiento['inv_movimientos_fecha']) ?>" data-estado="<?= htmlspecialchars((string) $movimiento['sis_estado_codigo']) ?>">
                                                 <td><?= $i + 1 ?></td>
                                                 <td><?= htmlspecialchars((string) $movimiento['inv_movimientos_fecha']) ?></td>
                                                 <td><?= htmlspecialchars($movimiento['inv_movimientos_numero']) ?></td>
@@ -53,14 +74,8 @@ $appUrl = rtrim($configuracion->obtener('APP_URL', ''), '/');
                                                 <td class="text-end"><?= number_format((float) $movimiento['total'], 2) ?></td>
                                                 <td><span class="badge estado-badge estado-<?= strtolower((string) $movimiento['sis_estado_codigo']) ?>"><?= htmlspecialchars($movimiento['sis_estado_nombre']) ?></span></td>
                                                 <td class="text-end acciones-tabla">
-                                                    <?php if ($permisos['editar'] && in_array($movimiento['sis_estado_codigo'], ['PENDIENTE', 'EN_TRANSITO'], true)): ?>
-                                                        <button class="btn btn-accion btn-editar-observacion-movimiento" data-bs-toggle="modal" data-bs-target="#modalEditarMovimiento" data-id="<?= (int) $movimiento['inv_movimientos_id'] ?>" data-detalle="<?= htmlspecialchars($movimiento['inv_movimientos_observacion'] ?? '') ?>" title="Editar"><i class="bi bi-pencil-square"></i></button>
-                                                    <?php endif; ?>
-                                                    <?php if ($permisos['aprobar'] && $movimiento['sis_estado_codigo'] === 'PENDIENTE'): ?>
-                                                        <form method="post" action="<?= $appUrl ?>/inventario/movimientos/aprobar" class="d-inline formulario-confirmar"><input type="hidden" name="movimiento_id" value="<?= (int) $movimiento['inv_movimientos_id'] ?>"><button class="btn btn-accion btn-activar" title="Aprobar"><i class="bi bi-check2-square"></i></button></form>
-                                                    <?php endif; ?>
-                                                    <?php if ($permisos['anular'] && in_array($movimiento['sis_estado_codigo'], ['PENDIENTE', 'EN_TRANSITO'], true)): ?>
-                                                        <form method="post" action="<?= $appUrl ?>/inventario/movimientos/anular" class="d-inline formulario-confirmar"><input type="hidden" name="movimiento_id" value="<?= (int) $movimiento['inv_movimientos_id'] ?>"><button class="btn btn-accion btn-inactivar" title="Anular"><i class="bi bi-x-octagon"></i></button></form>
+                                                    <?php if ($permisos['detalle']): ?>
+                                                        <button type="button" class="btn btn-accion btn-ver-detalle-movimiento" data-id="<?= (int) $movimiento['inv_movimientos_id'] ?>" data-bs-toggle="modal" data-bs-target="#modalDetalleMovimiento" title="Ver detalle"><i class="bi bi-eye"></i></button>
                                                     <?php endif; ?>
                                                 </td>
                                             </tr>
@@ -71,20 +86,20 @@ $appUrl = rtrim($configuracion->obtener('APP_URL', ''), '/');
                         </div>
                         <div class="tab-pane fade" id="tabTransferencias">
                             <div class="table-responsive">
-                                <table class="table table-hover tabla-intesis align-middle w-100">
+                                <table id="tablaTransferenciasLista" class="table table-hover align-middle w-100">
                                     <thead><tr><th>#</th><th>Fecha</th><th>Numero</th><th>Origen</th><th>Destino</th><th>Detalle</th><th class="text-end">Acciones</th></tr></thead>
                                     <tbody>
                                         <?php foreach ($transferenciasPendientes as $i => $movimiento): ?>
-                                            <tr>
+                                            <tr data-fecha="<?= htmlspecialchars((string) $movimiento['inv_movimientos_fecha']) ?>">
                                                 <td><?= $i + 1 ?></td>
                                                 <td><?= htmlspecialchars((string) $movimiento['inv_movimientos_fecha']) ?></td>
                                                 <td><?= htmlspecialchars($movimiento['inv_movimientos_numero']) ?></td>
                                                 <td><?= htmlspecialchars($movimiento['bodega_origen']) ?></td>
                                                 <td><?= htmlspecialchars($movimiento['bodega_destino']) ?></td>
                                                 <td><?= htmlspecialchars($movimiento['inv_movimientos_observacion'] ?? '') ?></td>
-                                                <td class="text-end">
-                                                    <?php if ($permisos['recibir']): ?>
-                                                        <form method="post" action="<?= $appUrl ?>/inventario/movimientos/recibir" class="d-inline formulario-confirmar"><input type="hidden" name="movimiento_id" value="<?= (int) $movimiento['inv_movimientos_id'] ?>"><button class="btn btn-accion btn-activar" title="Recibir"><i class="bi bi-box-arrow-in-down"></i></button></form>
+                                                <td class="text-end acciones-tabla">
+                                                    <?php if ($permisos['detalle']): ?>
+                                                        <button type="button" class="btn btn-accion btn-ver-detalle-movimiento" data-id="<?= (int) $movimiento['inv_movimientos_id'] ?>" data-bs-toggle="modal" data-bs-target="#modalDetalleMovimiento" title="Ver detalle"><i class="bi bi-eye"></i></button>
                                                     <?php endif; ?>
                                                 </td>
                                             </tr>
@@ -100,6 +115,25 @@ $appUrl = rtrim($configuracion->obtener('APP_URL', ''), '/');
     </main>
 </div>
 
+<!-- MODAL DETALLE MOVIMIENTO -->
+<div class="modal fade modal-intesis" id="modalDetalleMovimiento" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div><p class="modal-etiqueta">Inventario</p><h2 class="modal-title" id="detalleMovimientoTitulo">Detalle del movimiento</h2></div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body" id="detalleMovimientoBody">
+                <div class="text-center py-4 text-muted"><i class="bi bi-hourglass-split"></i> Cargando...</div>
+            </div>
+            <div class="modal-footer" id="detalleMovimientoFooter">
+                <button type="button" class="btn btn-secundario" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i> Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL CREAR/CREAR MOVIMIENTO INTERNO -->
 <div class="modal fade modal-intesis" id="modalMovimientoInterno" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-fullscreen modal-dialog-centered modal-dialog-scrollable">
         <form class="modal-content" id="formularioMovimientoInterno" method="post" action="<?= $appUrl ?>/inventario/movimientos/crear">
@@ -127,6 +161,7 @@ $appUrl = rtrim($configuracion->obtener('APP_URL', ''), '/');
     </div>
 </div>
 
+<!-- MODAL BUSCAR PRODUCTO -->
 <div class="modal fade modal-intesis" id="modalBuscarProductoMovimiento" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
@@ -139,6 +174,7 @@ $appUrl = rtrim($configuracion->obtener('APP_URL', ''), '/');
     </div>
 </div>
 
+<!-- MODAL EDITAR OBSERVACION -->
 <div class="modal fade modal-intesis" id="modalEditarMovimiento" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-md modal-dialog-centered">
         <form class="modal-content" method="post" action="<?= $appUrl ?>/inventario/movimientos/editar">
@@ -153,6 +189,7 @@ $appUrl = rtrim($configuracion->obtener('APP_URL', ''), '/');
 <script>
 window.INTESIS_BODEGAS_MOVIMIENTO = <?= json_encode($bodegas, JSON_UNESCAPED_UNICODE) ?>;
 window.INTESIS_MOVIMIENTO_PERMISOS = <?= json_encode($permisos, JSON_UNESCAPED_UNICODE) ?>;
+window.INTESIS_APP_URL = <?= json_encode($appUrl, JSON_UNESCAPED_UNICODE) ?>;
 </script>
 <?php if (!empty($mensaje)): ?><script>window.INTESIS_MENSAJE = <?= json_encode($mensaje, JSON_UNESCAPED_UNICODE) ?>;</script><?php endif; ?>
 <script>window.INTESIS_MENSAJES = <?= json_encode($mensajesSistema ?? [], JSON_UNESCAPED_UNICODE) ?>;</script>

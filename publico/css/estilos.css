@@ -580,6 +580,42 @@ body {
     background: rgba(214, 95, 95, .16);
 }
 
+/* ── Estados de movimientos internos ─────────────────────────── */
+.estado-borrador {
+    color: #4a4a6a;
+    background: rgba(100, 100, 180, .13);
+}
+
+.estado-registrado {
+    color: #1a5276;
+    background: rgba(52, 152, 219, .15);
+}
+
+.estado-pendiente {
+    color: #7d4a00;
+    background: rgba(230, 126, 34, .16);
+}
+
+.estado-procesado {
+    color: #1f6f68;
+    background: rgba(31, 111, 104, .14);
+}
+
+.estado-en_transito {
+    color: #5b3a8e;
+    background: rgba(155, 89, 182, .16);
+}
+
+.estado-recibido {
+    color: #1a5e2a;
+    background: rgba(39, 174, 96, .15);
+}
+
+.estado-anulado {
+    color: #7a1f1f;
+    background: rgba(214, 95, 95, .16);
+}
+
 .btn-bloquear,
 .btn-clave {
     color: var(--intesis-tinta);

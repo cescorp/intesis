@@ -8,6 +8,7 @@ use Intesis\Modelos\EmpresaModelo;
 use Intesis\Modelos\MenuModelo;
 use Intesis\Modelos\MensajeSistemaModelo;
 use Intesis\Nucleo\Configuracion;
+use Intesis\Nucleo\ControladorComun;
 use Intesis\Nucleo\RegistroErrores;
 use Intesis\Nucleo\Sesion;
 use Intesis\Nucleo\Vista;
@@ -16,6 +17,8 @@ use Throwable;
 
 final class EmpresaControlador
 {
+    use ControladorComun;
+
     public function __construct(
         private Vista $vista,
         private Sesion $sesion,
@@ -229,16 +232,6 @@ final class EmpresaControlador
 
     /**
      * ***************************************************************************
-     * * IDENTIFICA SI EL USUARIO ACTUAL ES SUPERUSUARIO GLOBAL.
-     * ***************************************************************************
-     */
-    private function esSuperusuario(array $usuario): bool
-    {
-        return strtoupper((string) ($usuario['perfil_codigo'] ?? $usuario['perfil'] ?? '')) === 'SUPERUSUARIO';
-    }
-
-    /**
-     * ***************************************************************************
      * * EXIGE PERFIL SUPERUSUARIO PARA ACCIONES GLOBALES DE EMPRESA.
      * ***************************************************************************
      */
@@ -264,21 +257,6 @@ final class EmpresaControlador
 
     /**
      * ***************************************************************************
-     * * EXIGE SESION ACTIVA Y REDIRIGE AL LOGIN SI NO EXISTE.
-     * ***************************************************************************
-     */
-    private function exigirSesion(): array
-    {
-        $usuario = $this->sesion->usuario();
-        if (!$usuario) {
-            $this->redirigir('/login');
-        }
-
-        return $usuario;
-    }
-
-    /**
-     * ***************************************************************************
      * * VALIDA EL PERMISO DEL USUARIO ACTUAL PARA UNA ACCION.
      * ***************************************************************************
      */
@@ -289,27 +267,6 @@ final class EmpresaControlador
             $this->guardarMensajeCodigo('ERROR_SIN_PERMISO');
             $this->redirigir('/dashboard');
         }
-    }
-
-    /**
-     * ***************************************************************************
-     * * REDIRIGE A UNA RUTA LIMPIA USANDO LA URL BASE DEL SISTEMA.
-     * ***************************************************************************
-     */
-    private function redirigir(string $ruta): never
-    {
-        header('Location: ' . rtrim($this->configuracion->obtener('APP_URL', ''), '/') . $ruta);
-        exit;
-    }
-
-    /**
-     * ***************************************************************************
-     * * REGISTRA ERRORES CONTROLADOS DEL CRUD EMPRESA EN EL LOG DEL SISTEMA.
-     * ***************************************************************************
-     */
-    private function registrarErrorCrud(string $accion, Throwable $excepcion): void
-    {
-        $this->registroErrores->escribir($accion . ': ' . $excepcion->getMessage());
     }
 
     /**

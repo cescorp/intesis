@@ -78,12 +78,14 @@ final class BodegaModelo
                     sis_empresa_id, inv_bodega_codigo, inv_bodega_nombre,
                     inv_bodega_descripcion, inv_bodega_direccion,
                     inv_bodega_es_principal, inv_bodega_virtual,
+                    inv_bodega_negativos, inv_bodega_autoaprobado,
                     sis_estado_id, usuario_crea
                 )
                 VALUES (
                     :empresa_id, :codigo, :nombre,
                     :descripcion, :direccion,
                     :principal, :virtual,
+                    :negativos, :autoaprobado,
                     :estado_id, :usuario_crea
                 )
             ");
@@ -120,6 +122,8 @@ final class BodegaModelo
                     inv_bodega_direccion = :direccion,
                     inv_bodega_es_principal = :principal,
                     inv_bodega_virtual = :virtual,
+                    inv_bodega_negativos = :negativos,
+                    inv_bodega_autoaprobado = :autoaprobado,
                     usuario_modifica = :usuario_modifica,
                     fecha_modifica = now()
                 WHERE inv_bodega_id = :bodega_id
@@ -528,5 +532,7 @@ final class BodegaModelo
         $sentencia->bindValue(':direccion', $datos['direccion']);
         $sentencia->bindValue(':principal', (bool) $datos['principal'], PDO::PARAM_BOOL);
         $sentencia->bindValue(':virtual', (bool) $datos['virtual'], PDO::PARAM_BOOL);
+        $sentencia->bindValue(':negativos', (bool) $datos['negativos'], PDO::PARAM_BOOL);
+        $sentencia->bindValue(':autoaprobado', (bool) $datos['autoaprobado'], PDO::PARAM_BOOL);
     }
 }
