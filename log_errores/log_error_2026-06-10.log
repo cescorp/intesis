@@ -1,0 +1,397 @@
+################################################
+Fecha:   2026-06-10 13:29:27
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-10 13:29:27
+Archivo: C:\xampp\htdocs\intesis\src\Modelos\DocumentoCompraModelo.php
+Detalle: PDOException
+Error:   SQLSTATE[42804]: Datatype mismatch: 7 ERROR:  los tipos boolean y integer no son coincidentes en COALESCE
+LINE 4: ...  COALESCE(bu.inv_bodega_usuarios_predeterminada, 0) AS pred...
+                                                             ^
+Linea:   364
+################################################
+
+################################################
+Fecha:   2026-06-10 13:29:27
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-10 13:29:28
+Archivo: C:\xampp\htdocs\intesis\src\Modelos\DocumentoCompraModelo.php
+Detalle: PDOException
+Error:   SQLSTATE[42804]: Datatype mismatch: 7 ERROR:  los tipos boolean y integer no son coincidentes en COALESCE
+LINE 4: ...  COALESCE(bu.inv_bodega_usuarios_predeterminada, 0) AS pred...
+                                                             ^
+Linea:   364
+################################################
+
+################################################
+Fecha:   2026-06-10 13:29:30
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-10 13:29:31
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-10 13:29:32
+Archivo: C:\xampp\htdocs\intesis\src\Modelos\DocumentoCompraModelo.php
+Detalle: PDOException
+Error:   SQLSTATE[42804]: Datatype mismatch: 7 ERROR:  los tipos boolean y integer no son coincidentes en COALESCE
+LINE 4: ...  COALESCE(bu.inv_bodega_usuarios_predeterminada, 0) AS pred...
+                                                             ^
+Linea:   364
+################################################
+
+################################################
+Fecha:   2026-06-10 13:51:35
+Archivo: C:\xampp\htdocs\intesis\src\Modelos\DocumentoCompraModelo.php
+Detalle: PDOException
+Error:   SQLSTATE[42883]: Undefined function: 7 ERROR:  el operador no existe: smallint = boolean
+LINE 10:                     AND bu.inv_bodega_usuarios_estado = TRUE
+                                                               ^
+HINT:  Ningún operador coincide en el nombre y tipos de argumentos. Puede ser necesario agregar conversión explícita de tipos.
+Linea:   364
+################################################
+
+################################################
+Fecha:   2026-06-10 13:51:37
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-10 13:51:38
+Archivo: C:\xampp\htdocs\intesis\src\Modelos\DocumentoCompraModelo.php
+Detalle: PDOException
+Error:   SQLSTATE[42883]: Undefined function: 7 ERROR:  el operador no existe: smallint = boolean
+LINE 10:                     AND bu.inv_bodega_usuarios_estado = TRUE
+                                                               ^
+HINT:  Ningún operador coincide en el nombre y tipos de argumentos. Puede ser necesario agregar conversión explícita de tipos.
+Linea:   364
+################################################
+
+################################################
+Fecha:   2026-06-10 13:53:24
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-10 13:54:37
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-10 13:54:40
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-10 13:55:46
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-10 13:55:48
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-10 13:55:48
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-10 13:55:49
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-10 13:55:49
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-10 13:55:55
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-10 13:55:56
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_INACTIVAR_PROVEEDOR
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-10 13:55:58
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-10 13:58:08
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-10 13:58:15
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-10 13:58:22
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-10 17:34:49
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_INACTIVAR_PROVEEDOR
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-10 17:34:51
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-10 17:34:55
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_INACTIVAR_PROVEEDOR
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-10 17:34:57
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_INACTIVAR_PROVEEDOR
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-10 17:35:03
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-10 17:36:37
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-10 17:37:08
+Archivo: C:\xampp\htdocs\intesis\src\Modelos\DocumentoCompraModelo.php
+Detalle: ERROR PHP NIVEL 2
+Error:   Undefined array key "sis_estado_codigo"
+Linea:   196
+################################################
+
+################################################
+Fecha:   2026-06-10 17:37:08
+Archivo: C:\xampp\htdocs\intesis\src\Modelos\DocumentoCompraModelo.php
+Detalle: REGISTRAR DOCUMENTO COMPRA
+Error:   Solo se pueden registrar documentos en estado BORRADOR.
+Linea:   197
+################################################
+
+################################################
+Fecha:   2026-06-10 17:37:09
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-10 17:37:17
+Archivo: C:\xampp\htdocs\intesis\src\Modelos\DocumentoCompraModelo.php
+Detalle: ERROR PHP NIVEL 2
+Error:   Undefined array key "sis_estado_codigo"
+Linea:   196
+################################################
+
+################################################
+Fecha:   2026-06-10 17:37:17
+Archivo: C:\xampp\htdocs\intesis\src\Modelos\DocumentoCompraModelo.php
+Detalle: REGISTRAR DOCUMENTO COMPRA
+Error:   Solo se pueden registrar documentos en estado BORRADOR.
+Linea:   197
+################################################
+
+################################################
+Fecha:   2026-06-10 17:37:17
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-10 17:41:33
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-10 17:41:38
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-10 17:55:09
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-10 18:01:29
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-10 18:01:59
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-10 18:02:45
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-10 18:03:02
+Archivo: C:\xampp\htdocs\intesis\src\Modelos\DocumentoCompraModelo.php
+Detalle: ERROR PHP NIVEL 2
+Error:   Undefined array key "sis_estado_codigo"
+Linea:   317
+################################################
+
+################################################
+Fecha:   2026-06-10 18:03:02
+Archivo: C:\xampp\htdocs\intesis\src\Modelos\DocumentoCompraModelo.php
+Detalle: REGISTRAR DOCUMENTO COMPRA
+Error:   Solo se pueden registrar documentos en estado BORRADOR.
+Linea:   318
+################################################
+
+################################################
+Fecha:   2026-06-10 18:03:55
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-10 18:04:04
+Archivo: C:\xampp\htdocs\intesis\src\Modelos\DocumentoCompraModelo.php
+Detalle: REGISTRAR DOCUMENTO COMPRA
+Error:   SQLSTATE[23514]: Check violation: 7 ERROR:  el nuevo registro para la relación «inv_kardex» viola la restricción «check» «chk_inv_kardex_tipo_movimiento»
+DETAIL:  La fila que falla contiene (18, 1, 5, 10, 2026-06-10 00:00:00, ENTRADA, COM_DOCUMENTO, 1, 001002000005, 1.0000, 0.0000, 12.400000, 11.0000, 136.400000, , 1, null, 2026-06-10 18:04:04.567641, null).
+Linea:   710
+################################################
+
+################################################
+Fecha:   2026-06-10 18:04:36
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-10 18:04:45
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+

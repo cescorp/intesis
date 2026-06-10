@@ -213,6 +213,21 @@ body {
     opacity: .76;
 }
 
+.btn-intesis.btn-sm {
+    min-height: unset;
+    padding: .3rem .7rem;
+    font-size: .82rem;
+    font-weight: 700;
+    border-radius: 5px;
+}
+
+.btn-secundario.btn-sm {
+    padding: .3rem .7rem;
+    font-size: .82rem;
+    font-weight: 700;
+    border-radius: 5px;
+}
+
 .alerta-login {
     display: flex;
     gap: .65rem;

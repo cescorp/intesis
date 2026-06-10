@@ -46,29 +46,28 @@ OK - 3. Compras
 OK - 3.1 Proveedores: CRUD
 OK - Identificación, razón social, teléfono, correo, dirección, ect.
 
-3.2 Documento de compra: CRUD
-Cabecera de factura o gasto recibido.
-3.3 Detalle de compra: CRUD
-Productos, cantidades, costos, descuentos, IVA.
-Flujo
-Cebecera don datos basicos: RUC 
-- al da enter RUC  no existe o esta en blanco se levanta un modal
-- Modal "Buscar Proveedor" un input de busqueda (hereda el texto que escribio en RUC)
-- enlista automaticamente resultad de proveedores (da click en toda la fila para cargar el RUC a cabecera)
-Detalle de compra
-- Columnas: # | Cod. Proveedor | Codigo Interno | Descripcion | Marca | Bodega Destino | Cantidad | Costo | PVP
-Ingresa codigo proveedor: 
-- Si no existe cod. Proveedor  abrir Modal "Lista Productos":
-    * Input para buscar (herede el texto)  carge  la Lista de Productos al abrir, columnas  | # | Cod. Proveedor | Codigo | Decripcion | Marca | Cantidad | Acciones |
-    * al dar clic en la toda linea se carga el codigo de proveedor, codigo interno, descripcion, etc, etc en la compra
-- en bodega destino Combo con las bodegas asigandas (predeterminada la pricipal)
-- Codigo Interno: abrir Modal "Lista Productos": (diferente al de cod. proveedores) 
-    * Input para buscar (herede el texto)  carge  la Lista de Productos al abrir, columnas  | # | Cod. Proveedor | Codigo | Decripcion | Marca | Cantidad 
-    * al dar clic en toda la linea se carga el codigo de proveedor, codigo interno, descripcion, etc, etc en la compra
--campos habilitados: Cod. Porveedor, Codigo Interno, 
+ok - 3.2 Documento de compra: CRUD
+ok - Cabecera de factura o gasto recibido.
+ok - 3.3 Detalle de compra: CRUD
+ok - Productos, cantidades, costos, descuentos, IVA.
+ok - Flujo
+ok - Cebecera don datos basicos: RUC 
+ok - - al da enter RUC  no existe o esta en blanco se levanta un modal
+ok - - Modal "Buscar Proveedor" un input de busqueda (hereda el texto que escribio en RUC)
+ok - - enlista automaticamente resultad de proveedores (da click en toda la fila para cargar el RUC a cabecera)
+ok - Detalle de compra
+ok - - Columnas: # | Cod. Proveedor | Codigo Interno | Descripcion | Marca | Bodega Destino | Cantidad | Costo | PVP
+ok - Ingresa codigo proveedor: 
+ok - - Si no existe cod. Proveedor  abrir Modal "Lista Productos":
+ok -     * Input para buscar (herede el texto)  carge  la Lista de Productos al abrir, columnas  | # | Cod. Proveedor | Codigo | Decripcion | Marca | Cantidad | Acciones |
+ok -     * al dar clic en la toda linea se carga el codigo de proveedor, codigo interno, descripcion, etc, etc en la compra
+ok - - en bodega destino Combo con las bodegas asigandas (predeterminada la pricipal)
+ok - - Codigo Interno: abrir Modal "Lista Productos": (diferente al de cod. proveedores) 
+ok -     * Input para buscar (herede el texto)  carge  la Lista de Productos al abrir, columnas  | # | Cod. Proveedor | Codigo | Decripcion | Marca | Cantidad 
+ok -     * al dar clic en toda la linea se carga el codigo de proveedor, codigo interno, descripcion, etc, etc en la compra
+ok - -campos habilitados: Cod. Porveedor, Codigo Interno, 
 
 - abajo al final  totales de costo y PVP
-
 2. vamos usar  tabla existente inv_codigo_proveedor
 Usar tabla inv_codigo_proveedor  y campos: 
 1.	inv_codigo_proveedor_id

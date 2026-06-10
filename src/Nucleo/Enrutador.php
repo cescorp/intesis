@@ -19,6 +19,7 @@ use Intesis\Controladores\StockControlador;
 use Intesis\Controladores\KardexControlador;
 use Intesis\Controladores\MovimientoInternoControlador;
 use Intesis\Controladores\ProveedorControlador;
+use Intesis\Controladores\DocumentoCompraControlador;
 use Intesis\Controladores\UsuarioControlador;
 use Intesis\Nucleo\Sesion;
 use Intesis\Nucleo\Vista;
@@ -42,6 +43,7 @@ final class Enrutador
         private KardexControlador $kardexControlador,
         private MovimientoInternoControlador $movimientoInternoControlador,
         private ProveedorControlador $proveedorControlador,
+        private DocumentoCompraControlador $documentoCompraControlador,
         private Configuracion $configuracion,
         private Vista $vista,
         private Sesion $sesion
@@ -600,6 +602,61 @@ final class Enrutador
 
         if ($metodo === 'POST' && $ruta === '/compras/proveedores/inactivar') {
             $this->proveedorControlador->inactivar();
+            return;
+        }
+
+        if ($metodo === 'GET' && $ruta === '/compras/documentos') {
+            $this->documentoCompraControlador->listar();
+            return;
+        }
+
+        if ($metodo === 'GET' && $ruta === '/compras/documentos/nuevo') {
+            $this->documentoCompraControlador->nuevo();
+            return;
+        }
+
+        if ($metodo === 'GET' && $ruta === '/compras/documentos/editar') {
+            $this->documentoCompraControlador->editar();
+            return;
+        }
+
+        if ($metodo === 'POST' && $ruta === '/compras/documentos/actualizar') {
+            $this->documentoCompraControlador->actualizar();
+            return;
+        }
+
+        if ($metodo === 'POST' && $ruta === '/compras/documentos/crear') {
+            $this->documentoCompraControlador->crear();
+            return;
+        }
+
+        if ($metodo === 'POST' && $ruta === '/compras/documentos/registrar') {
+            $this->documentoCompraControlador->registrar();
+            return;
+        }
+
+        if ($metodo === 'POST' && $ruta === '/compras/documentos/anular') {
+            $this->documentoCompraControlador->anular();
+            return;
+        }
+
+        if ($metodo === 'GET' && $ruta === '/compras/documentos/detalle') {
+            $this->documentoCompraControlador->detalle();
+            return;
+        }
+
+        if ($metodo === 'GET' && $ruta === '/compras/documentos/buscar-proveedor') {
+            $this->documentoCompraControlador->buscarProveedor();
+            return;
+        }
+
+        if ($metodo === 'GET' && $ruta === '/compras/documentos/buscar-proveedores') {
+            $this->documentoCompraControlador->buscarProveedores();
+            return;
+        }
+
+        if ($metodo === 'GET' && $ruta === '/compras/documentos/productos') {
+            $this->documentoCompraControlador->productos();
             return;
         }
 
