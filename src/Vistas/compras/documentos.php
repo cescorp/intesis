@@ -190,7 +190,7 @@ $pendSri     = $pendientesSri ?? [];
                     <select id="bodegaSubirXml" class="form-select">
                         <option value="">— Seleccione —</option>
                         <?php foreach ($bodegas ?? [] as $b): ?>
-                        <option value="<?= (int) $b['inv_bodega_id'] ?>"><?= htmlspecialchars($b['inv_bodega_nombre']) ?></option>
+                        <option value="<?= (int) $b['inv_bodega_id'] ?>" <?= $b['inv_bodega_es_principal'] ? 'selected' : '' ?>><?= htmlspecialchars($b['inv_bodega_nombre']) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
@@ -277,7 +277,7 @@ $pendSri     = $pendientesSri ?? [];
                         <select id="bodegaProcesarTxt" class="form-select">
                             <option value="">— Seleccione —</option>
                             <?php foreach ($bodegas ?? [] as $b): ?>
-                            <option value="<?= (int) $b['inv_bodega_id'] ?>"><?= htmlspecialchars($b['inv_bodega_nombre']) ?></option>
+                            <option value="<?= (int) $b['inv_bodega_id'] ?>" <?= $b['inv_bodega_es_principal'] ? 'selected' : '' ?>><?= htmlspecialchars($b['inv_bodega_nombre']) ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>

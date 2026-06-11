@@ -390,7 +390,7 @@ final class SriImportacionModelo
                     $unicos[] = [
                         'proveedor_id'    => $proveedorId,
                         'cod_principal'   => $cod,
-                        'descripcion_sri' => (string) ($det['descripcion_sri'] ?? ''),
+                        'descripcion_sri' => (string) ($det['descripcion'] ?? ''),
                     ];
                 }
             }
@@ -455,7 +455,7 @@ final class SriImportacionModelo
                AND  cd.sis_empresa_id                      = :empresa_id
                AND  cd.com_proveedor_id                    = :proveedor_id
                AND  cd.com_documento_origen                = \'SRI\'
-               AND  cdd.com_documento_detalle_cod_proveedor = :cod
+               AND  cdd.com_documento_detalle_codigo = :cod
                AND  cdd.inv_producto_id IS NULL'
         )->execute([
             'producto_id'  => $productoId,
@@ -543,8 +543,8 @@ final class SriImportacionModelo
             'SELECT cd.com_documento_id,
                     cd.com_documento_numero,
                     cdd.com_documento_detalle_id,
-                    cdd.com_documento_detalle_cod_proveedor  AS cod_principal,
-                    cdd.com_documento_detalle_descripcion_sri,
+                    cdd.com_documento_detalle_codigo         AS cod_principal,
+                    cdd.com_documento_detalle_descripcion    AS com_documento_detalle_descripcion_sri,
                     cdd.com_documento_detalle_cantidad
              FROM   com_documento_detalle cdd
              JOIN   com_documento cd ON cd.com_documento_id = cdd.com_documento_id

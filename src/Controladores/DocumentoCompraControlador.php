@@ -646,6 +646,7 @@ final class DocumentoCompraControlador
                         'com_documento_tipo_emision'               => $factura['tipo_emision'] ?? null,
                         'com_documento_pagos_json'                 => $pagosJson,
                         'com_documento_info_adicional_json'        => $infoAdicionalJson,
+                        'com_documento_obligado_contabilidad'      => $factura['obligado_contabilidad'] ?? null,
                     ];
 
                     $docId = $this->documentoCompraModelo->crearDesdeSri($empresaId, $cabecera, $detalles, $usuarioId);

@@ -82,7 +82,7 @@ final class DocumentoCompraModelo
                    m.inv_marca_nombre               AS marca_nombre,
                    iv.sis_iva_valor,
                    COALESCE(
-                       NULLIF(dd.com_documento_detalle_cod_proveedor, ''),
+                       NULLIF(dd.com_documento_detalle_codigo, ''),
                        cp.inv_codigo_proveedor_codigo,
                        ''
                    ) AS cod_proveedor
@@ -150,12 +150,12 @@ final class DocumentoCompraModelo
                     com_documento_detalle_cantidad, com_documento_detalle_precio,
                     com_documento_detalle_descuento, com_documento_detalle_total,
                     com_documento_detalle_marca_iva, sis_iva_id,
-                    com_documento_detalle_pvp, com_documento_detalle_cod_proveedor,
+                    com_documento_detalle_pvp, com_documento_detalle_codigo,
                     usuario_crea
                 ) VALUES (
                     :empresa_id, :documento_id, :producto_id,
                     :cantidad, :precio, :descuento, :total,
-                    :marca_iva, :iva_id, :pvp, :cod_proveedor,
+                    :marca_iva, :iva_id, :pvp, :codigo,
                     :usuario_crea
                 )
             ");
@@ -171,7 +171,7 @@ final class DocumentoCompraModelo
                     'marca_iva'    => ((float) ($linea['iva_valor'] ?? 0)) > 0 ? 'S' : 'N',
                     'iva_id'       => $linea['iva_id'] ?: null,
                     'pvp'          => $linea['pvp'] ?? 0,
-                    'cod_proveedor'=> $linea['cod_proveedor'] !== '' ? $linea['cod_proveedor'] : null,
+                    'codigo'       => $linea['cod_proveedor'] !== '' ? $linea['cod_proveedor'] : null,
                     'usuario_crea' => $usuarioId,
                 ]);
             }
@@ -258,12 +258,12 @@ final class DocumentoCompraModelo
                     com_documento_detalle_cantidad, com_documento_detalle_precio,
                     com_documento_detalle_descuento, com_documento_detalle_total,
                     com_documento_detalle_marca_iva, sis_iva_id,
-                    com_documento_detalle_pvp, com_documento_detalle_cod_proveedor,
+                    com_documento_detalle_pvp, com_documento_detalle_codigo,
                     usuario_crea
                 ) VALUES (
                     :empresa_id, :documento_id, :producto_id,
                     :cantidad, :precio, :descuento, :total,
-                    :marca_iva, :iva_id, :pvp, :cod_proveedor,
+                    :marca_iva, :iva_id, :pvp, :codigo,
                     :usuario_crea
                 )
             ");
@@ -279,7 +279,7 @@ final class DocumentoCompraModelo
                     'marca_iva'    => ((float) ($linea['iva_valor'] ?? 0)) > 0 ? 'S' : 'N',
                     'iva_id'       => $linea['iva_id'] ?: null,
                     'pvp'          => $linea['pvp'] ?? 0,
-                    'cod_proveedor'=> $linea['cod_proveedor'] !== '' ? $linea['cod_proveedor'] : null,
+                    'codigo'       => $linea['cod_proveedor'] !== '' ? $linea['cod_proveedor'] : null,
                     'usuario_crea' => $usuarioId,
                 ]);
             }
@@ -931,6 +931,7 @@ final class DocumentoCompraModelo
                     com_documento_nombre_comercial_emisor, com_documento_dir_matriz,
                     com_documento_ambiente, com_documento_tipo_emision,
                     com_documento_pagos_json, com_documento_info_adicional_json,
+                    com_documento_obligado_contabilidad,
                     usuario_crea, fecha_crea
                 ) VALUES (
                     :empresa_id, :tipo_doc_id, :proveedor_id, :bodega_id,
@@ -944,6 +945,7 @@ final class DocumentoCompraModelo
                     :nombre_comercial_emisor, :dir_matriz,
                     :ambiente, :tipo_emision,
                     :pagos_json, :info_adicional_json,
+                    :obligado_contabilidad,
                     :usuario, now()
                 )
                 RETURNING com_documento_id
@@ -971,6 +973,7 @@ final class DocumentoCompraModelo
                 'tipo_emision'            => $cabecera['com_documento_tipo_emision']              ?? null,
                 'pagos_json'              => $cabecera['com_documento_pagos_json']                ?? null,
                 'info_adicional_json'     => $cabecera['com_documento_info_adicional_json']       ?? null,
+                'obligado_contabilidad'   => $cabecera['com_documento_obligado_contabilidad']     ?? null,
                 'usuario'                 => $usuarioId,
             ]);
             $documentoId = (int) $stmtDoc->fetchColumn();
@@ -978,8 +981,9 @@ final class DocumentoCompraModelo
             $stmtDet = $pdo->prepare("
                 INSERT INTO com_documento_detalle (
                     sis_empresa_id, com_documento_id, inv_producto_id,
-                    com_documento_detalle_descripcion_sri,
-                    com_documento_detalle_cod_proveedor,
+                    com_documento_detalle_descripcion,
+                    com_documento_detalle_codigo,
+                    com_documento_detalle_codigo_auxiliar,
                     com_documento_detalle_cantidad,
                     com_documento_detalle_precio,
                     com_documento_detalle_descuento,
@@ -990,8 +994,9 @@ final class DocumentoCompraModelo
                     usuario_crea
                 ) VALUES (
                     :empresa_id, :documento_id, :producto_id,
-                    :descripcion_sri,
-                    :cod_proveedor,
+                    :descripcion,
+                    :codigo,
+                    :codigo_auxiliar,
                     :cantidad,
                     :precio,
                     :descuento,
@@ -1008,8 +1013,9 @@ final class DocumentoCompraModelo
                     'empresa_id'      => $empresaId,
                     'documento_id'    => $documentoId,
                     'producto_id'     => (int) $linea['inv_producto_id'],
-                    'descripcion_sri' => $linea['descripcion_sri'] ?? null,
-                    'cod_proveedor'   => $linea['cod_principal']   ?? null,
+                    'descripcion'     => $linea['descripcion']     ?? null,
+                    'codigo'          => $linea['cod_principal']   ?? null,
+                    'codigo_auxiliar' => $linea['cod_auxiliar']    ?? null,
                     'cantidad'        => (float) ($linea['cantidad'] ?? 1),
                     'precio'          => (float) ($linea['precio_unitario'] ?? 0),
                     'descuento'       => (float) ($linea['descuento'] ?? 0),
@@ -1101,12 +1107,12 @@ final class DocumentoCompraModelo
         // ── Detalles ──────────────────────────────────────────────────────────
         $stmtDet = $pdo->prepare("
             SELECT COALESCE(
-                       NULLIF(dd.com_documento_detalle_descripcion_sri, ''),
+                       NULLIF(dd.com_documento_detalle_descripcion, ''),
                        p.inv_producto_nombre,
                        ''
                    ) AS descripcion,
                    COALESCE(
-                       NULLIF(dd.com_documento_detalle_cod_proveedor, ''),
+                       NULLIF(dd.com_documento_detalle_codigo, ''),
                        p.inv_producto_codigo_principal,
                        ''
                    ) AS codigo_principal,
@@ -1173,7 +1179,7 @@ final class DocumentoCompraModelo
             'nombre_comercial_emisor' => (string) ($nombreComercialEmisor ?? ''),
             'dir_matriz'              => (string) ($dirMatriz ?? ''),
             'dir_sucursal'            => '',
-            'obligado_contabilidad'   => '',   // del emisor — no almacenado, queda vacío
+            'obligado_contabilidad'   => (string) ($doc['com_documento_obligado_contabilidad'] ?? ''),
             'numero_documento'        => (string) ($doc['com_documento_numero'] ?? ''),
             'clave_acceso'            => $claveAcceso,
             'numero_autorizacion'     => (string) ($doc['com_documento_num_autorizacion'] ?? $claveAcceso),
