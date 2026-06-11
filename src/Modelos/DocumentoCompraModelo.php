@@ -396,8 +396,13 @@ final class DocumentoCompraModelo
             if ($doc['sis_estado_codigo'] === 'ANULADO') {
                 throw new RuntimeException('El documento ya esta anulado.');
             }
+
+            // Si estaba REGISTRADO → revertir stock y kardex
             if ($doc['sis_estado_codigo'] === 'REGISTRADO') {
-                throw new RuntimeException('No se puede anular un documento ya registrado. Emita una Nota de Credito.');
+                $lineas = $this->listarDetalle($documentoId);
+                foreach ($lineas as $linea) {
+                    $this->revertirLineaStock($pdo, $doc, $linea, $usuarioId);
+                }
             }
 
             $pdo->prepare("
@@ -719,6 +724,80 @@ final class DocumentoCompraModelo
             'saldo_qty'       => $qtdNueva,
             'saldo_valor'     => round($qtdNueva * $costoPromNuevo, 2),
             'observacion'     => $doc['com_documento_observacion'] ?? '',
+            'usuario'         => $usuarioId,
+        ]);
+    }
+
+    /**
+     * Revierte el movimiento de stock/kardex de una línea al anular un doc REGISTRADO.
+     * Resta la cantidad ingresada y registra un AJUSTE_OUT en kardex.
+     */
+    private function revertirLineaStock(\PDO $pdo, array $doc, array $linea, int $usuarioId): void
+    {
+        $empresaId  = (int) $doc['sis_empresa_id'];
+        $bodegaId   = (int) $doc['inv_bodega_id'];
+        $productoId = (int) $linea['inv_producto_id'];
+        $cantidad   = (float) $linea['com_documento_detalle_cantidad'];
+        $costoUnit  = (float) $linea['com_documento_detalle_precio'];
+
+        // Stock actual (FOR UPDATE)
+        $stmtStock = $pdo->prepare("
+            SELECT inv_stock_id, inv_stock_cantidad_disponible, inv_stock_costo_promedio
+            FROM inv_stock
+            WHERE sis_empresa_id = :empresa_id AND inv_bodega_id = :bodega_id AND inv_producto_id = :producto_id
+            FOR UPDATE
+        ");
+        $stmtStock->execute(['empresa_id' => $empresaId, 'bodega_id' => $bodegaId, 'producto_id' => $productoId]);
+        $stockActual = $stmtStock->fetch();
+
+        $qtdNueva    = $stockActual ? max(0, (float) $stockActual['inv_stock_cantidad_disponible'] - $cantidad) : 0;
+        $costoProm   = $stockActual ? (float) $stockActual['inv_stock_costo_promedio'] : 0;
+
+        if ($stockActual) {
+            $pdo->prepare("
+                UPDATE inv_stock
+                SET inv_stock_cantidad_disponible  = :qty,
+                    inv_stock_ultima_actualizacion = now(),
+                    usuario_modifica               = :usuario,
+                    fecha_modifica                 = now()
+                WHERE inv_stock_id = :id
+            ")->execute([
+                'qty'     => $qtdNueva,
+                'usuario' => $usuarioId,
+                'id'      => (int) $stockActual['inv_stock_id'],
+            ]);
+        }
+
+        // Kardex: entrada negativa → AJUSTE_OUT
+        $pdo->prepare("
+            INSERT INTO inv_kardex (
+                sis_empresa_id, inv_bodega_id, inv_producto_id,
+                inv_kardex_fecha_movimiento, inv_kardex_tipo_movimiento,
+                inv_kardex_documento_tipo, inv_kardex_documento_id,
+                inv_kardex_documento_numero, inv_kardex_cantidad_entrada,
+                inv_kardex_cantidad_salida, inv_kardex_costo_unitario,
+                inv_kardex_saldo_cantidad, inv_kardex_saldo_valor,
+                inv_kardex_observacion, usuario_crea
+            ) VALUES (
+                :empresa_id, :bodega_id, :producto_id,
+                now(), 'AJUSTE_OUT',
+                'COM_DOCUMENTO', :doc_id,
+                :doc_numero, 0,
+                :cantidad_salida, :costo_unit,
+                :saldo_qty, :saldo_valor,
+                :observacion, :usuario
+            )
+        ")->execute([
+            'empresa_id'      => $empresaId,
+            'bodega_id'       => $bodegaId,
+            'producto_id'     => $productoId,
+            'doc_id'          => (int) $doc['com_documento_id'],
+            'doc_numero'      => $doc['com_documento_numero'],
+            'cantidad_salida' => $cantidad,
+            'costo_unit'      => $costoUnit,
+            'saldo_qty'       => $qtdNueva,
+            'saldo_valor'     => round($qtdNueva * $costoProm, 2),
+            'observacion'     => 'ANULACION: ' . ($doc['com_documento_observacion'] ?? ''),
             'usuario'         => $usuarioId,
         ]);
     }

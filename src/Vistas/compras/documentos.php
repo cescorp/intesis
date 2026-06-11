@@ -94,6 +94,11 @@ $estadoActual = $estadoFiltro ?? '';
                 <div class="text-center py-4"><div class="spinner-border text-secondary" role="status"></div></div>
             </div>
             <div class="modal-footer" id="footerDetalleDocumento" style="display:none!important">
+                <?php if ($permisos['anular']): ?>
+                <button type="button" id="btnAnularModal" class="btn btn-sm btn-secundario">
+                    <i class="bi bi-x-circle me-1"></i>Anular
+                </button>
+                <?php endif; ?>
                 <?php if ($permisos['registrar']): ?>
                 <button type="button" id="btnConfirmarCompra" class="btn btn-intesis btn-sm">
                     <i class="bi bi-check2-circle me-1"></i>Confirmar Compra
@@ -111,6 +116,7 @@ $estadoActual = $estadoFiltro ?? '';
     'use strict';
     const appUrl       = '<?= $appUrl ?>';
     const puedeRegistrar = <?= $permisos['registrar'] ? 'true' : 'false' ?>;
+    const puedeAnular    = <?= $permisos['anular']    ? 'true' : 'false' ?>;
     let documentoIdActual = 0;
 
     /* ── Abrir modal de detalle ──────────────────────────────────────────────── */
@@ -124,21 +130,21 @@ $estadoActual = $estadoFiltro ?? '';
 
         const modal  = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalDetalleDocumento'));
         const cuerpo = document.getElementById('cuerpoDetalleDocumento');
-        const footer = document.getElementById('footerDetalleDocumento');
-        const btnConf = document.getElementById('btnConfirmarCompra');
+        const footer   = document.getElementById('footerDetalleDocumento');
+        const btnConf  = document.getElementById('btnConfirmarCompra');
+        const btnAnul  = document.getElementById('btnAnularModal');
 
         cuerpo.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-secondary" role="status"></div></div>';
 
-        // Mostrar / ocultar footer con botón Confirmar Compra
-        if (puedeRegistrar && estado === 'BORRADOR') {
-            footer.style.removeProperty('display');
-            if (btnConf) {
-                btnConf.disabled = false;
-                btnConf.innerHTML = '<i class="bi bi-check2-circle me-1"></i>Confirmar Compra';
-            }
-        } else {
-            footer.style.setProperty('display', 'none', 'important');
-        }
+        // Mostrar / ocultar botones del footer según estado y permisos
+        const esBorrador    = estado === 'BORRADOR';
+        const esRegistrado  = estado === 'REGISTRADO';
+        const mostrarConf   = puedeRegistrar && esBorrador;
+        const mostrarAnul   = puedeAnular    && (esBorrador || esRegistrado);
+        if (btnConf) { btnConf.style.display = mostrarConf ? '' : 'none'; btnConf.disabled = false; btnConf.innerHTML = '<i class="bi bi-check2-circle me-1"></i>Confirmar Compra'; }
+        if (btnAnul) { btnAnul.style.display  = mostrarAnul ? '' : 'none'; btnAnul.disabled  = false; btnAnul.innerHTML = '<i class="bi bi-x-circle me-1"></i>Anular'; }
+        if (mostrarConf || mostrarAnul) { footer.style.removeProperty('display'); }
+        else                            { footer.style.setProperty('display', 'none', 'important'); }
 
         modal.show();
 
@@ -226,6 +232,34 @@ $estadoActual = $estadoFiltro ?? '';
                     <strong>Error:</strong> ${err.message}
                     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>`);
+            }
+        });
+    }
+
+    /* ── Anular desde modal ─────────────────────────────────────────────────── */
+    const btnAnulModal = document.getElementById('btnAnularModal');
+    if (btnAnulModal) {
+        btnAnulModal.addEventListener('click', async () => {
+            if (!documentoIdActual) return;
+            if (!confirm('¿Anular este documento? Esta acción no se puede deshacer.')) return;
+
+            btnAnulModal.disabled = true;
+            btnAnulModal.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Anulando...';
+
+            try {
+                const fd = new FormData();
+                fd.append('documento_id', documentoIdActual);
+                const res  = await fetch(appUrl + '/compras/documentos/anular', { method: 'POST', body: fd });
+                const text = await res.text();
+                // El endpoint de anular redirige (no devuelve JSON), cualquier respuesta 2xx es éxito
+                if (!res.ok && res.redirected === false) throw new Error('Error al anular');
+                bootstrap.Modal.getInstance(document.getElementById('modalDetalleDocumento'))?.hide();
+                window.location.reload();
+            } catch (err) {
+                btnAnulModal.disabled = false;
+                btnAnulModal.innerHTML = '<i class="bi bi-x-circle me-1"></i>Anular';
+                document.getElementById('cuerpoDetalleDocumento').insertAdjacentHTML('afterbegin',
+                    `<div class="alert alert-danger alert-dismissible mb-2"><strong>Error:</strong> ${err.message}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>`);
             }
         });
     }

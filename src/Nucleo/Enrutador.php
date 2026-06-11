@@ -20,6 +20,7 @@ use Intesis\Controladores\KardexControlador;
 use Intesis\Controladores\MovimientoInternoControlador;
 use Intesis\Controladores\ProveedorControlador;
 use Intesis\Controladores\DocumentoCompraControlador;
+use Intesis\Controladores\ClienteControlador;
 use Intesis\Controladores\UsuarioControlador;
 use Intesis\Nucleo\Sesion;
 use Intesis\Nucleo\Vista;
@@ -44,6 +45,7 @@ final class Enrutador
         private MovimientoInternoControlador $movimientoInternoControlador,
         private ProveedorControlador $proveedorControlador,
         private DocumentoCompraControlador $documentoCompraControlador,
+        private ClienteControlador $clienteControlador,
         private Configuracion $configuracion,
         private Vista $vista,
         private Sesion $sesion
@@ -657,6 +659,31 @@ final class Enrutador
 
         if ($metodo === 'GET' && $ruta === '/compras/documentos/productos') {
             $this->documentoCompraControlador->productos();
+            return;
+        }
+
+        if ($metodo === 'GET' && $ruta === '/ventas/clientes') {
+            $this->clienteControlador->listar();
+            return;
+        }
+
+        if ($metodo === 'POST' && $ruta === '/ventas/clientes/crear') {
+            $this->clienteControlador->crear();
+            return;
+        }
+
+        if ($metodo === 'POST' && $ruta === '/ventas/clientes/editar') {
+            $this->clienteControlador->editar();
+            return;
+        }
+
+        if ($metodo === 'POST' && $ruta === '/ventas/clientes/activar') {
+            $this->clienteControlador->activar();
+            return;
+        }
+
+        if ($metodo === 'POST' && $ruta === '/ventas/clientes/inactivar') {
+            $this->clienteControlador->inactivar();
             return;
         }
 
