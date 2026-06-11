@@ -662,6 +662,26 @@ final class Enrutador
             return;
         }
 
+        if ($metodo === 'POST' && $ruta === '/compras/documentos/subir-xml') {
+            $this->documentoCompraControlador->subirXml();
+            return;
+        }
+
+        if ($metodo === 'POST' && $ruta === '/compras/documentos/procesar-txt') {
+            $this->documentoCompraControlador->procesarTxt();
+            return;
+        }
+
+        if ($metodo === 'POST' && $ruta === '/compras/documentos/asignar-codigo') {
+            $this->documentoCompraControlador->asignarCodigo();
+            return;
+        }
+
+        if ($metodo === 'POST' && $ruta === '/compras/documentos/guardar-sri') {
+            $this->documentoCompraControlador->guardarSri();
+            return;
+        }
+
         if ($metodo === 'GET' && $ruta === '/ventas/clientes') {
             $this->clienteControlador->listar();
             return;

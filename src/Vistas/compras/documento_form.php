@@ -254,8 +254,8 @@ $editObs       = $modoEditar ? htmlspecialchars((string) ($documento['com_docume
                 <input type="text" id="buscarCodigoInput" class="form-control form-control-sm mb-2" placeholder="Codigo o descripcion...">
                 <div class="table-responsive" style="max-height:380px;overflow-y:auto">
                     <table class="table table-sm table-hover mb-0" style="font-size:.82rem">
-                        <thead class="table-light" style="position:sticky;top:0"><tr><th>#</th><th>Cod. Proveedor</th><th>Codigo</th><th>Descripcion</th><th>Marca</th><th class="text-end">Stock</th></tr></thead>
-                        <tbody id="cuerpoCodigoModal"><tr><td colspan="6" class="text-center text-muted py-3">Cargando...</td></tr></tbody>
+                        <thead class="table-light" style="position:sticky;top:0"><tr><th>#</th><th>Codigo</th><th>Nombre Producto</th><th>Marca</th><th class="text-end">Stock</th></tr></thead>
+                        <tbody id="cuerpoCodigoModal"><tr><td colspan="5" class="text-center text-muted py-3">Cargando...</td></tr></tbody>
                     </table>
                 </div>
             </div>
@@ -401,7 +401,7 @@ function cargarProductoEnFila(tr, prod) {
     tr.dataset.productoId = String(prod.inv_producto_id || '');
     tr.querySelector('.inp-cod-prov').value    = prod.cod_proveedor   || '';
     tr.querySelector('.inp-cod-interno').value = prod.codigo_interno  || '';
-    tr.querySelector('.inp-descripcion').value = prod.producto_nombre || '';
+    tr.querySelector('.inp-descripcion').value = prod.inv_producto_nombre || '';
     tr.querySelector('.inp-marca').value       = prod.marca_nombre    || '';
     tr.querySelector('.inp-costo').value       = parseFloat(prod.costo || 0).toFixed(6);
     tr.querySelector('.inp-producto-id').value = String(prod.inv_producto_id || '');
@@ -615,16 +615,15 @@ q('#modalProductosCodigo').addEventListener('hidden.bs.modal', () => { filaActua
 /* ── Render tabla productos ───────────────────────────────────────────────── */
 function renderProductos(tbody, lista) {
     if (!lista.length) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">Sin resultados</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">Sin resultados</td></tr>';
         return;
     }
     tbody.innerHTML = lista.map((p, i) => {
         const safeJson = JSON.stringify(p).replace(/'/g, '&#39;');
         return `<tr style="cursor:pointer" data-prod='${safeJson}'>
           <td>${i+1}</td>
-          <td>${esc(p.cod_proveedor||'—')}</td>
           <td>${esc(p.codigo_interno)}</td>
-          <td>${esc(p.producto_nombre)}</td>
+          <td>${esc(p.inv_producto_nombre||'')}</td>
           <td>${esc(p.marca_nombre||'—')}</td>
           <td class="text-end">${parseFloat(p.stock_total||0).toFixed(2)}</td>
         </tr>`;

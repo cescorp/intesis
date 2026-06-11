@@ -43,8 +43,10 @@ use Intesis\Modelos\ClienteModelo;
 use Intesis\Modelos\TipoDocumentoModelo;
 use Intesis\Modelos\UsuarioEmpresaModelo;
 use Intesis\Modelos\UsuarioModelo;
+use Intesis\Modelos\SriImportacionModelo;
 use Intesis\Servicios\AutenticacionServicio;
 use Intesis\Servicios\GeneradorPdf;
+use Intesis\Servicios\SriXmlServicio;
 
 final class Aplicacion
 {
@@ -89,6 +91,8 @@ final class Aplicacion
         $proveedorModelo = new ProveedorModelo($conexion);
         $documentoCompraModelo = new DocumentoCompraModelo($conexion);
         $clienteModelo = new ClienteModelo($conexion);
+        $sriXmlServicio = new SriXmlServicio();
+        $sriImportacionModelo = new SriImportacionModelo($conexion->obtener());
         $autenticacionServicio = new AutenticacionServicio($usuarioModelo, $registroErrores);
         $generadorPdf = new GeneradorPdf();
 
@@ -109,7 +113,7 @@ final class Aplicacion
             new KardexControlador($vista, $sesion, $kardexModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores, $generadorPdf),
             new MovimientoInternoControlador($vista, $sesion, $movimientoInternoModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
             new ProveedorControlador($vista, $sesion, $proveedorModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
-            new DocumentoCompraControlador($vista, $sesion, $documentoCompraModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
+            new DocumentoCompraControlador($vista, $sesion, $documentoCompraModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores, $sriXmlServicio, $sriImportacionModelo),
             new ClienteControlador($vista, $sesion, $clienteModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
             $configuracion,
             $vista,

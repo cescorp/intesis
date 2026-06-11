@@ -7,11 +7,13 @@ namespace Intesis\Controladores;
 use Intesis\Modelos\DocumentoCompraModelo;
 use Intesis\Modelos\MenuModelo;
 use Intesis\Modelos\MensajeSistemaModelo;
+use Intesis\Modelos\SriImportacionModelo;
 use Intesis\Nucleo\Configuracion;
 use Intesis\Nucleo\ControladorComun;
 use Intesis\Nucleo\RegistroErrores;
 use Intesis\Nucleo\Sesion;
 use Intesis\Nucleo\Vista;
+use Intesis\Servicios\SriXmlServicio;
 use Throwable;
 
 final class DocumentoCompraControlador
@@ -25,7 +27,9 @@ final class DocumentoCompraControlador
         private MenuModelo $menuModelo,
         private MensajeSistemaModelo $mensajeSistemaModelo,
         private Configuracion $configuracion,
-        private RegistroErrores $registroErrores
+        private RegistroErrores $registroErrores,
+        private SriXmlServicio $sriXmlServicio,
+        private SriImportacionModelo $sriImportacionModelo
     ) {
     }
 
@@ -37,7 +41,9 @@ final class DocumentoCompraControlador
     {
         $usuario = $this->exigirSesion();
         $this->exigirPermiso('/compras/documentos/ver');
-        $verTodas = $this->esSuperusuario($usuario);
+        $verTodas  = $this->esSuperusuario($usuario);
+        $empresaId = (int) $usuario['empresa_id'];
+        $usuarioId = (int) $usuario['id'];
 
         $estadoFiltro = trim((string) ($_GET['estado'] ?? ''));
         $estadosValidos = ['BORRADOR', 'REGISTRADO', 'ANULADO'];
@@ -45,16 +51,29 @@ final class DocumentoCompraControlador
             $estadoFiltro = '';
         }
 
+        // Tipo FACTURA_COMPRA id (para el modal subir XML)
+        $tiposDoc = $this->documentoCompraModelo->listarTiposDocumento();
+        $tipoFacturaId = null;
+        foreach ($tiposDoc as $td) {
+            if ($td['sis_tipo_documento_codigo'] === 'FACTURA_COMPRA') {
+                $tipoFacturaId = (int) $td['sis_tipo_documento_id'];
+                break;
+            }
+        }
+
         $this->vista->renderizar('compras/documentos', [
-            'titulo'         => 'Documentos de Compra',
-            'usuario'        => $usuario,
-            'menus'          => $this->menuModelo->listarMenusPorPerfil((int) $usuario['empresa_id'], (int) $usuario['perfil_id']),
-            'documentos'     => $this->documentoCompraModelo->listar((int) $usuario['empresa_id'], $verTodas, $estadoFiltro),
-            'esSuperusuario' => $verTodas,
-            'estadoFiltro'   => $estadoFiltro,
-            'permisos'       => $this->obtenerPermisos($usuario),
-            'mensaje'        => $this->sesion->consumirMensaje(),
-            'mensajesSistema'=> $this->mensajeSistemaModelo->listarPorCodigos(['CONFIRMAR_ANULAR_DOCUMENTO']),
+            'titulo'          => 'Documentos de Compra',
+            'usuario'         => $usuario,
+            'menus'           => $this->menuModelo->listarMenusPorPerfil($empresaId, (int) $usuario['perfil_id']),
+            'documentos'      => $this->documentoCompraModelo->listar($empresaId, $verTodas, $estadoFiltro),
+            'bodegas'         => $this->documentoCompraModelo->listarBodegasPermitidas($empresaId, $usuarioId, $verTodas),
+            'esSuperusuario'  => $verTodas,
+            'estadoFiltro'    => $estadoFiltro,
+            'permisos'        => $this->obtenerPermisos($usuario),
+            'tipoFacturaId'   => $tipoFacturaId,
+            'mensaje'         => $this->sesion->consumirMensaje(),
+            'mensajesSistema' => $this->mensajeSistemaModelo->listarPorCodigos(['CONFIRMAR_ANULAR_DOCUMENTO']),
+            'pendientesSri'   => $this->sriImportacionModelo->listarProveedoresConPendientes($empresaId),
         ]);
     }
 
@@ -190,6 +209,476 @@ final class DocumentoCompraControlador
             $this->sesion->guardarMensaje('error', 'No se pudo anular', $excepcion->getMessage());
         }
         $this->redirigir('/compras/documentos');
+    }
+
+    // =========================================================================
+    // SRI: SUBIR XML
+    // =========================================================================
+
+    /**
+     * POST /compras/documentos/subir-xml
+     * Recibe un archivo XML del SRI, lo parsea y devuelve JSON con la previsualización.
+     * No guarda el documento todavía — solo almacena el XML en pendientes y retorna datos.
+     */
+    public function subirXml(): void
+    {
+        $usuario = $this->exigirSesionJson();
+        $this->exigirPermiso('/compras/documentos/subir-xml');
+
+        try {
+            $empresaId       = (int) $usuario['empresa_id'];
+            $usuarioId       = (int) $usuario['id'];
+            $rucEmpresaActiva = $this->sriImportacionModelo->obtenerRucEmpresa($empresaId);
+            $bodegaId        = (int) ($_POST['bodega_id'] ?? 0);
+            if ($bodegaId <= 0) {
+                throw new \InvalidArgumentException('Debe seleccionar una bodega.');
+            }
+
+            // Validar archivo subido
+            $archivo = $_FILES['xml_file'] ?? null;
+            if (!$archivo || ($archivo['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+                throw new \InvalidArgumentException('No se recibió el archivo XML.');
+            }
+            $ext = strtolower(pathinfo($archivo['name'], PATHINFO_EXTENSION));
+            if ($ext !== 'xml') {
+                throw new \InvalidArgumentException('El archivo debe ser .xml');
+            }
+
+            $contenido = file_get_contents($archivo['tmp_name']);
+            if ($contenido === false || strlen($contenido) < 10) {
+                throw new \InvalidArgumentException('El archivo XML está vacío o no se pudo leer.');
+            }
+
+            // Parsear
+            $factura = $this->sriXmlServicio->parsearFactura($contenido);
+            $ruc     = $factura['ruc_emisor'] ?? 'desconocido';
+            $clave   = $factura['clave_acceso'] ?? null;
+
+            // Verificar duplicado
+            $duplicado = $clave && $this->sriImportacionModelo->claveYaExiste($empresaId, $clave);
+            if ($duplicado) {
+                // Eliminar .xml de pendientes si ya existe
+                $rutas = $this->sriXmlServicio->rutasXml($this->raizProyecto(), $ruc, $rucEmpresaActiva);
+                $nombreArchivo = ($clave ?? uniqid()) . '.xml';
+                $rutaPendiente = $rutas['pendientes'] . DIRECTORY_SEPARATOR . $nombreArchivo;
+                if (is_file($rutaPendiente)) {
+                    @unlink($rutaPendiente);
+                }
+                $this->jsonOk([
+                    'duplicado'   => true,
+                    'clave_acceso' => $clave,
+                    'numero'      => ($factura['estab'] ?? '') . '-' . ($factura['pto_emi'] ?? '') . '-' . ($factura['secuencial'] ?? ''),
+                ]);
+            }
+
+            // Guardar XML en pendientes
+            $rutas = $this->sriXmlServicio->rutasXml($this->raizProyecto(), $ruc, $rucEmpresaActiva);
+            $this->sriXmlServicio->asegurarDirectorio($rutas['pendientes']);
+            $nombreArchivo = ($clave ?? uniqid()) . '.xml';
+            $rutaDestino   = $rutas['pendientes'] . DIRECTORY_SEPARATOR . $nombreArchivo;
+            file_put_contents($rutaDestino, $contenido);
+
+            // Registrar en com_archivos_sri
+            $archivoId = $this->sriImportacionModelo->registrarArchivo(
+                $empresaId, 'XML', $rutaDestino, $clave, null, $usuarioId
+            );
+
+            // Buscar/crear proveedor
+            $contacto    = [
+                'telefono'  => $factura['telefono_emisor'],
+                'correo'    => $factura['correo_emisor'],
+                'direccion' => $factura['direccion_emisor'],
+            ];
+            $proveedorId = $this->sriImportacionModelo->buscarOCrearProveedor(
+                $empresaId,
+                $factura['ruc_emisor'] ?? '',
+                $factura['razon_social'] ?? $factura['ruc_emisor'] ?? '',
+                $contacto,
+                $usuarioId
+            );
+
+            // Resolver productos (detectar cuáles faltan)
+            $facturasTemp = [array_merge($factura, ['proveedor_id' => $proveedorId])];
+            $facturasRes  = $this->sriImportacionModelo->resolverProductos($empresaId, $facturasTemp);
+            $factura      = $facturasRes[0];
+
+            $codigosSinMapeo = $this->sriImportacionModelo->filtrarCodigosSinMapeo($empresaId, [
+                array_merge($factura, ['proveedor_id' => $proveedorId])
+            ]);
+
+            $this->jsonOk([
+                'duplicado'        => false,
+                'archivo_id'       => $archivoId,
+                'archivo_ruta'     => $rutaDestino,
+                'factura'          => $factura,
+                'proveedor_id'     => $proveedorId,
+                'bodega_id'        => $bodegaId,
+                'pendientes_codigos' => $codigosSinMapeo,
+            ]);
+        } catch (Throwable $e) {
+            if ($e instanceof \RuntimeException && str_starts_with($e->getMessage(), 'TIPO_NO_SOPORTADO:')) {
+                $tipo = substr($e->getMessage(), strlen('TIPO_NO_SOPORTADO:'));
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode([
+                    'ok'               => false,
+                    'tipo_no_soportado' => true,
+                    'mensaje'          => 'Tipo de comprobante no soportado: ' . trim($tipo),
+                ], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+            $this->registroErrores->escribirExcepcion('SUBIR XML SRI', $e);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['ok' => false, 'mensaje' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+    }
+
+    // =========================================================================
+    // SRI: PROCESAR TXT
+    // =========================================================================
+
+    /**
+     * POST /compras/documentos/procesar-txt
+     * Recibe el TXT del SRI, descarga XMLs vía SOAP, pre-procesa y retorna resumen JSON.
+     */
+    public function procesarTxt(): void
+    {
+        set_time_limit(300);
+
+        $usuario = $this->exigirSesionJson();
+        $this->exigirPermiso('/compras/documentos/procesar-txt');
+
+        try {
+            $empresaId = (int) $usuario['empresa_id'];
+            $usuarioId = (int) $usuario['id'];
+            $bodegaId  = (int) ($_POST['bodega_id'] ?? 0);
+            if ($bodegaId <= 0) {
+                throw new \InvalidArgumentException('Debe seleccionar una bodega.');
+            }
+
+            $archivo = $_FILES['txt_file'] ?? null;
+            if (!$archivo || ($archivo['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+                throw new \InvalidArgumentException('No se recibió el archivo TXT.');
+            }
+            $ext = strtolower(pathinfo($archivo['name'], PATHINFO_EXTENSION));
+            if ($ext !== 'txt') {
+                throw new \InvalidArgumentException('El archivo debe ser .txt');
+            }
+
+            // Guardar TXT en pendientes (directorio = RUC de la empresa receptora)
+            $rucEmpresa  = $this->sriImportacionModelo->obtenerRucEmpresa($empresaId);
+            $rutasTxt    = $this->sriXmlServicio->rutasTxt($this->raizProyecto(), $rucEmpresa);
+            $this->sriXmlServicio->asegurarDirectorio($rutasTxt['pendientes']);
+            $nombreTxt   = date('YmdHis') . '_' . uniqid() . '.txt';
+            $rutaTxtDest = $rutasTxt['pendientes'] . DIRECTORY_SEPARATOR . $nombreTxt;
+            move_uploaded_file($archivo['tmp_name'], $rutaTxtDest);
+
+            // Parsear TXT
+            $parsed      = $this->sriImportacionModelo->parsearTxt($rutaTxtDest);
+            $facturasTxt = $parsed['facturas'];
+            $ignorados   = $parsed['ignorados'];
+            $totalLineas = $parsed['total_lineas'];
+
+            // Registrar TXT
+            $txtArchivoId = $this->sriImportacionModelo->registrarArchivo(
+                $empresaId, 'TXT', $rutaTxtDest, null, $totalLineas, $usuarioId
+            );
+
+            $resultados        = [];
+            $duplicados        = [];
+            $errores           = [];
+            $codigosSinMapeo   = [];
+            $facturasResueltas = [];
+
+            foreach ($facturasTxt as $fila) {
+                $clave = $fila['clave_acceso'] ?? '';
+
+                // Verificar duplicado
+                if ($clave && $this->sriImportacionModelo->claveYaExiste($empresaId, $clave)) {
+                    // Borrar XML pendiente si existe
+                    $rutas = $this->sriXmlServicio->rutasXml($this->raizProyecto(), $fila['ruc_emisor'] ?? 'desconocido', $rucEmpresa);
+                    $rutaXmlPend = $rutas['pendientes'] . DIRECTORY_SEPARATOR . $clave . '.xml';
+                    if (is_file($rutaXmlPend)) {
+                        @unlink($rutaXmlPend);
+                    }
+                    $duplicados[] = $fila;
+                    continue;
+                }
+
+                try {
+                    // Descargar XML vía SOAP
+                    $xmlContenido = $this->sriXmlServicio->descargarXmlSoap($clave);
+                    if ($xmlContenido === null) {
+                        // Registrar solo si aún no existe en com_archivos_sri
+                        $archivoId = $this->sriImportacionModelo->registrarArchivo(
+                            $empresaId, 'XML', '', $clave, null, $usuarioId
+                        );
+                        $this->sriImportacionModelo->actualizarEstadoArchivo(
+                            $archivoId, 'SIN_INFORMACION', 'SRI no retornó información para esta clave.', $usuarioId
+                        );
+                        $errores[] = ['fila' => $fila, 'mensaje' => 'SRI sin información para clave ' . $clave];
+                        continue;
+                    }
+
+                    // Parsear XML descargado
+                    $factura   = $this->sriXmlServicio->parsearFactura($xmlContenido);
+                    $rucEmisor = $factura['ruc_emisor'] ?? ($fila['ruc_emisor'] ?? 'desconocido');
+
+                    // Guardar XML en pendientes
+                    $rutas = $this->sriXmlServicio->rutasXml($this->raizProyecto(), $rucEmisor, $rucEmpresa);
+                    $this->sriXmlServicio->asegurarDirectorio($rutas['pendientes']);
+                    $claveXml    = $factura['clave_acceso'] ?? $clave;
+                    $nombreXml   = $claveXml . '.xml';
+                    $rutaXmlDest = $rutas['pendientes'] . DIRECTORY_SEPARATOR . $nombreXml;
+                    file_put_contents($rutaXmlDest, $xmlContenido);
+
+                    // Registrar XML (UPSERT por clave)
+                    $xmlArchivoId = $this->sriImportacionModelo->registrarArchivo(
+                        $empresaId, 'XML', $rutaXmlDest, $claveXml, null, $usuarioId
+                    );
+                    $this->sriImportacionModelo->actualizarEstadoArchivo($xmlArchivoId, 'DESCARGADO', null, $usuarioId);
+
+                    // Proveedor
+                    $contacto    = [
+                        'telefono'  => $factura['telefono_emisor'],
+                        'correo'    => $factura['correo_emisor'],
+                        'direccion' => $factura['direccion_emisor'],
+                    ];
+                    $proveedorId = $this->sriImportacionModelo->buscarOCrearProveedor(
+                        $empresaId,
+                        $factura['ruc_emisor'] ?? '',
+                        $factura['razon_social'] ?? $fila['razon_social'] ?? '',
+                        $contacto,
+                        $usuarioId
+                    );
+
+                    $facturasResueltas[] = array_merge($factura, [
+                        'proveedor_id' => $proveedorId,
+                        'bodega_id'    => $bodegaId,
+                        'archivo_id'   => $xmlArchivoId,
+                        'archivo_ruta' => $rutaXmlDest,
+                    ]);
+                    $resultados[] = [
+                        'clave'         => $clave,
+                        'numero'        => ($factura['estab'] ?? '') . '-' . ($factura['pto_emi'] ?? '') . '-' . ($factura['secuencial'] ?? ''),
+                        'ruc_emisor'    => $factura['ruc_emisor'] ?? '',
+                        'razon_social'  => $factura['razon_social'] ?? '',
+                        'importe_total' => $factura['importe_total'],
+                    ];
+                } catch (Throwable $e) {
+                    // TIPO_NO_SOPORTADO: registrar como ignorado; demás errores → errores[]
+                    if ($e instanceof \RuntimeException && str_starts_with($e->getMessage(), 'TIPO_NO_SOPORTADO:')) {
+                        try {
+                            $archivoId = $this->sriImportacionModelo->registrarArchivo(
+                                $empresaId, 'XML', '', $clave, null, $usuarioId
+                            );
+                            $this->sriImportacionModelo->actualizarEstadoArchivo(
+                                $archivoId, 'ERROR', $e->getMessage(), $usuarioId
+                            );
+                        } catch (Throwable) { /* ignora si no se puede registrar */ }
+                        $ignorados[] = array_merge($fila, [
+                            'mensaje_ignorado' => trim(substr($e->getMessage(), strlen('TIPO_NO_SOPORTADO:'))),
+                        ]);
+                    } else {
+                        $errores[] = ['fila' => $fila, 'mensaje' => $e->getMessage()];
+                    }
+                }
+            }
+
+            // Resolver productos para facturas descargadas
+            if (!empty($facturasResueltas)) {
+                $facturasResueltas = $this->sriImportacionModelo->resolverProductos($empresaId, $facturasResueltas);
+                $codigosSinMapeo   = $this->sriImportacionModelo->filtrarCodigosSinMapeo($empresaId, $facturasResueltas);
+            }
+
+            // Actualizar estado TXT
+            $this->sriImportacionModelo->actualizarEstadoArchivo($txtArchivoId, 'PROCESADO', null, $usuarioId, $totalLineas);
+
+            $this->jsonOk([
+                'facturas'               => $resultados,
+                'ignorados'              => $ignorados,
+                'duplicados'             => $duplicados,
+                'errores'                => $errores,
+                'codigos_sin_mapeo'      => $codigosSinMapeo,
+                'facturas_para_guardar'  => $facturasResueltas,
+                'bodega_id'              => $bodegaId,
+                'hay_pendientes'         => !empty($errores),
+            ]);
+        } catch (Throwable $e) {
+            $this->registroErrores->escribirExcepcion('PROCESAR TXT SRI', $e);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['ok' => false, 'mensaje' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+    }
+
+    // =========================================================================
+    // SRI: ASIGNAR CÓDIGO
+    // =========================================================================
+
+    /**
+     * POST /compras/documentos/asignar-codigo
+     * Guarda el mapeo cod_proveedor → producto y propaga a documentos pendientes.
+     */
+    public function asignarCodigo(): void
+    {
+        $usuario = $this->exigirSesionJson();
+        $this->exigirPermiso('/compras/documentos/subir-xml'); // reutiliza permiso
+
+        try {
+            $empresaId  = (int) $usuario['empresa_id'];
+            $usuarioId  = (int) $usuario['id'];
+            $proveedorId = (int) ($_POST['proveedor_id'] ?? 0);
+            $codPrincipal = trim((string) ($_POST['cod_principal'] ?? ''));
+            $productoId  = (int) ($_POST['producto_id'] ?? 0);
+
+            if ($proveedorId <= 0) {
+                throw new \InvalidArgumentException('Proveedor no válido.');
+            }
+            if ($codPrincipal === '') {
+                throw new \InvalidArgumentException('Código proveedor vacío.');
+            }
+            if ($productoId <= 0) {
+                throw new \InvalidArgumentException('Producto no válido.');
+            }
+
+            $this->sriImportacionModelo->guardarMapeo($empresaId, $proveedorId, $codPrincipal, $productoId, $usuarioId);
+            $this->jsonOk(['mensaje' => 'Mapeo guardado.']);
+        } catch (Throwable $e) {
+            $this->registroErrores->escribirExcepcion('ASIGNAR CODIGO SRI', $e);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['ok' => false, 'mensaje' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+    }
+
+    // =========================================================================
+    // SRI: GUARDAR DOCUMENTOS
+    // =========================================================================
+
+    /**
+     * POST /compras/documentos/guardar-sri
+     * Recibe las facturas (parseadas) en formato JSON, valida y crea documentos BORRADOR.
+     * Mueve los XMLs de pendientes a procesados.
+     */
+    public function guardarSri(): void
+    {
+        $usuario = $this->exigirSesionJson();
+        $this->exigirPermiso('/compras/documentos/subir-xml');
+
+        try {
+            $empresaId       = (int) $usuario['empresa_id'];
+            $usuarioId       = (int) $usuario['id'];
+            $rucEmpresaActiva = $this->sriImportacionModelo->obtenerRucEmpresa($empresaId);
+            $facturasBruto   = json_decode(
+                (string) ($_POST['facturas_json'] ?? '[]'),
+                true,
+                512,
+                JSON_THROW_ON_ERROR
+            );
+            $bodegaId = (int) ($_POST['bodega_id'] ?? 0);
+            if ($bodegaId <= 0) {
+                throw new \InvalidArgumentException('Bodega no válida.');
+            }
+
+            // Tipo FACTURA_COMPRA
+            $tiposDoc = $this->documentoCompraModelo->listarTiposDocumento();
+            $tipoFacturaId = null;
+            foreach ($tiposDoc as $td) {
+                if ($td['sis_tipo_documento_codigo'] === 'FACTURA_COMPRA') {
+                    $tipoFacturaId = (int) $td['sis_tipo_documento_id'];
+                    break;
+                }
+            }
+            if (!$tipoFacturaId) {
+                throw new \RuntimeException('Tipo FACTURA_COMPRA no configurado.');
+            }
+
+            $guardados = [];
+            $errores   = [];
+
+            foreach ($facturasBruto as $factura) {
+                try {
+                    $proveedorId = (int) ($factura['proveedor_id'] ?? 0);
+                    $detalles    = $factura['detalles'] ?? [];
+                    $clave       = $factura['clave_acceso'] ?? null;
+
+                    // Validar que todos los detalles tengan producto
+                    foreach ($detalles as $i => $det) {
+                        if (empty($det['inv_producto_id'])) {
+                            $cod = $det['cod_principal'] ?? ("línea " . ($i + 1));
+                            throw new \InvalidArgumentException("Código sin asignar: {$cod}. Asigne todos los productos antes de guardar.");
+                        }
+                    }
+
+                    // Duplicado
+                    if ($clave && $this->sriImportacionModelo->claveYaExiste($empresaId, $clave)) {
+                        $errores[] = [
+                            'numero'  => ($factura['estab'] ?? '') . '-' . ($factura['pto_emi'] ?? '') . '-' . ($factura['secuencial'] ?? ''),
+                            'mensaje' => 'Documento duplicado (ya importado).',
+                        ];
+                        continue;
+                    }
+
+                    $numero = ($factura['estab'] ?? '') . '-' . ($factura['pto_emi'] ?? '') . '-' . ($factura['secuencial'] ?? '');
+
+                    $cabecera = [
+                        'sis_tipo_documento_id'          => $tipoFacturaId,
+                        'com_proveedor_id'               => $proveedorId,
+                        'inv_bodega_id'                  => $bodegaId,
+                        'com_documento_numero'           => $numero,
+                        'com_documento_fecha'            => $factura['fecha_emision'],
+                        'com_documento_observacion'      => 'Importado desde SRI',
+                        'com_documento_subtotal'         => $factura['total_sin_impuestos'] ?? 0,
+                        'com_documento_iva'              => $factura['iva'] ?? 0,
+                        'com_documento_total'            => $factura['importe_total'] ?? 0,
+                        'com_documento_clave_acceso'     => $clave,
+                        'com_documento_num_autorizacion' => $factura['numero_autorizacion'] ?? null,
+                        'com_documento_fecha_autorizacion' => $factura['fecha_autorizacion'] ?? null,
+                        'com_documento_ruc_emisor'       => $factura['ruc_emisor'] ?? null,
+                        'com_documento_razon_emisor'     => $factura['razon_social'] ?? null,
+                    ];
+
+                    $docId = $this->documentoCompraModelo->crearDesdeSri($empresaId, $cabecera, $detalles, $usuarioId);
+
+                    // Mover XML de pendientes → procesados (directorio = RUC empresa activa)
+                    $rutaXml = $factura['archivo_ruta'] ?? null;
+                    if ($rutaXml && is_file($rutaXml)) {
+                        $rucEmisor = $factura['ruc_emisor'] ?? 'desconocido';
+                        $rutas     = $this->sriXmlServicio->rutasXml(
+                            $this->raizProyecto(),
+                            $rucEmisor,
+                            $rucEmpresaActiva   // RUC de la empresa receptora
+                        );
+                        $this->sriXmlServicio->moverArchivo($rutaXml, $rutas['procesados'], basename($rutaXml));
+                    }
+
+                    // Actualizar registro com_archivos_sri si tiene archivo_id
+                    $archivoId = (int) ($factura['archivo_id'] ?? 0);
+                    if ($archivoId > 0) {
+                        $this->sriImportacionModelo->actualizarEstadoArchivo($archivoId, 'PROCESADO', null, $usuarioId);
+                    }
+
+                    $guardados[] = ['numero' => $numero, 'documento_id' => $docId];
+                } catch (Throwable $e2) {
+                    $errores[] = [
+                        'numero'  => ($factura['estab'] ?? '') . '-' . ($factura['pto_emi'] ?? '') . '-' . ($factura['secuencial'] ?? ''),
+                        'mensaje' => $e2->getMessage(),
+                    ];
+                }
+            }
+
+            $this->jsonOk([
+                'guardados' => $guardados,
+                'errores'   => $errores,
+                'mensaje'   => count($guardados) . ' documento(s) guardados como BORRADOR.',
+            ]);
+        } catch (Throwable $e) {
+            $this->registroErrores->escribirExcepcion('GUARDAR SRI', $e);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['ok' => false, 'mensaje' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
     }
 
     // =========================================================================
@@ -332,11 +821,18 @@ final class DocumentoCompraControlador
         $pId = (int) $usuario['perfil_id'];
         $puedeCrear = $this->menuModelo->tienePermiso($eId, $pId, '/compras/documentos/crear');
         return [
-            'crear'     => $puedeCrear,
-            'editar'    => $puedeCrear,  // misma autorización que crear
-            'registrar' => $this->menuModelo->tienePermiso($eId, $pId, '/compras/documentos/registrar'),
-            'anular'    => $this->menuModelo->tienePermiso($eId, $pId, '/compras/documentos/anular'),
+            'crear'       => $puedeCrear,
+            'editar'      => $puedeCrear,  // misma autorización que crear
+            'registrar'   => $this->menuModelo->tienePermiso($eId, $pId, '/compras/documentos/registrar'),
+            'anular'      => $this->menuModelo->tienePermiso($eId, $pId, '/compras/documentos/anular'),
+            'subir_xml'   => $this->menuModelo->tienePermiso($eId, $pId, '/compras/documentos/subir-xml'),
+            'procesar_txt' => $this->menuModelo->tienePermiso($eId, $pId, '/compras/documentos/procesar-txt'),
         ];
+    }
+
+    private function raizProyecto(): string
+    {
+        return dirname(__DIR__, 2); // src/../ = raiz del proyecto
     }
 
     private function jsonOk(array $data): never

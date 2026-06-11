@@ -30,6 +30,7 @@ require_once __DIR__ . '/src/Modelos/KardexModelo.php';
 require_once __DIR__ . '/src/Modelos/MovimientoInternoModelo.php';
 require_once __DIR__ . '/src/Modelos/ProveedorModelo.php';
 require_once __DIR__ . '/src/Modelos/DocumentoCompraModelo.php';
+require_once __DIR__ . '/src/Modelos/SriImportacionModelo.php';
 require_once __DIR__ . '/src/Modelos/ClienteModelo.php';
 if (is_file(__DIR__ . '/vendor/autoload.php')) {
     require_once __DIR__ . '/vendor/autoload.php';
@@ -37,6 +38,7 @@ if (is_file(__DIR__ . '/vendor/autoload.php')) {
 require_once __DIR__ . '/src/Servicios/AutenticacionServicio.php';
 require_once __DIR__ . '/src/Servicios/GeneradorPdf.php';
 require_once __DIR__ . '/src/Servicios/ValidadorIdentificacion.php';
+require_once __DIR__ . '/src/Servicios/SriXmlServicio.php';
 require_once __DIR__ . '/src/Controladores/AutenticacionControlador.php';
 require_once __DIR__ . '/src/Controladores/PanelControlador.php';
 require_once __DIR__ . '/src/Controladores/EmpresaControlador.php';

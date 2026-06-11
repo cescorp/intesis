@@ -590,14 +590,11 @@ final class DocumentoCompraModelo
                    p.inv_producto_nombre,
                    p.inv_producto_costo_ultimo      AS costo,
                    COALESCE(m.inv_marca_nombre, '')  AS marca_nombre,
-                   COALESCE(cp.inv_codigo_proveedor_codigo, '') AS cod_proveedor,
                    COALESCE(SUM(s.inv_stock_cantidad_disponible), 0) AS stock_total
             FROM inv_producto p
             LEFT  JOIN inv_marca m  ON m.inv_marca_id    = p.inv_marca_id
             LEFT  JOIN inv_stock s  ON s.inv_producto_id = p.inv_producto_id
                                    AND s.sis_empresa_id   = :empresa_id
-            LEFT  JOIN inv_codigo_proveedor cp ON cp.inv_producto_id = p.inv_producto_id
-                                               AND cp.inv_codigo_proveedor_estado = 1
             INNER JOIN sis_estado es ON es.sis_estado_id = p.sis_estado_id
             WHERE p.sis_empresa_id = :empresa_id2
               AND es.sis_estado_codigo = 'ACTIVO'
@@ -606,7 +603,7 @@ final class DocumentoCompraModelo
                   OR upper(p.inv_producto_nombre) LIKE upper(:like2)
               )
             GROUP BY p.inv_producto_id, p.inv_producto_codigo_principal, p.inv_producto_nombre,
-                     p.inv_producto_costo_ultimo, m.inv_marca_nombre, cp.inv_codigo_proveedor_codigo
+                     p.inv_producto_costo_ultimo, m.inv_marca_nombre
             ORDER BY p.inv_producto_nombre
             LIMIT 50
         ");
@@ -889,6 +886,134 @@ final class DocumentoCompraModelo
                 'codigo'       => $codigo,
                 'usuario'      => $usuarioId,
             ]);
+        }
+    }
+
+    // =========================================================================
+    // CREACIÓN DESDE SRI
+    // =========================================================================
+
+    /**
+     * Crea un documento de compra a partir de datos parseados del XML del SRI.
+     * El documento se crea en estado BORRADOR con origen='SRI'.
+     * Todos los detalles deben tener inv_producto_id asignado (validar antes de llamar).
+     *
+     * @param array $cabecera {
+     *   sis_empresa_id, sis_tipo_documento_id, com_proveedor_id, inv_bodega_id,
+     *   com_documento_numero, com_documento_fecha, com_documento_observacion,
+     *   com_documento_subtotal, com_documento_iva, com_documento_total,
+     *   com_documento_clave_acceso, com_documento_num_autorizacion,
+     *   com_documento_fecha_autorizacion, com_documento_ruc_emisor,
+     *   com_documento_razon_emisor, usuario_id
+     * }
+     * @param array[] $lineas  Cada elemento con campos de detalle
+     */
+    public function crearDesdeSri(int $empresaId, array $cabecera, array $lineas, int $usuarioId): int
+    {
+        $pdo = $this->pdo();
+        $pdo->beginTransaction();
+        try {
+            $estadoId = $this->obtenerEstadoId('BORRADOR');
+            if (!$estadoId) {
+                throw new RuntimeException('Estado BORRADOR no encontrado.');
+            }
+
+            $stmtDoc = $pdo->prepare("
+                INSERT INTO com_documento (
+                    sis_empresa_id, sis_tipo_documento_id, com_proveedor_id, inv_bodega_id,
+                    sis_estado_id, com_documento_numero, com_documento_fecha_emision,
+                    com_documento_observacion, com_documento_subtotal,
+                    com_documento_iva, com_documento_valor_total,
+                    com_documento_origen,
+                    com_documento_clave_acceso, com_documento_num_autorizacion,
+                    com_documento_fecha_autorizacion, com_documento_ruc_emisor,
+                    com_documento_razon_emisor,
+                    usuario_crea, fecha_crea
+                ) VALUES (
+                    :empresa_id, :tipo_doc_id, :proveedor_id, :bodega_id,
+                    :estado_id, :numero, :fecha_emision,
+                    :observacion, :subtotal,
+                    :iva, :valor_total,
+                    'SRI',
+                    :clave_acceso, :num_autorizacion,
+                    :fecha_autorizacion, :ruc_emisor,
+                    :razon_emisor,
+                    :usuario, now()
+                )
+                RETURNING com_documento_id
+            ");
+            $stmtDoc->execute([
+                'empresa_id'         => $empresaId,
+                'tipo_doc_id'        => (int) $cabecera['sis_tipo_documento_id'],
+                'proveedor_id'       => (int) $cabecera['com_proveedor_id'],
+                'bodega_id'          => (int) $cabecera['inv_bodega_id'],
+                'estado_id'          => $estadoId,
+                'numero'             => $cabecera['com_documento_numero'],
+                'fecha_emision'      => $cabecera['com_documento_fecha'],
+                'observacion'        => $cabecera['com_documento_observacion'] ?? '',
+                'subtotal'           => (float) $cabecera['com_documento_subtotal'],
+                'iva'                => (float) $cabecera['com_documento_iva'],
+                'valor_total'        => (float) $cabecera['com_documento_total'],
+                'clave_acceso'       => $cabecera['com_documento_clave_acceso']       ?? null,
+                'num_autorizacion'   => $cabecera['com_documento_num_autorizacion']   ?? null,
+                'fecha_autorizacion' => $cabecera['com_documento_fecha_autorizacion'] ?? null,
+                'ruc_emisor'         => $cabecera['com_documento_ruc_emisor']         ?? null,
+                'razon_emisor'       => $cabecera['com_documento_razon_emisor']       ?? null,
+                'usuario'            => $usuarioId,
+            ]);
+            $documentoId = (int) $stmtDoc->fetchColumn();
+
+            $stmtDet = $pdo->prepare("
+                INSERT INTO com_documento_detalle (
+                    sis_empresa_id, com_documento_id, inv_producto_id,
+                    com_documento_detalle_descripcion_sri,
+                    com_documento_detalle_cod_proveedor,
+                    com_documento_detalle_cantidad,
+                    com_documento_detalle_precio,
+                    com_documento_detalle_descuento,
+                    com_documento_detalle_total,
+                    com_documento_detalle_marca_iva,
+                    sis_iva_id,
+                    com_documento_detalle_pvp,
+                    usuario_crea
+                ) VALUES (
+                    :empresa_id, :documento_id, :producto_id,
+                    :descripcion_sri,
+                    :cod_proveedor,
+                    :cantidad,
+                    :precio,
+                    :descuento,
+                    :total,
+                    :marca_iva,
+                    :iva_id,
+                    :pvp,
+                    :usuario
+                )
+            ");
+            foreach ($lineas as $linea) {
+                $tarivaIva = (float) ($linea['tarifa_iva'] ?? 0);
+                $stmtDet->execute([
+                    'empresa_id'      => $empresaId,
+                    'documento_id'    => $documentoId,
+                    'producto_id'     => (int) $linea['inv_producto_id'],
+                    'descripcion_sri' => $linea['descripcion_sri'] ?? null,
+                    'cod_proveedor'   => $linea['cod_principal']   ?? null,
+                    'cantidad'        => (float) ($linea['cantidad'] ?? 1),
+                    'precio'          => (float) ($linea['precio_unitario'] ?? 0),
+                    'descuento'       => (float) ($linea['descuento'] ?? 0),
+                    'total'           => (float) ($linea['precio_total_sin_impuesto'] ?? 0),
+                    'marca_iva'       => $tarivaIva > 0 ? 'S' : 'N',
+                    'iva_id'          => null,
+                    'pvp'             => (float) ($linea['pvp'] ?? 0),
+                    'usuario'         => $usuarioId,
+                ]);
+            }
+
+            $pdo->commit();
+            return $documentoId;
+        } catch (\Throwable $e) {
+            $pdo->rollBack();
+            throw $e;
         }
     }
 
