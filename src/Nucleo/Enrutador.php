@@ -682,6 +682,16 @@ final class Enrutador
             return;
         }
 
+        if ($metodo === 'GET' && $ruta === '/compras/documentos/pdf') {
+            $this->documentoCompraControlador->generarPdf();
+            return;
+        }
+
+        if ($metodo === 'GET' && $ruta === '/compras/documentos/xml') {
+            $this->documentoCompraControlador->descargarXml();
+            return;
+        }
+
         if ($metodo === 'GET' && $ruta === '/ventas/clientes') {
             $this->clienteControlador->listar();
             return;

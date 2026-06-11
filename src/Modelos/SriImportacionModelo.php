@@ -30,7 +30,8 @@ final class SriImportacionModelo
         string $ruta,
         ?string $clave,
         ?int $lineas,
-        int $usuarioId
+        int $usuarioId,
+        ?string $xmlContenido = null
     ): int {
         // Para XMLs con clave de acceso: reutilizar registro existente si ya fue subido
         if ($tipo === 'XML' && $clave !== null) {
@@ -47,12 +48,18 @@ final class SriImportacionModelo
                 $stmtUpd = $this->pdo->prepare(
                     'UPDATE com_archivos_sri SET
                          com_archivos_sri_archivo = :archivo,
+                         com_archivos_sri_xml     = COALESCE(:xml, com_archivos_sri_xml),
                          com_archivos_sri_estado  = \'PENDIENTE\',
                          usuario_modifica         = :usuario,
                          fecha_modifica           = now()
                      WHERE com_archivos_sri_id = :id'
                 );
-                $stmtUpd->execute(['archivo' => $ruta, 'usuario' => $usuarioId, 'id' => (int) $existente]);
+                $stmtUpd->execute([
+                    'archivo' => $ruta,
+                    'xml'     => $xmlContenido,
+                    'usuario' => $usuarioId,
+                    'id'      => (int) $existente,
+                ]);
                 return (int) $existente;
             }
         }
@@ -60,15 +67,17 @@ final class SriImportacionModelo
         $stmt = $this->pdo->prepare(
             'INSERT INTO com_archivos_sri
                 (sis_empresa_id, com_archivos_sri_tipo, com_archivos_sri_archivo,
+                 com_archivos_sri_xml,
                  com_archivos_sri_estado, com_archivos_sri_clave, com_archivos_sri_total_lineas,
                  usuario_crea, fecha_crea)
-             VALUES (:empresa_id, :tipo, :archivo, \'PENDIENTE\', :clave, :lineas, :usuario, now())
+             VALUES (:empresa_id, :tipo, :archivo, :xml, \'PENDIENTE\', :clave, :lineas, :usuario, now())
              RETURNING com_archivos_sri_id'
         );
         $stmt->execute([
             'empresa_id' => $empresaId,
             'tipo'       => $tipo,
             'archivo'    => $ruta,
+            'xml'        => $xmlContenido,
             'clave'      => $clave,
             'lineas'     => $lineas,
             'usuario'    => $usuarioId,

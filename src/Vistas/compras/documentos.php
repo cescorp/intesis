@@ -92,6 +92,11 @@ $pendSri     = $pendientesSri ?? [];
                             <i class="bi bi-pencil-square"></i>
                         </a>
                         <?php endif; ?>
+                        <button type="button" class="btn btn-accion btn-pdf-documento" title="Vista PDF"
+                            data-id="<?= (int) $doc['com_documento_id'] ?>"
+                            data-numero="<?= htmlspecialchars($doc['com_documento_numero']) ?>">
+                            <i class="bi bi-file-pdf"></i>
+                        </button>
                         <?php if ($doc['sis_estado_codigo'] === 'BORRADOR' && $permisos['anular']): ?>
                         <form action="<?= $appUrl ?>/compras/documentos/anular" method="post" class="d-inline formulario-confirmar" data-codigo-mensaje="CONFIRMAR_ANULAR_DOCUMENTO">
                             <input type="hidden" name="documento_id" value="<?= (int) $doc['com_documento_id'] ?>">
@@ -105,6 +110,38 @@ $pendSri     = $pendientesSri ?? [];
             </table>
         </div>
     </section></div></div></main>
+</div>
+
+<!-- ============================================================
+     MODAL PDF DOCUMENTO
+     ============================================================ -->
+<div class="modal fade modal-intesis" id="modalPdfDocumento" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content" style="height:90vh">
+            <div class="modal-header py-2">
+                <div>
+                    <p class="modal-etiqueta mb-0">Compras</p>
+                    <h2 class="modal-title h6 mb-0" id="modalPdfDocumentoTitulo">Vista Previa PDF</h2>
+                </div>
+                <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0" style="flex:1;overflow:hidden">
+                <iframe id="iframePdfDocumento" src="" style="width:100%;height:100%;border:0"
+                    title="Vista previa del PDF"></iframe>
+            </div>
+            <div class="modal-footer py-2 gap-2">
+                <a id="btnDescPdf" href="#" target="_blank" class="btn btn-sm btn-intesis">
+                    <i class="bi bi-file-pdf me-1"></i>Descargar PDF
+                </a>
+                <button type="button" id="btnDescXml" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-file-earmark-code me-1"></i>Descargar XML
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-danger ms-auto" data-bs-dismiss="modal">
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- ============================================================
@@ -1105,6 +1142,33 @@ $pendSri     = $pendientesSri ?? [];
             }],
             () => window.location.reload()
         );
+    });
+
+    /* ══════════════════════════════════════════════════════════
+       MODAL PDF DOCUMENTO
+    ══════════════════════════════════════════════════════════ */
+    document.addEventListener('click', (e) => {
+        const btn = e.target.closest('.btn-pdf-documento');
+        if (!btn) return;
+        const id      = btn.dataset.id;
+        const numero  = btn.dataset.numero || id;
+        const pdfUrl  = appUrl + '/compras/documentos/pdf?id=' + id;
+        const descUrl = appUrl + '/compras/documentos/pdf?id=' + id + '&modo=descargar';
+        const xmlUrl  = appUrl + '/compras/documentos/xml?id=' + id;
+
+        document.getElementById('modalPdfDocumentoTitulo').textContent = 'Factura ' + numero;
+        document.getElementById('iframePdfDocumento').src = pdfUrl;
+        document.getElementById('btnDescPdf').href = descUrl;
+
+        const btnXml = document.getElementById('btnDescXml');
+        btnXml.onclick = () => { window.open(xmlUrl, '_blank'); };
+
+        getModal('modalPdfDocumento').show();
+    });
+
+    document.getElementById('modalPdfDocumento')?.addEventListener('hidden.bs.modal', () => {
+        document.getElementById('iframePdfDocumento').src = '';
+        document.getElementById('modalPdfDocumentoTitulo').textContent = 'Vista Previa PDF';
     });
 
 }());

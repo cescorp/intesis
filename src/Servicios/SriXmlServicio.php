@@ -205,11 +205,45 @@ final class SriXmlServicio
 
         $dirMatriz = $this->domTexto($xpath, $tributaria, './*[local-name()="dirMatriz"]');
 
+        // Tipo emisión (código SRI → texto)
+        $tipoEmisionCod = $this->domTexto($xpath, $tributaria, './*[local-name()="tipoEmision"]');
+        $tipoEmision    = match ($tipoEmisionCod) {
+            '1'     => 'NORMAL',
+            '2'     => 'INDISPONIBILIDAD DEL SISTEMA',
+            default => (string) ($tipoEmisionCod ?? ''),
+        };
+
+        // Pagos
+        $pagos = [];
+        $nodosPago = $xpath->query('//*[local-name()="pagos"]/*[local-name()="pago"]');
+        if ($nodosPago !== false) {
+            foreach ($nodosPago as $pago) {
+                $pagos[] = [
+                    'forma_pago' => (string) ($this->domTexto($xpath, $pago, './*[local-name()="formaPago"]') ?? ''),
+                    'total'      => (float) ($this->numero($this->domTexto($xpath, $pago, './*[local-name()="total"]')) ?? 0),
+                ];
+            }
+        }
+
+        // Info adicional (todos los campos)
+        $infoAdicional = [];
+        $nodosInfo = $xpath->query('//*[local-name()="infoAdicional"]/*[local-name()="campoAdicional"]');
+        if ($nodosInfo !== false) {
+            foreach ($nodosInfo as $campo) {
+                $nombre = trim((string) $campo->getAttribute('nombre'));
+                $valor  = trim((string) $campo->textContent);
+                if ($nombre !== '' || $valor !== '') {
+                    $infoAdicional[] = ['nombre' => $nombre, 'valor' => $valor];
+                }
+            }
+        }
+
         return [
             'estado_autorizacion'   => $auth['estado_autorizacion'],
             'numero_autorizacion'   => $auth['numero_autorizacion'],
             'fecha_autorizacion'    => $auth['fecha_autorizacion'],
             'ambiente'              => $auth['ambiente'],
+            'tipo_emision'          => $tipoEmision,
             'version_xml'           => $factura->getAttribute('version') ?: '1.0',
             'clave_acceso'          => $this->domTexto($xpath, $tributaria, './*[local-name()="claveAcceso"]'),
             'ruc_emisor'            => $this->domTexto($xpath, $tributaria, './*[local-name()="ruc"]'),
@@ -225,7 +259,10 @@ final class SriXmlServicio
             'importe_total'         => (float) ($this->numero($this->domTexto($xpath, $info, './*[local-name()="importeTotal"]')) ?? 0),
             'telefono_emisor'       => $contacto['telefono'],
             'correo_emisor'         => $contacto['correo'],
+            'dir_matriz'            => $dirMatriz,
             'direccion_emisor'      => $contacto['direccion'] ?? $dirMatriz,
+            'pagos'                 => $pagos,
+            'info_adicional'        => $infoAdicional,
             'detalles'              => $detalles,
         ];
     }

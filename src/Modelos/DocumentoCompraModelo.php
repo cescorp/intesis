@@ -928,6 +928,9 @@ final class DocumentoCompraModelo
                     com_documento_clave_acceso, com_documento_num_autorizacion,
                     com_documento_fecha_autorizacion, com_documento_ruc_emisor,
                     com_documento_razon_emisor,
+                    com_documento_nombre_comercial_emisor, com_documento_dir_matriz,
+                    com_documento_ambiente, com_documento_tipo_emision,
+                    com_documento_pagos_json, com_documento_info_adicional_json,
                     usuario_crea, fecha_crea
                 ) VALUES (
                     :empresa_id, :tipo_doc_id, :proveedor_id, :bodega_id,
@@ -938,28 +941,37 @@ final class DocumentoCompraModelo
                     :clave_acceso, :num_autorizacion,
                     :fecha_autorizacion, :ruc_emisor,
                     :razon_emisor,
+                    :nombre_comercial_emisor, :dir_matriz,
+                    :ambiente, :tipo_emision,
+                    :pagos_json, :info_adicional_json,
                     :usuario, now()
                 )
                 RETURNING com_documento_id
             ");
             $stmtDoc->execute([
-                'empresa_id'         => $empresaId,
-                'tipo_doc_id'        => (int) $cabecera['sis_tipo_documento_id'],
-                'proveedor_id'       => (int) $cabecera['com_proveedor_id'],
-                'bodega_id'          => (int) $cabecera['inv_bodega_id'],
-                'estado_id'          => $estadoId,
-                'numero'             => $cabecera['com_documento_numero'],
-                'fecha_emision'      => $cabecera['com_documento_fecha'],
-                'observacion'        => $cabecera['com_documento_observacion'] ?? '',
-                'subtotal'           => (float) $cabecera['com_documento_subtotal'],
-                'iva'                => (float) $cabecera['com_documento_iva'],
-                'valor_total'        => (float) $cabecera['com_documento_total'],
-                'clave_acceso'       => $cabecera['com_documento_clave_acceso']       ?? null,
-                'num_autorizacion'   => $cabecera['com_documento_num_autorizacion']   ?? null,
-                'fecha_autorizacion' => $cabecera['com_documento_fecha_autorizacion'] ?? null,
-                'ruc_emisor'         => $cabecera['com_documento_ruc_emisor']         ?? null,
-                'razon_emisor'       => $cabecera['com_documento_razon_emisor']       ?? null,
-                'usuario'            => $usuarioId,
+                'empresa_id'              => $empresaId,
+                'tipo_doc_id'             => (int) $cabecera['sis_tipo_documento_id'],
+                'proveedor_id'            => (int) $cabecera['com_proveedor_id'],
+                'bodega_id'               => (int) $cabecera['inv_bodega_id'],
+                'estado_id'               => $estadoId,
+                'numero'                  => $cabecera['com_documento_numero'],
+                'fecha_emision'           => $cabecera['com_documento_fecha'],
+                'observacion'             => $cabecera['com_documento_observacion'] ?? '',
+                'subtotal'                => (float) $cabecera['com_documento_subtotal'],
+                'iva'                     => (float) $cabecera['com_documento_iva'],
+                'valor_total'             => (float) $cabecera['com_documento_total'],
+                'clave_acceso'            => $cabecera['com_documento_clave_acceso']              ?? null,
+                'num_autorizacion'        => $cabecera['com_documento_num_autorizacion']          ?? null,
+                'fecha_autorizacion'      => $cabecera['com_documento_fecha_autorizacion']        ?? null,
+                'ruc_emisor'              => $cabecera['com_documento_ruc_emisor']                ?? null,
+                'razon_emisor'            => $cabecera['com_documento_razon_emisor']              ?? null,
+                'nombre_comercial_emisor' => $cabecera['com_documento_nombre_comercial_emisor']   ?? null,
+                'dir_matriz'              => $cabecera['com_documento_dir_matriz']                ?? null,
+                'ambiente'                => $cabecera['com_documento_ambiente']                  ?? null,
+                'tipo_emision'            => $cabecera['com_documento_tipo_emision']              ?? null,
+                'pagos_json'              => $cabecera['com_documento_pagos_json']                ?? null,
+                'info_adicional_json'     => $cabecera['com_documento_info_adicional_json']       ?? null,
+                'usuario'                 => $usuarioId,
             ]);
             $documentoId = (int) $stmtDoc->fetchColumn();
 
@@ -1028,6 +1040,227 @@ final class DocumentoCompraModelo
         ");
         $sentencia->execute(['codigo' => $codigo]);
         return (int) $sentencia->fetchColumn();
+    }
+
+    // =========================================================================
+    // DATOS PARA PDF
+    // =========================================================================
+
+    /**
+     * Devuelve los datos completos de un documento listos para generar el PDF.
+     * Construye cabecera, detalles, pagos e info_adicional en el formato que
+     * espera gpdf_html_documento().
+     *
+     * @return array{cabecera:array, detalles:array, pagos:array, info_adicional:array}|null
+     */
+    public function obtenerDatosParaPdf(int $documentoId, int $empresaId): ?array
+    {
+        $pdo = $this->pdo();
+
+        // ── Cabecera + proveedor + empresa ────────────────────────────────────
+        $stmtDoc = $pdo->prepare("
+            SELECT d.com_documento_numero,
+                   d.com_documento_fecha_emision,
+                   d.com_documento_subtotal,
+                   d.com_documento_descuento,
+                   d.com_documento_iva,
+                   d.com_documento_valor_total,
+                   d.com_documento_clave_acceso,
+                   d.com_documento_num_autorizacion,
+                   d.com_documento_fecha_autorizacion,
+                   d.com_documento_ruc_emisor,
+                   d.com_documento_razon_emisor,
+                   d.com_documento_nombre_comercial_emisor,
+                   d.com_documento_dir_matriz,
+                   d.com_documento_ambiente,
+                   d.com_documento_tipo_emision,
+                   d.com_documento_pagos_json,
+                   d.com_documento_info_adicional_json,
+                   p.com_proveedor_razon_social,
+                   p.com_proveedor_identificacion,
+                   p.com_proveedor_nombre_comercial,
+                   p.com_proveedor_direccion,
+                   e.sis_empresa_ruc,
+                   e.sis_empresa_razon_social,
+                   e.sis_empresa_nombre_comercial  AS empresa_nombre_comercial,
+                   e.sis_empresa_direccion,
+                   e.sis_empresa_obligado_contabilidad
+            FROM com_documento d
+            INNER JOIN com_proveedor p ON p.com_proveedor_id = d.com_proveedor_id
+            INNER JOIN sis_empresa   e ON e.sis_empresa_id   = d.sis_empresa_id
+            WHERE d.com_documento_id = :id
+              AND d.sis_empresa_id   = :empresa_id
+            LIMIT 1
+        ");
+        $stmtDoc->execute(['id' => $documentoId, 'empresa_id' => $empresaId]);
+        $doc = $stmtDoc->fetch();
+        if (!$doc) {
+            return null;
+        }
+
+        // ── Detalles ──────────────────────────────────────────────────────────
+        $stmtDet = $pdo->prepare("
+            SELECT COALESCE(
+                       NULLIF(dd.com_documento_detalle_descripcion_sri, ''),
+                       p.inv_producto_nombre,
+                       ''
+                   ) AS descripcion,
+                   COALESCE(
+                       NULLIF(dd.com_documento_detalle_cod_proveedor, ''),
+                       p.inv_producto_codigo_principal,
+                       ''
+                   ) AS codigo_principal,
+                   dd.com_documento_detalle_cantidad      AS cantidad,
+                   dd.com_documento_detalle_precio        AS precio_unitario,
+                   dd.com_documento_detalle_descuento     AS descuento,
+                   dd.com_documento_detalle_total         AS precio_total_sin_impuesto,
+                   dd.com_documento_detalle_marca_iva     AS marca_iva
+            FROM com_documento_detalle dd
+            INNER JOIN inv_producto p ON p.inv_producto_id = dd.inv_producto_id
+            WHERE dd.com_documento_id = :id
+              AND dd.com_documento_detalle_estado = 1
+            ORDER BY dd.com_documento_detalle_id
+        ");
+        $stmtDet->execute(['id' => $documentoId]);
+        $lineas = $stmtDet->fetchAll();
+
+        // ── Calcular subtotales por tasa de IVA ──────────────────────────────
+        $subtotalIva = 0.0;
+        $subtotal0   = 0.0;
+        foreach ($lineas as $l) {
+            if (strtoupper((string) ($l['marca_iva'] ?? 'N')) === 'S') {
+                $subtotalIva += (float) $l['precio_total_sin_impuesto'];
+            } else {
+                $subtotal0 += (float) $l['precio_total_sin_impuesto'];
+            }
+        }
+
+        // ── Emisor: preferir datos del XML almacenados, sino datos del proveedor ──
+        $rucEmisor             = $doc['com_documento_ruc_emisor']              ?? $doc['com_proveedor_identificacion'];
+        $razonEmisor           = $doc['com_documento_razon_emisor']            ?? $doc['com_proveedor_razon_social'];
+        $nombreComercialEmisor = $doc['com_documento_nombre_comercial_emisor'] ?? $doc['com_proveedor_nombre_comercial'];
+        $dirMatriz             = $doc['com_documento_dir_matriz']              ?? $doc['com_proveedor_direccion'];
+
+        // ── Clave de acceso: 'INGRESO MANUAL' si vacía ───────────────────────
+        $claveAcceso = trim((string) ($doc['com_documento_clave_acceso'] ?? ''));
+        if ($claveAcceso === '') {
+            $claveAcceso = 'INGRESO MANUAL';
+        }
+
+        // ── Pagos: del JSON guardado o vacío ─────────────────────────────────
+        $pagosJson = $doc['com_documento_pagos_json'] ?? null;
+        $pagos = ($pagosJson && $pagosJson !== 'null')
+            ? (json_decode($pagosJson, true) ?? [])
+            : [];
+
+        // ── Info adicional: del JSON guardado o vacío ─────────────────────────
+        $infoAdicionalJson = $doc['com_documento_info_adicional_json'] ?? null;
+        $infoAdicional = ($infoAdicionalJson && $infoAdicionalJson !== 'null')
+            ? (json_decode($infoAdicionalJson, true) ?? [])
+            : [];
+
+        // ── Fecha emisión formateada ──────────────────────────────────────────
+        $fechaEmision = substr((string) ($doc['com_documento_fecha_emision'] ?? ''), 0, 10);
+        if ($fechaEmision !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $fechaEmision)) {
+            [$y, $m, $d] = explode('-', $fechaEmision);
+            $fechaEmision = "$d/$m/$y";
+        }
+
+        $cabecera = [
+            'tipo_documento'          => 'FACTURA',
+            'ruc_emisor'              => (string) ($rucEmisor ?? ''),
+            'razon_social_emisor'     => (string) ($razonEmisor ?? ''),
+            'nombre_comercial_emisor' => (string) ($nombreComercialEmisor ?? ''),
+            'dir_matriz'              => (string) ($dirMatriz ?? ''),
+            'dir_sucursal'            => '',
+            'obligado_contabilidad'   => '',   // del emisor — no almacenado, queda vacío
+            'numero_documento'        => (string) ($doc['com_documento_numero'] ?? ''),
+            'clave_acceso'            => $claveAcceso,
+            'numero_autorizacion'     => (string) ($doc['com_documento_num_autorizacion'] ?? $claveAcceso),
+            'fecha_autorizacion'      => (string) ($doc['com_documento_fecha_autorizacion'] ?? ''),
+            'ambiente'                => (string) ($doc['com_documento_ambiente'] ?? ''),
+            'tipo_emision'            => (string) ($doc['com_documento_tipo_emision'] ?? 'NORMAL'),
+            'fecha_emision'           => $fechaEmision,
+            // Receptor = nuestra empresa (somos el comprador)
+            'razon_social_receptor'   => (string) ($doc['sis_empresa_razon_social'] ?? ''),
+            'identificacion_receptor' => (string) ($doc['sis_empresa_ruc'] ?? ''),
+            'direccion_receptor'      => (string) ($doc['sis_empresa_direccion'] ?? ''),
+            // Totales
+            'total_sin_impuestos'     => (float) ($doc['com_documento_subtotal']     ?? 0),
+            'total_descuento'         => (float) ($doc['com_documento_descuento']    ?? 0),
+            'iva'                     => (float) ($doc['com_documento_iva']          ?? 0),
+            'importe_total'           => (float) ($doc['com_documento_valor_total']  ?? 0),
+            'subtotal_iva'            => round($subtotalIva, 2),
+            'subtotal_0'              => round($subtotal0, 2),
+        ];
+
+        return [
+            'cabecera'       => $cabecera,
+            'detalles'       => $lineas,
+            'pagos'          => $pagos,
+            'info_adicional' => $infoAdicional,
+        ];
+    }
+
+    // =========================================================================
+    // XML PARA DESCARGA
+    // =========================================================================
+
+    /**
+     * Obtiene el contenido XML almacenado en com_archivos_sri para un documento dado.
+     * Busca por clave de acceso. Retorna null si no hay XML o el documento no tiene clave.
+     */
+    public function obtenerXmlContenido(int $documentoId, int $empresaId): ?string
+    {
+        $pdo = $this->pdo();
+
+        // Obtener clave de acceso del documento
+        $stmtDoc = $pdo->prepare("
+            SELECT com_documento_clave_acceso, com_documento_numero
+            FROM com_documento
+            WHERE com_documento_id = :id AND sis_empresa_id = :empresa_id
+            LIMIT 1
+        ");
+        $stmtDoc->execute(['id' => $documentoId, 'empresa_id' => $empresaId]);
+        $doc = $stmtDoc->fetch();
+        if (!$doc) {
+            return null;
+        }
+
+        $clave = trim((string) ($doc['com_documento_clave_acceso'] ?? ''));
+        if ($clave === '') {
+            return null; // Documento manual sin clave, no tiene XML SRI
+        }
+
+        // Buscar XML en com_archivos_sri
+        $stmtXml = $pdo->prepare("
+            SELECT com_archivos_sri_xml, com_archivos_sri_archivo
+            FROM com_archivos_sri
+            WHERE sis_empresa_id = :empresa_id
+              AND com_archivos_sri_clave = :clave
+              AND com_archivos_sri_tipo  = 'XML'
+            ORDER BY com_archivos_sri_id DESC
+            LIMIT 1
+        ");
+        $stmtXml->execute(['empresa_id' => $empresaId, 'clave' => $clave]);
+        $archivo = $stmtXml->fetch();
+        if (!$archivo) {
+            return null;
+        }
+
+        // Primero el contenido guardado en DB
+        $xmlDb = trim((string) ($archivo['com_archivos_sri_xml'] ?? ''));
+        if ($xmlDb !== '') {
+            return $xmlDb;
+        }
+
+        // Fallback: leer del archivo físico
+        $ruta = (string) ($archivo['com_archivos_sri_archivo'] ?? '');
+        if ($ruta !== '' && is_file($ruta)) {
+            return file_get_contents($ruta) ?: null;
+        }
+
+        return null;
     }
 
     private function pdo(): \PDO

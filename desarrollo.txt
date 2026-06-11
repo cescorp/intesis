@@ -88,9 +88,9 @@ Registrar entrada en kardex.
 3.7 Cuentas por pagar: Proceso futuro
 Generar obligación al proveedor si la compra es a crédito.
 ________________________________________
-4. Ventas
-4.1 Clientes: CRUD
-Identificación, razón social, correo, teléfono, dirección.
+ok - 4. Ventas
+ok - 4.1 Clientes: CRUD
+ok - Identificación, razón social, correo, teléfono, dirección.
 4.2 Documento de venta: CRUD
 Cabecera de factura, nota de crédito u otro comprobante.
 4.3 Detalle de venta: CRUD

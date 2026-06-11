@@ -39,6 +39,7 @@ require_once __DIR__ . '/src/Servicios/AutenticacionServicio.php';
 require_once __DIR__ . '/src/Servicios/GeneradorPdf.php';
 require_once __DIR__ . '/src/Servicios/ValidadorIdentificacion.php';
 require_once __DIR__ . '/src/Servicios/SriXmlServicio.php';
+// PdfSri se carga solo cuando se usa (require_once en DocumentoCompraControlador::generarPdf)
 require_once __DIR__ . '/src/Controladores/AutenticacionControlador.php';
 require_once __DIR__ . '/src/Controladores/PanelControlador.php';
 require_once __DIR__ . '/src/Controladores/EmpresaControlador.php';

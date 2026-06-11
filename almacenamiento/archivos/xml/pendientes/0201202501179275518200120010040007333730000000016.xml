@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<autorizacion>
+<estado>AUTORIZADO</estado>
+<numeroAutorizacion>0201202501179275518200120010040007333730000000016</numeroAutorizacion>
+<fechaAutorizacion>2025-01-02T20:25:44-05:00</fechaAutorizacion>
+<ambiente>PRODUCCIÓN</ambiente>
+<comprobante><![CDATA[<?xml version="1.0" encoding="UTF-8"?><factura id="comprobante" version="1.1.0"><infoTributaria><ambiente>2</ambiente><tipoEmision>1</tipoEmision><razonSocial>ECO EL OASIS FAMSAGA CIA LTDA</razonSocial><nombreComercial>EdS ECO EL OASIS</nombreComercial><ruc>1792755182001</ruc><claveAcceso>0201202501179275518200120010040007333730000000016</claveAcceso><codDoc>01</codDoc><estab>001</estab><ptoEmi>004</ptoEmi><secuencial>000733373</secuencial><dirMatriz>AV.Manuel Cordova Galarza S/N</dirMatriz><agenteRetencion>1</agenteRetencion></infoTributaria><infoFactura><fechaEmision>02/01/2025</fechaEmision><dirEstablecimiento>AV.Manuel Cordova Galarza S/N</dirEstablecimiento><obligadoContabilidad>SI</obligadoContabilidad><tipoIdentificacionComprador>05</tipoIdentificacionComprador><razonSocialComprador>ESPINOSA MEJIA JULIO CESAR</razonSocialComprador><identificacionComprador>1725357766</identificacionComprador><totalSinImpuestos>10.43</totalSinImpuestos><totalSubsidio>0.42</totalSubsidio><totalDescuento>0.0</totalDescuento><totalConImpuestos><totalImpuesto><codigo>2</codigo><codigoPorcentaje>4</codigoPorcentaje><baseImponible>10.43</baseImponible><valor>1.57</valor></totalImpuesto></totalConImpuestos><propina>0.0</propina><importeTotal>12.0</importeTotal><moneda>DOLAR</moneda><placa>PDP2087</placa><pagos><pago><formaPago>01</formaPago><total>12.0</total><plazo>0</plazo><unidadTiempo>dias</unidadTiempo></pago></pagos></infoFactura><detalles><detalle><codigoPrincipal>0101</codigoPrincipal><codigoAuxiliar>0101</codigoAuxiliar><descripcion>EXTRA</descripcion><cantidad>4.542</cantidad><precioUnitario>2.2974</precioUnitario><precioSinSubsidio>2.388920</precioSinSubsidio><descuento>0.0</descuento><precioTotalSinImpuesto>10.43</precioTotalSinImpuesto><impuestos><impuesto><codigo>2</codigo><codigoPorcentaje>4</codigoPorcentaje><tarifa>15</tarifa><baseImponible>10.43</baseImponible><valor>1.57</valor></impuesto></impuestos></detalle></detalles><infoAdicional><campoAdicional nombre="nombre_num_factura">000733373</campoAdicional><campoAdicional nombre="E-MAIL">info.ecoeloasis@gmail.com</campoAdicional><campoAdicional nombre="Direccion_Cliente">SIN DIRECCION</campoAdicional><campoAdicional nombre="Telefono_Cliente">0</campoAdicional><campoAdicional nombre="Codigo_Cliente">213546</campoAdicional></infoAdicional><ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#" xmlns:etsi="http://uri.etsi.org/01903/v1.3.2#" Id="Signature58618">
+<ds:SignedInfo Id="Signature-SignedInfo1031233">
+<ds:CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/>
+<ds:SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"/>
+<ds:Reference Id="SignedPropertiesID327496" Type="http://uri.etsi.org/01903#SignedProperties" URI="#Signature58618-SignedProperties304986">
+<ds:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/>
+<ds:DigestValue>bMqhTUnoTnj15rKxO8BOq2FkboM=</ds:DigestValue>
+</ds:Reference>
+<ds:Reference URI="#Certificate140787">
+<ds:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/>
+<ds:DigestValue>oBNQFPe31/HQx6ZmC3iCFWQLi70=</ds:DigestValue>
+</ds:Reference>
+<ds:Reference Id="Reference-ID-203665" URI="#comprobante">
+<ds:Transforms>
+<ds:Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/>
+</ds:Transforms>
+<ds:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/>
+<ds:DigestValue>g2o6yU8V4jJeqmwWsanZUUCiFpQ=</ds:DigestValue>
+</ds:Reference>
+</ds:SignedInfo>
+<ds:SignatureValue Id="SignatureValue99992">
+k8f3HrL7bZoS8unAXCoMni4JRIF2yST6S83AyPHhlK+XkE9wlTlW12hebIOMyy+6yJ0TDbnfwcHy
+Pu9ime7pZ8n0k1sJZu5ceB3m/6W8KhmLGj5+8KRR8peutgUxkxzGv0otEefwkI+i0MLJXBcRiFUY
+5JIYr6jVAqGFYTALnsg+0/jvFB6yi95JHbXE+KZs8qLTbBXxeJxzVRF5E0PYuqUPESAdWqMadT6D
+TmMLbiP6EyVeT7wzd/t0onpz3CD6DZLZEW+oOhjDpyzhEIeJVrNIXvT8YbledvHq4gabBpdqUtKq
+KfjAfV+o/VcQkku/LlpguZQTPGv0QoBVMI99Nw==
+</ds:SignatureValue>
+<ds:KeyInfo Id="Certificate140787">
+<ds:X509Data>
+<ds:X509Certificate>
+MIIMEjCCCfqgAwIBAgIEUS8wyjANBgkqhkiG9w0BAQsFADCBmTELMAkGA1UEBhMCRUMxHTAbBgNV
+BAoMFFNFQ1VSSVRZIERBVEEgUy5BLiAyMTAwLgYDVQQLDCdFTlRJREFEIERFIENFUlRJRklDQUNJ
+T04gREUgSU5GT1JNQUNJT04xOTA3BgNVBAMMMEFVVE9SSURBRCBERSBDRVJUSUZJQ0FDSU9OIFNV
+QkNBLTIgU0VDVVJJVFkgREFUQTAeFw0yMzA1MTIxNzU2NTlaFw0yODA1MTExNzU2NTlaMIGdMSYw
+JAYDVQQDDB1KT1NFIE9TV0FMRE8gU0FORE9WQUwgU0lNQkFOQTEVMBMGA1UEBRMMMTIwNTIzMTMw
+NjMwMTAwLgYDVQQLDCdFTlRJREFEIERFIENFUlRJRklDQUNJT04gREUgSU5GT1JNQUNJT04xHTAb
+BgNVBAoMFFNFQ1VSSVRZIERBVEEgUy5BLiAyMQswCQYDVQQGEwJFQzCCASIwDQYJKoZIhvcNAQEB
+BQADggEPADCCAQoCggEBAPB4RJ1pWiyQ2oGWs6ELsH1o/pPKhXQVy4yoaTFEzIS5sgX6sLB+6zT+
+irfGxfIwPpH72XbEWWKURBVXeO56FdB3gt/wryTAkrLSxCc9uJA2fp5a5NTbuGwGYTee8G9Vb+hK
+GK8TjVC73jLoycMfPlshRCIQ9nf+HAecb9aqfCYfE3FjTN52t76GHqaka4HVHNzxcXlCJvRUpIMA
+bTgWxYSvbz8a4AmG7THbjxncp3fuzRx/+jB90X4pBE/XaYr0v2dXW55R9giGIt9YJTDlMnaJmUx0
+9laVuhPmvsKs+izxUoSM0Ukd8yPnen93bvkdGuSWo2slv2xUhMaGNzTdjzcCAwEAAaOCB1owggdW
+MAwGA1UdEwEB/wQCMAAwHwYDVR0jBBgwFoAUjLrKEVd4JYAdawpLVb+NrmLdvY8wWQYIKwYBBQUH
+AQEETTBLMEkGCCsGAQUFBzABhj1odHRwOi8vb2NzcGd3LnNlY3VyaXR5ZGF0YS5uZXQuZWMvZWpi
+Y2EvcHVibGljd2ViL3N0YXR1cy9vY3NwMIHPBgNVHS4EgccwgcQwgcGggb6ggbuGgbhsZGFwOi8v
+bGRhcHNkY2EyLnNlY3VyaXR5ZGF0YS5uZXQuZWMvQ049QVVUT1JJREFEIERFIENFUlRJRklDQUNJ
+T04gU1VCQ0EtMiBTRUNVUklUWSBEQVRBLE9VPUVOVElEQUQgREUgQ0VSVElGSUNBQ0lPTiBERSBJ
+TkZPUk1BQ0lPTixPPVNFQ1VSSVRZIERBVEEgUy5BLiAyLEM9RUM/ZGVsdGFSZXZvY2F0aW9uTGlz
+dD9iYXNlMCYGA1UdEQQfMB2BG2pvc3dhbGRvLnNhbmRvdmFsQGdtYWlsLmNvbTCCARUGA1UdIASC
+AQwwggEIMGIGCisGAQQBgqZyAgkwVDBSBggrBgEFBQcCAjBGHkQAQwBlAHIAdABpAGYAaQBjAGEA
+ZABvACAAZABlACAAUgBlAHAAcgBlAHMAZQBuAHQAYQBuAHQAZQAgAEwAZQBnAGEAbDCBoQYKKwYB
+BAGCpnICAzCBkjCBjwYIKwYBBQUHAgEWgYJodHRwczovL3d3dy5zZWN1cml0eWRhdGEubmV0LmVj
+L3dwLWNvbnRlbnQvZG93bmxvYWRzL05vcm1hdGl2YXMvUF9kZV9DZXJ0aWZpY2Fkb3MvUG9saXRp
+Y2FzIGRlIENlcnRpZmljYWRvIFJlcHJlc2VudGFudGUgTGVnYWwucGRmMIICogYDVR0fBIICmTCC
+ApUwgeWgQaA/hj1odHRwOi8vb2NzcGd3LnNlY3VyaXR5ZGF0YS5uZXQuZWMvZWpiY2EvcHVibGlj
+d2ViL3N0YXR1cy9vY3NwooGfpIGcMIGZMTkwNwYDVQQDDDBBVVRPUklEQUQgREUgQ0VSVElGSUNB
+Q0lPTiBTVUJDQS0yIFNFQ1VSSVRZIERBVEExMDAuBgNVBAsMJ0VOVElEQUQgREUgQ0VSVElGSUNB
+Q0lPTiBERSBJTkZPUk1BQ0lPTjEdMBsGA1UECgwUU0VDVVJJVFkgREFUQSBTLkEuIDIxCzAJBgNV
+BAYTAkVDMIHHoIHEoIHBhoG+bGRhcDovL2xkYXBzZGNhMi5zZWN1cml0eWRhdGEubmV0LmVjL0NO
+PUFVVE9SSURBRCBERSBDRVJUSUZJQ0FDSU9OIFNVQkNBLTIgU0VDVVJJVFkgREFUQSxPVT1FTlRJ
+REFEIERFIENFUlRJRklDQUNJT04gREUgSU5GT1JNQUNJT04sTz1TRUNVUklUWSBEQVRBIFMuQS4g
+MixDPUVDP2NlcnRpZmljYXRlUmV2b2NhdGlvbkxpc3Q/YmFzZTCB4KCB3aCB2oaB12h0dHBzOi8v
+cG9ydGFsLW9wZXJhZG9yMi5zZWN1cml0eWRhdGEubmV0LmVjL2VqYmNhL3B1YmxpY3dlYi93ZWJk
+aXN0L2NlcnRkaXN0P2NtZD1jcmwmaXNzdWVyPUNOPUFVVE9SSURBRCBERSBDRVJUSUZJQ0FDSU9O
+IFNVQkNBLTIgU0VDVVJJVFkgREFUQSxPVT1FTlRJREFEIERFIENFUlRJRklDQUNJT04gREUgSU5G
+T1JNQUNJT04sTz1TRUNVUklUWSBEQVRBIFMuQS4gMixDPUVDMB0GA1UdDgQWBBQ9MPlva+cJRtj5
+EDqBjC9Cf429ojArBgNVHRAEJDAigA8yMDIzMDUxMjE3NTY1OVqBDzIwMjgwNTExMTc1NjU5WjAL
+BgNVHQ8EBAMCBeAwHwYKKwYBBAGCpnIDBQQRDA9HRVJFTlRFIEdFTkVSQUwwGgYKKwYBBAGCpnID
+AQQMDAoxNzAyODMxODMzMBUGCisGAQQBgqZyAwkEBwwFUVVJVE8wEQYKKwYBBAGCpnIDIgQDDAEu
+MDMGCisGAQQBgqZyAwcEJQwjQVYgTUFOVUVMIENPUkRPVkEgR0FMQVJaQSBTIE4gWSBTIE4wHAYK
+KwYBBAGCpnIDAgQODAxKT1NFIE9TV0FMRE8wHwYKKwYBBAGCpnIDIAQRDA8wMDMwMDEwMDAwMTE2
+MjEwEwYKKwYBBAGCpnIDIQQFDANQRlgwFwYKKwYBBAGCpnIDDAQJDAdFQ1VBRE9SMBgGCisGAQQB
+gqZyAwMECgwIU0FORE9WQUwwLQYKKwYBBAGCpnIDCgQfDB1FQ08gRUwgT0FTSVMgRkFNU0FHQSBD
+SUEgTFREQTAdBgorBgEEAYKmcgMLBA8MDTE3OTI3NTUxODIwMDEwEgYKKwYBBAGCpnIDHQQEDAJO
+bzAXBgorBgEEAYKmcgMEBAkMB1NJTUJBTkEwGgYKKwYBBAGCpnIDCAQMDAowOTU5NTYyNTQ4MA0G
+CSqGSIb3DQEBCwUAA4ICAQAaxAb5xEmM8MoSwRvMRYc54anCkoGR2D9Us8xcKJhlnp6+fFnqL/jP
+Ih1/BapvxozmCOSuHUCPlDGs3qLkGxEX768R8Rz/oFEUuBT9Ymz18grKJ8LWMmrRPkt0lmlpYRUU
+coma7eC1p012HbFbcamtgTD1iAwyv0xHzXHVa06b/FA1P4g94fFQEJr3KbJYNNdxifWln08PBTGk
+Sq/gfgEit7j/2ne0JbzE1ExAfvw757TY7J0Ns/PH9LpAHO+nIWsRLLdUvYMj4zuqEGbrvm9YVdJ/
+2az/0XLtSBjIh+KRtiAqW9SBQPYEJqtmD9woui2DZBgDKSeNCrFnJWCJgQixmcykcOX4HbZF2Oyp
+Pg1PcDuwhaBgkJKKIMVjH83316sAC25EjGeFBGeLdNBcZ6Dv/pAhHJcRxcW9ANP5ErL1y10Msff6
+8q0caz7x71waHSOVpuktK9m+LdgIO9G0OrUYXOSuiwaM8G1/5ztaunz+aZbgAWhChsSRfzRUOVWA
+jD8SJ3THXyrznQPBJ+5fS4kmMWHqmVe9iGW4y7yX6iaF3hE8bbKj8QlOaymMbj2XvcgNhRlWj7LI
+arFy4q7aPa5WOz75qee51SeXPPYBrQ9hfuad8i1WOzuBm0ltbHMJ95WO9O7kQvS2ai3hWgJRmsma
+ye6e+Z7zIfjn+zNtbkXBFA==
+</ds:X509Certificate>
+</ds:X509Data>
+<ds:KeyValue>
+<ds:RSAKeyValue>
+<ds:Modulus>
+8HhEnWlaLJDagZazoQuwfWj+k8qFdBXLjKhpMUTMhLmyBfqwsH7rNP6Kt8bF8jA+kfvZdsRZYpRE
+FVd47noV0HeC3/CvJMCSstLEJz24kDZ+nlrk1Nu4bAZhN57wb1Vv6EoYrxONULveMujJwx8+WyFE
+IhD2d/4cB5xv1qp8Jh8TcWNM3na3voYepqRrgdUc3PFxeUIm9FSkgwBtOBbFhK9vPxrgCYbtMduP
+Gdynd+7NHH/6MH3RfikET9dpivS/Z1dbnlH2CIYi31glMOUydomZTHT2VpW6E+a+wqz6LPFShIzR
+SR3zI+d6f3du+R0a5JajayW/bFSExoY3NN2PNw==
+</ds:Modulus>
+<ds:Exponent>AQAB</ds:Exponent>
+</ds:RSAKeyValue>
+</ds:KeyValue>
+</ds:KeyInfo>
+<ds:Object Id="Signature58618-Object226358"><etsi:QualifyingProperties Target="#Signature58618"><etsi:SignedProperties Id="Signature58618-SignedProperties304986"><etsi:SignedSignatureProperties><etsi:SigningTime>2025-01-02T20:20:30-05:00</etsi:SigningTime><etsi:SigningCertificate><etsi:Cert><etsi:CertDigest><ds:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/><ds:DigestValue>90QU29sFfs02SvQEzbF6hEYy4R0=</ds:DigestValue></etsi:CertDigest><etsi:IssuerSerial><ds:X509IssuerName>CN=AUTORIDAD DE CERTIFICACION SUBCA-2 SECURITY DATA,OU=ENTIDAD DE CERTIFICACION DE INFORMACION,O=SECURITY DATA S.A. 2,C=EC</ds:X509IssuerName><ds:X509SerialNumber>1362047178</ds:X509SerialNumber></etsi:IssuerSerial></etsi:Cert></etsi:SigningCertificate></etsi:SignedSignatureProperties><etsi:SignedDataObjectProperties><etsi:DataObjectFormat ObjectReference="#Reference-ID-203665"><etsi:Description>contenido comprobante</etsi:Description><etsi:MimeType>text/xml</etsi:MimeType></etsi:DataObjectFormat></etsi:SignedDataObjectProperties></etsi:SignedProperties></etsi:QualifyingProperties></ds:Object></ds:Signature></factura>]]></comprobante>
+<mensajes/>
+</autorizacion>
+

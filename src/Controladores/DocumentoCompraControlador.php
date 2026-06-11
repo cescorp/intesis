@@ -278,9 +278,9 @@ final class DocumentoCompraControlador
             $rutaDestino   = $rutas['pendientes'] . DIRECTORY_SEPARATOR . $nombreArchivo;
             file_put_contents($rutaDestino, $contenido);
 
-            // Registrar en com_archivos_sri
+            // Registrar en com_archivos_sri (guarda también el XML en base)
             $archivoId = $this->sriImportacionModelo->registrarArchivo(
-                $empresaId, 'XML', $rutaDestino, $clave, null, $usuarioId
+                $empresaId, 'XML', $rutaDestino, $clave, null, $usuarioId, $contenido
             );
 
             // Buscar/crear proveedor
@@ -432,9 +432,9 @@ final class DocumentoCompraControlador
                     $rutaXmlDest = $rutas['pendientes'] . DIRECTORY_SEPARATOR . $nombreXml;
                     file_put_contents($rutaXmlDest, $xmlContenido);
 
-                    // Registrar XML (UPSERT por clave)
+                    // Registrar XML (UPSERT por clave, guarda contenido en base)
                     $xmlArchivoId = $this->sriImportacionModelo->registrarArchivo(
-                        $empresaId, 'XML', $rutaXmlDest, $claveXml, null, $usuarioId
+                        $empresaId, 'XML', $rutaXmlDest, $claveXml, null, $usuarioId, $xmlContenido
                     );
                     $this->sriImportacionModelo->actualizarEstadoArchivo($xmlArchivoId, 'DESCARGADO', null, $usuarioId);
 
@@ -622,21 +622,30 @@ final class DocumentoCompraControlador
 
                     $numero = ($factura['estab'] ?? '') . '-' . ($factura['pto_emi'] ?? '') . '-' . ($factura['secuencial'] ?? '');
 
+                    $pagosJson        = !empty($factura['pagos'])          ? json_encode($factura['pagos'],          JSON_UNESCAPED_UNICODE) : null;
+                    $infoAdicionalJson = !empty($factura['info_adicional']) ? json_encode($factura['info_adicional'], JSON_UNESCAPED_UNICODE) : null;
+
                     $cabecera = [
-                        'sis_tipo_documento_id'          => $tipoFacturaId,
-                        'com_proveedor_id'               => $proveedorId,
-                        'inv_bodega_id'                  => $bodegaId,
-                        'com_documento_numero'           => $numero,
-                        'com_documento_fecha'            => $factura['fecha_emision'],
-                        'com_documento_observacion'      => 'Importado desde SRI',
-                        'com_documento_subtotal'         => $factura['total_sin_impuestos'] ?? 0,
-                        'com_documento_iva'              => $factura['iva'] ?? 0,
-                        'com_documento_total'            => $factura['importe_total'] ?? 0,
-                        'com_documento_clave_acceso'     => $clave,
-                        'com_documento_num_autorizacion' => $factura['numero_autorizacion'] ?? null,
-                        'com_documento_fecha_autorizacion' => $factura['fecha_autorizacion'] ?? null,
-                        'com_documento_ruc_emisor'       => $factura['ruc_emisor'] ?? null,
-                        'com_documento_razon_emisor'     => $factura['razon_social'] ?? null,
+                        'sis_tipo_documento_id'                    => $tipoFacturaId,
+                        'com_proveedor_id'                         => $proveedorId,
+                        'inv_bodega_id'                            => $bodegaId,
+                        'com_documento_numero'                     => $numero,
+                        'com_documento_fecha'                      => $factura['fecha_emision'],
+                        'com_documento_observacion'                => 'Importado desde SRI',
+                        'com_documento_subtotal'                   => $factura['total_sin_impuestos'] ?? 0,
+                        'com_documento_iva'                        => $factura['iva'] ?? 0,
+                        'com_documento_total'                      => $factura['importe_total'] ?? 0,
+                        'com_documento_clave_acceso'               => $clave,
+                        'com_documento_num_autorizacion'           => $factura['numero_autorizacion'] ?? null,
+                        'com_documento_fecha_autorizacion'         => $factura['fecha_autorizacion'] ?? null,
+                        'com_documento_ruc_emisor'                 => $factura['ruc_emisor'] ?? null,
+                        'com_documento_razon_emisor'               => $factura['razon_social'] ?? null,
+                        'com_documento_nombre_comercial_emisor'    => $factura['nombre_comercial'] ?? null,
+                        'com_documento_dir_matriz'                 => $factura['dir_matriz'] ?? null,
+                        'com_documento_ambiente'                   => $factura['ambiente'] ?? null,
+                        'com_documento_tipo_emision'               => $factura['tipo_emision'] ?? null,
+                        'com_documento_pagos_json'                 => $pagosJson,
+                        'com_documento_info_adicional_json'        => $infoAdicionalJson,
                     ];
 
                     $docId = $this->documentoCompraModelo->crearDesdeSri($empresaId, $cabecera, $detalles, $usuarioId);
@@ -684,6 +693,106 @@ final class DocumentoCompraControlador
     // =========================================================================
     // AJAX
     // =========================================================================
+
+    // =========================================================================
+    // PDF Y XML
+    // =========================================================================
+
+    /**
+     * GET /compras/documentos/pdf?id=X[&modo=descargar]
+     * Genera el PDF de un documento desde la base de datos y lo entrega inline
+     * (para iframe) o como descarga según el parámetro modo.
+     */
+    public function generarPdf(): void
+    {
+        $usuario     = $this->exigirSesion();
+        $empresaId   = (int) $usuario['empresa_id'];
+        $documentoId = (int) ($_GET['id'] ?? 0);
+        $modoDesc    = strtolower(trim((string) ($_GET['modo'] ?? ''))) === 'descargar';
+
+        try {
+            $doc = $this->obtenerDocumentoPermitido($documentoId, $usuario);
+            $datos = $this->documentoCompraModelo->obtenerDatosParaPdf($documentoId, $empresaId);
+            if (!$datos) {
+                throw new \RuntimeException('Documento no encontrado o sin acceso.');
+            }
+
+            // Cargar plantillas SRI (funciones gpdf_*)
+            require_once $this->raizProyecto() . '/src/Servicios/PdfSri/Plantillas.php';
+
+            // Ruta del logo
+            $rutaLogo = $this->raizProyecto() . '/publico/images/no_tiene_logo.jpg';
+            if (!is_file($rutaLogo)) {
+                $rutaLogo = null;
+            }
+
+            $html = gpdf_html_documento($datos, $rutaLogo);
+
+            // Renderizar con dompdf (clase ya disponible via vendor/autoload.php)
+            if (!class_exists(\Dompdf\Dompdf::class)) {
+                throw new \RuntimeException('Dompdf no está instalado.');
+            }
+            $opciones = new \Dompdf\Options();
+            $opciones->set('isRemoteEnabled', true);
+            $opciones->set('isHtml5ParserEnabled', true);
+            $opciones->set('defaultFont', 'Arial');
+            $dompdf = new \Dompdf\Dompdf($opciones);
+            $dompdf->loadHtml($html, 'UTF-8');
+            $dompdf->setPaper('A4', 'portrait');
+            $dompdf->render();
+
+            $numero   = preg_replace('/[^A-Za-z0-9\-]/', '_', (string) ($doc['com_documento_numero'] ?? 'documento'));
+            $filename = 'Factura_' . $numero . '.pdf';
+
+            header('Content-Type: application/pdf');
+            header('Content-Disposition: ' . ($modoDesc ? 'attachment' : 'inline') . '; filename="' . $filename . '"');
+            header('Cache-Control: private, max-age=0, must-revalidate');
+            echo $dompdf->output();
+        } catch (Throwable $e) {
+            $this->registroErrores->escribirExcepcion('GENERAR PDF DOCUMENTO', $e);
+            header('Content-Type: text/plain; charset=utf-8');
+            http_response_code(500);
+            echo 'Error al generar el PDF: ' . $e->getMessage();
+        }
+        exit;
+    }
+
+    /**
+     * GET /compras/documentos/xml?id=X
+     * Descarga el XML del SRI almacenado en base de datos para el documento indicado.
+     */
+    public function descargarXml(): void
+    {
+        $usuario     = $this->exigirSesion();
+        $empresaId   = (int) $usuario['empresa_id'];
+        $documentoId = (int) ($_GET['id'] ?? 0);
+
+        try {
+            $doc = $this->obtenerDocumentoPermitido($documentoId, $usuario);
+            $xml = $this->documentoCompraModelo->obtenerXmlContenido($documentoId, $empresaId);
+
+            if ($xml === null || $xml === '') {
+                header('Content-Type: text/plain; charset=utf-8');
+                http_response_code(404);
+                echo 'Este documento no tiene XML del SRI disponible (puede ser un ingreso manual).';
+                exit;
+            }
+
+            $numero   = preg_replace('/[^A-Za-z0-9\-]/', '_', (string) ($doc['com_documento_numero'] ?? 'documento'));
+            $filename = 'Factura_' . $numero . '.xml';
+
+            header('Content-Type: application/xml; charset=utf-8');
+            header('Content-Disposition: attachment; filename="' . $filename . '"');
+            header('Cache-Control: private, max-age=0, must-revalidate');
+            echo $xml;
+        } catch (Throwable $e) {
+            $this->registroErrores->escribirExcepcion('DESCARGAR XML DOCUMENTO', $e);
+            header('Content-Type: text/plain; charset=utf-8');
+            http_response_code(500);
+            echo 'Error al obtener el XML: ' . $e->getMessage();
+        }
+        exit;
+    }
 
     public function buscarProveedor(): void
     {
