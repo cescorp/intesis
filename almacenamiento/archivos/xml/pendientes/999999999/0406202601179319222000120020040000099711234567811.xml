@@ -1,0 +1,170 @@
+<?xml version="1.0"?>
+<autorizacion><estado>AUTORIZADO</estado><numeroAutorizacion>0406202601179319222000120020040000099711234567811</numeroAutorizacion><fechaAutorizacion>2026-06-04T18:50:05-05:00</fechaAutorizacion><ambiente>PRODUCCI&#xD3;N</ambiente><comprobante>&lt;?xml version='1.0' encoding='UTF-8' standalone='yes'?&gt;
+&lt;factura id="comprobante" version="1.1.0"&gt;
+  &lt;infoTributaria&gt;
+    &lt;ambiente&gt;2&lt;/ambiente&gt;
+    &lt;tipoEmision&gt;1&lt;/tipoEmision&gt;
+    &lt;razonSocial&gt;CENTRO AGROPECUARIO Y SALUD ANIMAL CRUZ CASA CRUZ SCC&lt;/razonSocial&gt;
+    &lt;nombreComercial&gt;CENTRO AGROPECUARIO Y SALUD ANIMAL CRUZ CASA CRUZ SCC&lt;/nombreComercial&gt;
+    &lt;ruc&gt;1793192220001&lt;/ruc&gt;
+    &lt;claveAcceso&gt;0406202601179319222000120020040000099711234567811&lt;/claveAcceso&gt;
+    &lt;codDoc&gt;01&lt;/codDoc&gt;
+    &lt;estab&gt;002&lt;/estab&gt;
+    &lt;ptoEmi&gt;004&lt;/ptoEmi&gt;
+    &lt;secuencial&gt;000009971&lt;/secuencial&gt;
+    &lt;dirMatriz&gt;N69J E11-190 YJULIO RAMOS&lt;/dirMatriz&gt;
+  &lt;/infoTributaria&gt;
+  &lt;infoFactura&gt;
+    &lt;fechaEmision&gt;04/06/2026&lt;/fechaEmision&gt;
+    &lt;dirEstablecimiento&gt;UNION Y PROGRESO OE5-15 Y UNION Y PROGRESO OE5-15 Y&lt;/dirEstablecimiento&gt;
+    &lt;obligadoContabilidad&gt;SI&lt;/obligadoContabilidad&gt;
+    &lt;tipoIdentificacionComprador&gt;05&lt;/tipoIdentificacionComprador&gt;
+    &lt;razonSocialComprador&gt;ESPINOSA MEJIA JULIO CESAR&lt;/razonSocialComprador&gt;
+    &lt;identificacionComprador&gt;1725357766&lt;/identificacionComprador&gt;
+    &lt;direccionComprador&gt;MACHALA&lt;/direccionComprador&gt;
+    &lt;totalSinImpuestos&gt;23.52&lt;/totalSinImpuestos&gt;
+    &lt;totalDescuento&gt;0.0&lt;/totalDescuento&gt;
+    &lt;totalConImpuestos&gt;
+      &lt;totalImpuesto&gt;
+        &lt;codigo&gt;2&lt;/codigo&gt;
+        &lt;codigoPorcentaje&gt;0&lt;/codigoPorcentaje&gt;
+        &lt;baseImponible&gt;23.52&lt;/baseImponible&gt;
+        &lt;valor&gt;0&lt;/valor&gt;
+      &lt;/totalImpuesto&gt;
+    &lt;/totalConImpuestos&gt;
+    &lt;propina&gt;0.0&lt;/propina&gt;
+    &lt;importeTotal&gt;23.52&lt;/importeTotal&gt;
+    &lt;moneda&gt;DOLAR&lt;/moneda&gt;
+    &lt;pagos&gt;
+      &lt;pago&gt;
+        &lt;formaPago&gt;19&lt;/formaPago&gt;
+        &lt;total&gt;23.52&lt;/total&gt;
+        &lt;plazo&gt;0&lt;/plazo&gt;
+        &lt;unidadTiempo&gt;D&#xED;as&lt;/unidadTiempo&gt;
+      &lt;/pago&gt;
+    &lt;/pagos&gt;
+  &lt;/infoFactura&gt;
+  &lt;detalles&gt;
+    &lt;detalle&gt;
+      &lt;codigoPrincipal&gt;M.SIPCEL&lt;/codigoPrincipal&gt;
+      &lt;codigoAuxiliar&gt;M.SIPCEL&lt;/codigoAuxiliar&gt;
+      &lt;descripcion&gt; SIMPARICA 10 A 20 KG TABLETA ZOETIS (TURQUESA)&lt;/descripcion&gt;
+      &lt;unidadMedida&gt;UNIDADES&lt;/unidadMedida&gt;
+      &lt;cantidad&gt;1.0&lt;/cantidad&gt;
+      &lt;precioUnitario&gt;23.520000&lt;/precioUnitario&gt;
+      &lt;descuento&gt;0.0&lt;/descuento&gt;
+      &lt;precioTotalSinImpuesto&gt;23.52&lt;/precioTotalSinImpuesto&gt;
+      &lt;impuestos&gt;
+        &lt;impuesto&gt;
+          &lt;codigo&gt;2&lt;/codigo&gt;
+          &lt;codigoPorcentaje&gt;0&lt;/codigoPorcentaje&gt;
+          &lt;tarifa&gt;0.00&lt;/tarifa&gt;
+          &lt;baseImponible&gt;23.52&lt;/baseImponible&gt;
+          &lt;valor&gt;0.0&lt;/valor&gt;
+        &lt;/impuesto&gt;
+      &lt;/impuestos&gt;
+    &lt;/detalle&gt;
+  &lt;/detalles&gt;
+  &lt;infoAdicional&gt;
+    &lt;campoAdicional nombre="Mail"&gt;CESCORP@HOTMAIL.COM&lt;/campoAdicional&gt;
+    &lt;campoAdicional nombre="Direccion"&gt;MACHALA &lt;/campoAdicional&gt;
+  &lt;/infoAdicional&gt;
+&lt;ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#" Id="Signature9b0d7a08-cd1e-4a0a-826e-6647857a3bb0"&gt;
+&lt;ds:SignedInfo&gt;
+&lt;ds:CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/&gt;
+&lt;ds:SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"/&gt;
+&lt;ds:Reference Id="SignedPropertiesID61cb5d41-c96e-4692-9a71-d4edbc813b89" URI="#Signature9b0d7a08-cd1e-4a0a-826e-6647857a3bb0-SignedPropertiesID23e50e29-cf16-4c4c-a540-a85c3b5e7a88" Type="http://uri.etsi.org/01903#SignedProperties"&gt;
+&lt;ds:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/&gt;
+&lt;ds:DigestValue&gt;psXoHUWAOecosmii5BGmu6uJA9E=&lt;/ds:DigestValue&gt;
+&lt;/ds:Reference&gt;
+&lt;ds:Reference URI="#Certificate6a24ebfb-4a13-4c8d-82eb-fcc99a29a471"&gt;
+&lt;ds:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/&gt;
+&lt;ds:DigestValue&gt;IAg5Lby3j7YQhxp7hW2eQ2knhEo=&lt;/ds:DigestValue&gt;
+&lt;/ds:Reference&gt;
+&lt;ds:Reference Id="Reference-ID-324dc4fe-2ca2-4951-9933-09ff19e1f8df" URI="#comprobante"&gt;
+&lt;ds:Transforms&gt;
+&lt;ds:Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/&gt;
+&lt;/ds:Transforms&gt;
+&lt;ds:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/&gt;
+&lt;ds:DigestValue&gt;yRDvAshwchMbG2gQxAywyao6P5M=&lt;/ds:DigestValue&gt;
+&lt;/ds:Reference&gt;
+&lt;/ds:SignedInfo&gt;
+&lt;ds:SignatureValue&gt;i9AD6KAeEeOHaNAI6O4nTsMyIgp5eHJqcVG4saOcmqv+KI4mvdNwbWyu1ZBuaKOlz1cXroOnM0Qh
+mafxgOEqZz0+rqq2okrAWbC1oVy3NPCjAh9upWxUpkas/fqMxZIVvKNoAbf/SIN2T80dbYpw3l+s
+n8ZPEpjgeuYbhRfblOgdCk/YhdeZ/gS8gHrmt8BxVDHt3/fDTxy6e5/Ejr0CAPV2qiEM8/XBmK7w
+14wgjr3SBdDp+CpsQUYSJSAd/AX+m/uK+Jb0g2N77yu+BaXWpIfMZdK+f3GJZi6vQxc5huQRR3Qv
+lH0XLg66NZuN3g+nz0EUGKiN5K/vFJVA9/niMQ==
+&lt;/ds:SignatureValue&gt;
+&lt;ds:KeyInfo Id="Certificate6a24ebfb-4a13-4c8d-82eb-fcc99a29a471"&gt;
+&lt;ds:X509Data&gt;
+&lt;ds:X509Certificate&gt;MIIMJzCCCg+gAwIBAgIETYHQZzANBgkqhkiG9w0BAQsFADCBmTELMAkGA1UEBhMCRUMxHTAbBgNV
+BAoMFFNFQ1VSSVRZIERBVEEgUy5BLiAyMTAwLgYDVQQLDCdFTlRJREFEIERFIENFUlRJRklDQUNJ
+T04gREUgSU5GT1JNQUNJT04xOTA3BgNVBAMMMEFVVE9SSURBRCBERSBDRVJUSUZJQ0FDSU9OIFNV
+QkNBLTIgU0VDVVJJVFkgREFUQTAeFw0yMjAyMTAxNTUxMzZaFw0yNzAyMTAxNTUxMzZaMIGiMSsw
+KQYDVQQDDCJDUklTVElBTiBFRFVBUkRPIENSVVogSFVJTENBTUFJR1VBMRUwEwYDVQQFEwwxMDAy
+MjIxMTAxMjMxMDAuBgNVBAsMJ0VOVElEQUQgREUgQ0VSVElGSUNBQ0lPTiBERSBJTkZPUk1BQ0lP
+TjEdMBsGA1UECgwUU0VDVVJJVFkgREFUQSBTLkEuIDIxCzAJBgNVBAYTAkVDMIIBIjANBgkqhkiG
+9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxN8zyDw2ctG4aqr0CYTAd5YYUx3DH9gSNZm2WrxCdbHOqnMy
+k5jnAPSEg+XBUScxP6oMuJ8bSQm73ZK8SGBJD5uCD6AzMcoBVMAQmHcwPgdTJUsfnqc/MmYkzgSV
+39tolT9lyVg1uvbxnByhiFu3VcoDfHyodpjo5sTLx9PvWLeUifwo2Z8JZ1ZTi4KQO3OZzJM35bEH
+eJ3xnemygfA7pJjWj3im3Anp+5t8u9KxjD+XyUvKHnnncdWxljFICYjMx8WpDX2f4F6v6NKfijQ6
+idFottr/el5aYp+/7b1NHZFDtUeFIDXmU9/161u96WeSPW5xKA67sAh29fZy1VJBLwIDAQABo4IH
+ajCCB2YwDAYDVR0TAQH/BAIwADAfBgNVHSMEGDAWgBSMusoRV3glgB1rCktVv42uYt29jzBZBggr
+BgEFBQcBAQRNMEswSQYIKwYBBQUHMAGGPWh0dHA6Ly9vY3NwZ3cuc2VjdXJpdHlkYXRhLm5ldC5l
+Yy9lamJjYS9wdWJsaWN3ZWIvc3RhdHVzL29jc3Awgc8GA1UdLgSBxzCBxDCBwaCBvqCBu4aBuGxk
+YXA6Ly9sZGFwc2RjYTIuc2VjdXJpdHlkYXRhLm5ldC5lYy9DTj1BVVRPUklEQUQgREUgQ0VSVElG
+SUNBQ0lPTiBTVUJDQS0yIFNFQ1VSSVRZIERBVEEsT1U9RU5USURBRCBERSBDRVJUSUZJQ0FDSU9O
+IERFIElORk9STUFDSU9OLE89U0VDVVJJVFkgREFUQSBTLkEuIDIsQz1FQz9kZWx0YVJldm9jYXRp
+b25MaXN0P2Jhc2UwIAYDVR0RBBkwF4EVYWRtaW5AY2FzYWNydXouY29tLmVjMIIBFQYDVR0gBIIB
+DDCCAQgwYgYKKwYBBAGCpnICCTBUMFIGCCsGAQUFBwICMEYeRABDAGUAcgB0AGkAZgBpAGMAYQBk
+AG8AIABkAGUAIABSAGUAcAByAGUAcwBlAG4AdABhAG4AdABlACAATABlAGcAYQBsMIGhBgorBgEE
+AYKmcgIDMIGSMIGPBggrBgEFBQcCARaBgmh0dHBzOi8vd3d3LnNlY3VyaXR5ZGF0YS5uZXQuZWMv
+d3AtY29udGVudC9kb3dubG9hZHMvTm9ybWF0aXZhcy9QX2RlX0NlcnRpZmljYWRvcy9Qb2xpdGlj
+YXMgZGUgQ2VydGlmaWNhZG8gUmVwcmVzZW50YW50ZSBMZWdhbC5wZGYwggKiBgNVHR8EggKZMIIC
+lTCB5aBBoD+GPWh0dHA6Ly9vY3NwZ3cuc2VjdXJpdHlkYXRhLm5ldC5lYy9lamJjYS9wdWJsaWN3
+ZWIvc3RhdHVzL29jc3CigZ+kgZwwgZkxOTA3BgNVBAMMMEFVVE9SSURBRCBERSBDRVJUSUZJQ0FD
+SU9OIFNVQkNBLTIgU0VDVVJJVFkgREFUQTEwMC4GA1UECwwnRU5USURBRCBERSBDRVJUSUZJQ0FD
+SU9OIERFIElORk9STUFDSU9OMR0wGwYDVQQKDBRTRUNVUklUWSBEQVRBIFMuQS4gMjELMAkGA1UE
+BhMCRUMwgceggcSggcGGgb5sZGFwOi8vbGRhcHNkY2EyLnNlY3VyaXR5ZGF0YS5uZXQuZWMvQ049
+QVVUT1JJREFEIERFIENFUlRJRklDQUNJT04gU1VCQ0EtMiBTRUNVUklUWSBEQVRBLE9VPUVOVElE
+QUQgREUgQ0VSVElGSUNBQ0lPTiBERSBJTkZPUk1BQ0lPTixPPVNFQ1VSSVRZIERBVEEgUy5BLiAy
+LEM9RUM/Y2VydGlmaWNhdGVSZXZvY2F0aW9uTGlzdD9iYXNlMIHgoIHdoIHahoHXaHR0cHM6Ly9w
+b3J0YWwtb3BlcmFkb3IyLnNlY3VyaXR5ZGF0YS5uZXQuZWMvZWpiY2EvcHVibGljd2ViL3dlYmRp
+c3QvY2VydGRpc3Q/Y21kPWNybCZpc3N1ZXI9Q049QVVUT1JJREFEIERFIENFUlRJRklDQUNJT04g
+U1VCQ0EtMiBTRUNVUklUWSBEQVRBLE9VPUVOVElEQUQgREUgQ0VSVElGSUNBQ0lPTiBERSBJTkZP
+Uk1BQ0lPTixPPVNFQ1VSSVRZIERBVEEgUy5BLiAyLEM9RUMwHQYDVR0OBBYEFNQUu+E8gCnYyqqT
+wHdSzOLU0q3gMCsGA1UdEAQkMCKADzIwMjIwMjEwMTU1MTM2WoEPMjAyNzAyMTAxNTUxMzZaMAsG
+A1UdDwQEAwIF4DAfBgorBgEEAYKmcgMFBBEMD0dFUkVOVEUgR0VORVJBTDAaBgorBgEEAYKmcgMB
+BAwMCjE3MjA5OTUwNTcwFQYKKwYBBAGCpnIDCQQHDAVRVUlUTzARBgorBgEEAYKmcgMiBAMMAS4w
+KgYKKwYBBAGCpnIDBwQcDBpONjlKIEUxMS0xOTAgWSBKVUxJTyBSQU1PUzAgBgorBgEEAYKmcgMC
+BBIMEENSSVNUSUFOIEVEVUFSRE8wHwYKKwYBBAGCpnIDIAQRDA8wMDIwMDEwMDAzMTQzNjYwEwYK
+KwYBBAGCpnIDIQQFDANQRlgwFwYKKwYBBAGCpnIDDAQJDAdFQ1VBRE9SMBQGCisGAQQBgqZyAwME
+BgwEQ1JVWjBHBgorBgEEAYKmcgMKBDkMN0NFTlRSTyBBR1JPUEVDVUFSSU8gWSBTQUxVRCBBTklN
+QUwgQ1JVWiBDQVNBIENSVVogUyBDIEMwHQYKKwYBBAGCpnIDCwQPDA0xNzkzMTkyMjIwMDAxMBIG
+CisGAQQBgqZyAx0EBAwCTm8wHAYKKwYBBAGCpnIDBAQODAxIVUlMQ0FNQUlHVUEwGgYKKwYBBAGC
+pnIDCAQMDAowOTk5NDE1MjI3MA0GCSqGSIb3DQEBCwUAA4ICAQCaZ9/yI1qy/ZvscYBsQnJgZnd4
+Le5Hynbx4KsFDBWM6IGjp7Xt/iEnhoNRrFHRoRYvZkrcH+lT8g59/SsT4x8pFcNpKcm2G9ykIApM
+S7bQniw6mb7UpqF0OBeqRstaCj06kwWqiyisO3VxFZsBz1/j3P1zueAh0ATwRtFkWFdP2QvjIMRY
+S/DlUA/IKEBIxXILiihkeXCk4ScO80tVN89pnLJ8PMQtb8js76TDLKMNjsimIMxOpRNauRqcuJ2T
+8b3F1ff3BD24Hh0Zz/9DRjcc0cqXclwgPwcHS17Zy246sHvvZx39TiLyW+AiKa5RSoJVmToKb1ej
+YX1pf6FuAvIOitPt/O6MrDBbesE322lNc2aTHP2OB24En5gF5Jb8aQFKsu/U3T6lhNqIT0Ox9Kqn
+NpfP27hY1rzZRd/jh+MDYxjCnCyLtgWGWMc2p2Z3JmZYMdksTt+pJL0+dsidf763NVQ7f8v/QowU
+itaV2IvtbEVtR8adslrg0+zTLPB4JmXVmuzkBYkbndwGB4YNMBdD7E2PFTq1XQcik8G+0G5SpQOs
+y+8fJ64T9dXhUSjzidLQODi63kyuCz1Vk5/Fg0ElVZWgK85zNw0pfWYqHRo2MkEchXAJaC6muxQO
+D9gl7/3Jsc8UeWTe8PWve2cHJwFy3Bv93SfpL29qVl3uH/p4WA==
+&lt;/ds:X509Certificate&gt;
+&lt;/ds:X509Data&gt;
+&lt;ds:KeyValue&gt;
+&lt;ds:RSAKeyValue&gt;
+&lt;ds:Modulus&gt;xN8zyDw2ctG4aqr0CYTAd5YYUx3DH9gSNZm2WrxCdbHOqnMyk5jnAPSEg+XBUScxP6oMuJ8bSQm7
+3ZK8SGBJD5uCD6AzMcoBVMAQmHcwPgdTJUsfnqc/MmYkzgSV39tolT9lyVg1uvbxnByhiFu3VcoD
+fHyodpjo5sTLx9PvWLeUifwo2Z8JZ1ZTi4KQO3OZzJM35bEHeJ3xnemygfA7pJjWj3im3Anp+5t8
+u9KxjD+XyUvKHnnncdWxljFICYjMx8WpDX2f4F6v6NKfijQ6idFottr/el5aYp+/7b1NHZFDtUeF
+IDXmU9/161u96WeSPW5xKA67sAh29fZy1VJBLw==
+&lt;/ds:Modulus&gt;
+&lt;ds:Exponent&gt;AQAB
+&lt;/ds:Exponent&gt;
+&lt;/ds:RSAKeyValue&gt;
+&lt;/ds:KeyValue&gt;
+&lt;/ds:KeyInfo&gt;
+&lt;ds:Object&gt;&lt;etsi:QualifyingProperties xmlns:etsi="http://uri.etsi.org/01903/v1.3.2#" Target="#Signature9b0d7a08-cd1e-4a0a-826e-6647857a3bb0" Id="Signature9b0d7a08-cd1e-4a0a-826e-6647857a3bb0"&gt;&lt;etsi:SignedProperties Id="Signature9b0d7a08-cd1e-4a0a-826e-6647857a3bb0-SignedPropertiesID23e50e29-cf16-4c4c-a540-a85c3b5e7a88"&gt;&lt;etsi:SignedSignatureProperties&gt;&lt;etsi:SigningTime&gt;2026-06-04T18:50:02-05:00&lt;/etsi:SigningTime&gt;&lt;etsi:SigningCertificate&gt;&lt;etsi:Cert&gt;&lt;etsi:CertDigest&gt;&lt;ds:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/&gt;&lt;ds:DigestValue&gt;16qAJV/Aw4zosHoxpE+JK0yXTH8=&lt;/ds:DigestValue&gt;&lt;/etsi:CertDigest&gt;&lt;etsi:IssuerSerial&gt;&lt;ds:X509IssuerName&gt;CN=AUTORIDAD DE CERTIFICACION SUBCA-2 SECURITY DATA,OU=ENTIDAD DE CERTIFICACION DE INFORMACION,O=SECURITY DATA S.A. 2,C=EC&lt;/ds:X509IssuerName&gt;&lt;ds:X509SerialNumber&gt;1300353127&lt;/ds:X509SerialNumber&gt;&lt;/etsi:IssuerSerial&gt;&lt;/etsi:Cert&gt;&lt;/etsi:SigningCertificate&gt;&lt;etsi:SignaturePolicyIdentifier&gt;&lt;etsi:SignaturePolicyImplied/&gt;&lt;/etsi:SignaturePolicyIdentifier&gt;&lt;/etsi:SignedSignatureProperties&gt;&lt;etsi:SignedDataObjectProperties&gt;&lt;etsi:DataObjectFormat ObjectReference="#Reference-ID-324dc4fe-2ca2-4951-9933-09ff19e1f8df"&gt;&lt;etsi:Description&gt;contenido comprobante&lt;/etsi:Description&gt;&lt;etsi:MimeType&gt;text/xml&lt;/etsi:MimeType&gt;&lt;/etsi:DataObjectFormat&gt;&lt;/etsi:SignedDataObjectProperties&gt;&lt;/etsi:SignedProperties&gt;&lt;/etsi:QualifyingProperties&gt;&lt;/ds:Object&gt;&lt;/ds:Signature&gt;&lt;/factura&gt;</comprobante></autorizacion>

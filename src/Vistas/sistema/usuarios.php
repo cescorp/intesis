@@ -182,6 +182,7 @@ $esSuperusuario = strtoupper((string) ($usuario['perfil_codigo'] ?? $usuario['pe
             </div>
             <div class="modal-body formulario-compacto">
                 <div class="row g-2">
+                    <?php if (count($empresas) > 1): ?>
                     <div class="col-md-6 asignacion-simple">
                         <label class="form-label" for="usuario_empresa_id">Empresa</label>
                         <select class="form-control form-control-sm" id="usuario_empresa_id" name="empresa_id" required>
@@ -191,6 +192,9 @@ $esSuperusuario = strtoupper((string) ($usuario['perfil_codigo'] ?? $usuario['pe
                             <?php endforeach; ?>
                         </select>
                     </div>
+                    <?php else: ?>
+                    <input type="hidden" id="usuario_empresa_id" name="empresa_id" value="<?= (int) ($empresas[0]['sis_empresa_id'] ?? 0) ?>">
+                    <?php endif; ?>
                     <div class="col-md-6 asignacion-simple">
                         <label class="form-label" for="usuario_perfil_id">Perfil</label>
                         <select class="form-control form-control-sm" id="usuario_perfil_id" name="perfil_id" required>

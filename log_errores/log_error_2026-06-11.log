@@ -182,3 +182,212 @@ Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
 Linea:   N/A
 ################################################
 
+################################################
+Fecha:   2026-06-11 18:13:37
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-11 18:13:38
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-11 18:13:39
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-11 18:17:52
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-11 20:59:39
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-11 21:36:11
+Archivo: C:\xampp\htdocs\intesis\src\Modelos\MovimientoInternoModelo.php
+Detalle: CREAR MOVIMIENTO INTERNO
+Error:   SQLSTATE[23514]: Check violation: 7 ERROR:  el nuevo registro para la relación «inv_stock» viola la restricción «check» «chk_inv_stock_cantidad»
+DETAIL:  La fila que falla contiene (8, 1, 7, 12, -1.0000, 0.000000, 2026-06-11 21:36:11.911796, 1, 1, 2026-06-11 21:34:24.430968, 2026-06-11 21:36:11.911796).
+Linea:   620
+################################################
+
+################################################
+Fecha:   2026-06-11 21:40:54
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_INACTIVAR_PROVEEDOR
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-11 21:41:14
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-11 21:46:46
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-11 21:48:34
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-11 21:51:57
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-11 22:03:50
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_INACTIVAR_PROVEEDOR
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-11 22:04:36
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-11 22:04:38
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_INACTIVAR_PROVEEDOR
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-11 22:04:40
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-11 22:25:25
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_INACTIVAR_PROVEEDOR
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-11 22:25:45
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-11 22:25:51
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-11 22:25:59
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_INACTIVAR_PROVEEDOR
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-11 22:26:52
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_INACTIVAR_PROVEEDOR
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-11 22:26:58
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-11 22:27:02
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-11 22:27:39
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_INACTIVAR_PROVEEDOR
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-11 22:27:43
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-11 22:46:22
+Archivo: C:\xampp\htdocs\intesis\src\Controladores\BodegaControlador.php
+Detalle: CREAR BODEGA
+Error:   Ya existe una bodega con ese codigo en la empresa.
+Linea:   312
+################################################
+
+################################################
+Fecha:   2026-06-11 23:09:44
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+

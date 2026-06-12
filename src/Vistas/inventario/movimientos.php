@@ -82,6 +82,14 @@ $appUrl = rtrim($configuracion->obtener('APP_URL', ''), '/');
                                                     <?php if ($permisos['detalle']): ?>
                                                         <button type="button" class="btn btn-accion btn-ver-detalle-movimiento" data-id="<?= (int) $movimiento['inv_movimientos_id'] ?>" data-bs-toggle="modal" data-bs-target="#modalDetalleMovimiento" title="Ver detalle"><i class="bi bi-eye"></i></button>
                                                     <?php endif; ?>
+                                                    <?php $estadoCod = (string) $movimiento['sis_estado_codigo']; ?>
+                                                    <?php if ($estadoCod !== 'PENDIENTE' && $estadoCod !== 'EN_TRANSITO'): ?>
+                                                        <button type="button" class="btn btn-accion btn-mov-pdf"
+                                                            data-empresa="<?= (int) $usuario['empresa_id'] ?>"
+                                                            data-documento-id="<?= (int) $movimiento['inv_movimientos_id'] ?>"
+                                                            data-documento-numero="<?= htmlspecialchars($movimiento['inv_movimientos_numero']) ?>"
+                                                            title="Ver PDF"><i class="bi bi-file-pdf"></i></button>
+                                                    <?php endif; ?>
                                                 </td>
                                             </tr>
                                         <?php endforeach; ?>
@@ -159,7 +167,7 @@ $appUrl = rtrim($configuracion->obtener('APP_URL', ''), '/');
                 </div>
                 <div class="table-responsive stock-tabla-contenedor">
                     <table class="table table-sm align-middle" id="tablaLineasMovimiento">
-                        <thead><tr><th>Codigo</th><th>Descripcion</th><th>Costo</th><th>PVP</th><th>Accion</th><th>Origen</th><th>Destino</th><th>Cantidad</th><th>Total</th><th></th></tr></thead>
+                        <thead><tr><th>Codigo</th><th>Descripcion</th><th>PVP</th><th>Accion</th><th>Origen</th><th class="th-stock-origen">Stock origen</th><th>Destino</th><th>Cantidad</th><th>Total</th><th></th></tr></thead>
                         <tbody></tbody>
                     </table>
                 </div>
@@ -193,6 +201,16 @@ $appUrl = rtrim($configuracion->obtener('APP_URL', ''), '/');
             <div class="modal-body"><label class="form-label">Detalle</label><input class="form-control form-control-sm" name="detalle" id="editar_movimiento_detalle" required></div>
             <div class="modal-footer"><button type="button" class="btn btn-secundario" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i> Cancelar</button><button class="btn btn-intesis"><i class="bi bi-save2"></i> Guardar</button></div>
         </form>
+    </div>
+</div>
+
+<div class="modal fade modal-intesis" id="modalPdfKardex" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header"><div><p class="modal-etiqueta">Inventario</p><h2 class="modal-title" id="modalPdfKardexTitulo">Documento</h2></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button></div>
+            <div class="modal-body p-0"><iframe id="visorPdfKardex" class="visor-pdf-kardex" title="Documento PDF"></iframe></div>
+            <div class="modal-footer"><button type="button" class="btn btn-secundario" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i> Cerrar</button></div>
+        </div>
     </div>
 </div>
 

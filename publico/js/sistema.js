@@ -866,6 +866,7 @@
             const formulario = document.getElementById('formularioBodega');
             formulario.reset();
             document.getElementById('bodega_id').value = '';
+            if (document.getElementById('bodega_codigo')) document.getElementById('bodega_codigo').dataset.manual = '';
             document.getElementById('modalBodegaTitulo').textContent = modo === 'editar' ? 'Editar bodega' : 'Nueva bodega';
             formulario.action = `${window.location.origin}${document.body.dataset.baseUrl || ''}/inventario/bodegas/${modo === 'editar' ? 'editar' : 'crear'}`;
             if (modo === 'editar') {
@@ -886,6 +887,22 @@
         });
     }
 
+    const inpBodegaNombre = document.getElementById('bodega_nombre');
+    const inpBodegaCodigo = document.getElementById('bodega_codigo');
+    if (inpBodegaNombre && inpBodegaCodigo) {
+        inpBodegaNombre.addEventListener('input', () => {
+            if (inpBodegaCodigo.dataset.manual === '1') return;
+            const mapa = {á:'a',é:'e',í:'i',ó:'o',ú:'u',à:'a',è:'e',ì:'i',ò:'o',ù:'u',ä:'a',ë:'e',ï:'i',ö:'o',ü:'u',ñ:'n',ç:'c',Á:'A',É:'E',Í:'I',Ó:'O',Ú:'U',À:'A',È:'E',Ì:'I',Ò:'O',Ù:'U',Ä:'A',Ë:'E',Ï:'I',Ö:'O',Ü:'U',Ñ:'N',Ç:'C'};
+            const codigo = inpBodegaNombre.value
+                .split('').map(c => mapa[c] ?? c).join('')
+                .toUpperCase()
+                .replace(/[^A-Z0-9]+/g, '_')
+                .replace(/^_+|_+$/g, '')
+                .substring(0, 30);
+            inpBodegaCodigo.value = codigo;
+        });
+    }
+
     const formularioBodega = document.getElementById('formularioBodega');
     if (formularioBodega) {
         formularioBodega.addEventListener('submit', (evento) => {
@@ -894,13 +911,12 @@
             const nombre = document.getElementById('bodega_nombre').value.trim();
             const principal = document.getElementById('bodega_principal').checked;
             const virtual = document.getElementById('bodega_virtual').checked;
-            if (!empresa || !codigo || !nombre || (principal && virtual)) {
+            if (!empresa || !codigo || !nombre) {
                 evento.preventDefault();
-                mostrarMensaje('USUARIO_DATOS_OBLIGATORIOS', {
-                    titulo: 'Datos incompletos',
-                    texto: principal && virtual ? 'Una bodega virtual no puede ser principal.' : 'Ingrese empresa, codigo y nombre.',
-                    icono: 'error',
-                });
+                Swal.fire({ icon: 'error', title: 'Datos incompletos', text: 'Ingrese empresa, codigo y nombre.' });
+            } else if (principal && virtual) {
+                evento.preventDefault();
+                Swal.fire({ icon: 'error', title: 'Datos incompletos', text: 'Una bodega virtual no puede ser principal.' });
             }
         });
     }
@@ -1929,20 +1945,26 @@
         }
     });
 
-    document.getElementById('tablaDetalleKardex')?.addEventListener('click', (evento) => {
-        const boton = evento.target.closest('.btn-kardex-pdf');
-        if (!boton) return;
+    const abrirPdfInventario = (empresaId, documentoTipo, documentoId, documentoNumero) => {
         const modal = document.getElementById('modalPdfKardex');
         const visor = document.getElementById('visorPdfKardex');
         if (!modal || !visor) return;
-        const parametros = new URLSearchParams({
-            empresa_id: boton.dataset.empresa || '',
-            documento_tipo: boton.dataset.documentoTipo || '',
-            documento_id: boton.dataset.documentoId || '',
-        });
-        document.getElementById('modalPdfKardexTitulo').textContent = `Documento ${boton.dataset.documentoNumero || ''}`.trim();
+        const parametros = new URLSearchParams({ empresa_id: empresaId, documento_tipo: documentoTipo, documento_id: documentoId });
+        document.getElementById('modalPdfKardexTitulo').textContent = `Documento ${documentoNumero || ''}`.trim();
         visor.src = `${window.location.origin}${document.body.dataset.baseUrl || ''}/inventario/kardex/documento?${parametros.toString()}`;
         bootstrap.Modal.getOrCreateInstance(modal).show();
+    };
+
+    document.getElementById('tablaDetalleKardex')?.addEventListener('click', (evento) => {
+        const boton = evento.target.closest('.btn-kardex-pdf');
+        if (!boton) return;
+        abrirPdfInventario(boton.dataset.empresa || '', boton.dataset.documentoTipo || '', boton.dataset.documentoId || '', boton.dataset.documentoNumero || '');
+    });
+
+    document.getElementById('tablaMovimientosLista')?.addEventListener('click', (evento) => {
+        const boton = evento.target.closest('.btn-mov-pdf');
+        if (!boton) return;
+        abrirPdfInventario(boton.dataset.empresa || '', 'INV_MOVIMIENTOS', boton.dataset.documentoId || '', boton.dataset.documentoNumero || '');
     });
 
     let indiceLineaMovimiento = 0;
@@ -1976,6 +1998,7 @@
             origen.disabled = false;
             destino.disabled = false;
         }
+        actualizarStockOrigen(fila);
     };
 
     const recalcularMovimiento = () => {
@@ -2002,13 +2025,14 @@
         fila.dataset.producto = producto.inv_producto_id || '';
         fila.dataset.costo = producto.costo_promedio || 0;
         fila.dataset.pvp = producto.pvp || 0;
+        fila.dataset.saldos = JSON.stringify(producto.saldos || []);
         fila.innerHTML = `
             <td><div class="input-group input-group-sm"><input class="form-control mov-linea-codigo" value="${escaparHtml(producto.inv_producto_codigo_principal || '')}"><button class="btn btn-secundario btn-buscar-linea-movimiento" type="button"><i class="bi bi-search"></i></button></div></td>
             <td><input class="form-control form-control-sm mov-linea-descripcion" value="${escaparHtml(producto.inv_producto_nombre || '')}" disabled></td>
-            <td><input class="form-control form-control-sm text-end mov-linea-costo" value="${Number(producto.costo_promedio || 0).toFixed(2)}" disabled></td>
             <td><input class="form-control form-control-sm text-end mov-linea-pvp" value="${Number(producto.pvp || 0).toFixed(2)}" disabled></td>
             <td><select class="form-control form-control-sm mov-linea-accion" ${tipo === 'TRANSFERENCIA' ? 'disabled' : ''}>${accionesMovimiento(tipo)}</select></td>
             <td><select class="form-control form-control-sm mov-linea-origen"><option value="">Origen</option>${opcionesBodegaMovimiento()}</select></td>
+            <td class="text-end mov-linea-stock-origen text-muted">—</td>
             <td><select class="form-control form-control-sm mov-linea-destino"><option value="">Destino</option>${opcionesBodegaMovimiento()}</select></td>
             <td><input type="number" min="0.0001" step="0.0001" class="form-control form-control-sm text-end mov-linea-cantidad" value="1"></td>
             <td class="text-end mov-linea-total">0.00</td>
@@ -2019,14 +2043,29 @@
         recalcularMovimiento();
     };
 
+    const actualizarStockOrigen = (fila) => {
+        const tipo   = document.getElementById('movimiento_tipo')?.value || '';
+        const accion = fila.querySelector('.mov-linea-accion')?.value || '';
+        const celda  = fila.querySelector('.mov-linea-stock-origen');
+        if (!celda) return;
+        const necesita = tipo === 'TRANSFERENCIA' || (tipo === 'AJUSTE' && accion === 'EGRESO');
+        if (!necesita) { celda.textContent = '—'; celda.classList.add('text-muted'); return; }
+        const bodegaId = fila.querySelector('.mov-linea-origen')?.value || '';
+        const saldos   = JSON.parse(fila.dataset.saldos || '[]');
+        const saldo    = saldos.find((s) => String(s.inv_bodega_id) === String(bodegaId));
+        celda.classList.remove('text-muted');
+        celda.textContent = saldo ? Number(saldo.inv_stock_cantidad_disponible || 0).toFixed(2) : '—';
+    };
+
     const cargarProductoEnLineaMovimiento = (fila, producto) => {
         fila.dataset.producto = producto.inv_producto_id || '';
         fila.dataset.costo = producto.costo_promedio || 0;
         fila.dataset.pvp = producto.pvp || 0;
+        fila.dataset.saldos = JSON.stringify(producto.saldos || []);
         fila.querySelector('.mov-linea-codigo').value = producto.inv_producto_codigo_principal || '';
         fila.querySelector('.mov-linea-descripcion').value = producto.inv_producto_nombre || '';
-        fila.querySelector('.mov-linea-costo').value = Number(producto.costo_promedio || 0).toFixed(2);
         fila.querySelector('.mov-linea-pvp').value = Number(producto.pvp || 0).toFixed(2);
+        actualizarStockOrigen(fila);
         recalcularMovimiento();
     };
 
@@ -2061,15 +2100,22 @@
         window.INTESIS_PRODUCTOS_MOVIMIENTO = productos;
     };
 
+    let _tipoMovimientoPendiente = 'AJUSTE';
+    document.querySelectorAll('.btn-nuevo-movimiento').forEach((btn) => {
+        btn.addEventListener('click', () => { _tipoMovimientoPendiente = btn.dataset.tipo || 'AJUSTE'; });
+    });
+
     const modalMovimiento = document.getElementById('modalMovimientoInterno');
     if (modalMovimiento) {
         modalMovimiento.addEventListener('show.bs.modal', (evento) => {
-            const tipo = evento.relatedTarget?.dataset.tipo || 'AJUSTE_IN';
+            const tipo = evento.relatedTarget?.dataset.tipo || _tipoMovimientoPendiente || 'AJUSTE';
+            _tipoMovimientoPendiente = tipo;
             document.getElementById('formularioMovimientoInterno').reset();
             document.getElementById('movimiento_tipo').value = tipo;
             document.getElementById('movimiento_fecha').value = new Date().toISOString().slice(0, 10);
             document.getElementById('modalMovimientoTitulo').textContent = tipo === 'TRANSFERENCIA' ? 'Transferencia entre bodegas' : 'Ajuste de inventario';
             document.querySelector('#tablaLineasMovimiento tbody').innerHTML = '';
+            indiceLineaMovimiento = 0;
             agregarLineaMovimiento();
         });
     }
@@ -2114,6 +2160,9 @@
         }
         if (evento.target.classList.contains('mov-linea-accion')) {
             configurarBodegasLineaMovimiento(fila);
+        }
+        if (evento.target.classList.contains('mov-linea-origen') || evento.target.classList.contains('mov-linea-accion')) {
+            actualizarStockOrigen(fila);
         }
         recalcularMovimiento();
     });

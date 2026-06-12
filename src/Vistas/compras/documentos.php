@@ -535,7 +535,9 @@ $pendSri     = $pendientesSri ?? [];
         btnAbrirXml.addEventListener('click', () => {
             limpiarAlerta('alertaSubirXml');
             document.getElementById('archivoXml').value = '';
-            document.getElementById('bodegaSubirXml').value = '';
+            const selXml = document.getElementById('bodegaSubirXml');
+            const defXml = selXml.querySelector('option[selected]');
+            selXml.value = defXml ? defXml.value : '';
             getModal('modalSubirXml').show();
         });
     }
@@ -957,7 +959,9 @@ $pendSri     = $pendientesSri ?? [];
     if (btnAbrirTxt) {
         btnAbrirTxt.addEventListener('click', () => {
             document.getElementById('archivoTxt').value = '';
-            document.getElementById('bodegaProcesarTxt').value = '';
+            const selTxt = document.getElementById('bodegaProcesarTxt');
+            const defTxt = selTxt.querySelector('option[selected]');
+            selTxt.value = defTxt ? defTxt.value : '';
             document.getElementById('resultadosTxt').style.display = 'none';
             document.getElementById('resultadosTxt').innerHTML = '';
             document.getElementById('formProcesarTxt').style.display = '';
