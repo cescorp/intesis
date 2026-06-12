@@ -391,6 +391,7 @@ final class SriImportacionModelo
                         'proveedor_id'    => $proveedorId,
                         'cod_principal'   => $cod,
                         'descripcion_sri' => (string) ($det['descripcion'] ?? ''),
+                        'cantidad'        => (float) ($det['cantidad'] ?? 0),
                     ];
                 }
             }
@@ -420,6 +421,26 @@ final class SriImportacionModelo
         );
         $stmtBuscar->execute(['proveedor_id' => $proveedorId, 'cod' => $codPrincipal]);
         $existeId = $stmtBuscar->fetchColumn();
+
+        // Verificar que el producto no esté ya asignado a otro código del mismo proveedor
+        $stmtDup = $this->pdo->prepare(
+            'SELECT inv_codigo_proveedor_codigo FROM inv_codigo_proveedor
+             WHERE com_proveedor_id = :proveedor_id
+               AND inv_producto_id  = :producto_id
+               AND inv_codigo_proveedor_id != :excluir_id
+             LIMIT 1'
+        );
+        $stmtDup->execute([
+            'proveedor_id' => $proveedorId,
+            'producto_id'  => $productoId,
+            'excluir_id'   => (int) $existeId ?: 0,
+        ]);
+        $codDuplicado = $stmtDup->fetchColumn();
+        if ($codDuplicado !== false) {
+            throw new \InvalidArgumentException(
+                "Este producto ya está asignado al código \"$codDuplicado\" para este proveedor."
+            );
+        }
 
         if ($existeId) {
             $this->pdo->prepare(

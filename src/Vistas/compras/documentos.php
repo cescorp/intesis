@@ -255,7 +255,7 @@ $pendSri     = $pendientesSri ?? [];
                 <div id="tablaAsignarCodigos"></div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-sm btn-secundario" data-bs-dismiss="modal">Cerrar (guardar después)</button>
+                <button type="button" class="btn btn-sm btn-danger" data-bs-dismiss="modal">Cancelar</button>
                 <button type="button" class="btn btn-intesis btn-sm" id="btnContinuarTrasAsignar" disabled>
                     <i class="bi bi-check2 me-1"></i>Continuar
                 </button>
@@ -714,11 +714,13 @@ $pendSri     = $pendientesSri ?? [];
         }
 
         let html = `<table class="table table-sm tabla-intesis" id="tbAsignarCods">
-        <thead><tr><th>Cod. Prov.</th><th>Descripción del XML</th><th>Producto a Asignar</th><th class="text-center">Estado</th></tr></thead><tbody>`;
+        <thead><tr><th>Cod. Prov.</th><th>Descripción del XML</th><th class="text-center">Cant. Entrante</th><th class="text-center">Stock Total</th><th>Producto a Asignar</th><th class="text-center">Estado</th></tr></thead><tbody>`;
         codigos.forEach((cod, i) => {
             html += `<tr id="filaCod${i}">
                 <td><code>${esc(cod.cod_principal)}</code></td>
                 <td>${esc(cod.descripcion_sri)}</td>
+                <td class="text-center">${Math.round(parseFloat(cod.cantidad) || 0)}</td>
+                <td class="text-center stock-asig-${i}">—</td>
                 <td>
                     <div class="input-group input-group-sm">
                         <input type="text" class="form-control input-buscar-producto-cod"
@@ -730,7 +732,6 @@ $pendSri     = $pendientesSri ?? [];
                         <button class="btn btn-outline-secondary btn-limpiar-asig" data-idx="${i}" type="button"><i class="bi bi-x"></i></button>
                     </div>
                     <input type="hidden" class="input-producto-id-asig" data-idx="${i}" value="">
-                    <div class="list-group position-absolute z-3 w-100 resultados-producto-cod d-none" data-idx="${i}" style="max-height:200px;overflow-y:auto"></div>
                 </td>
                 <td class="text-center estado-asig-${i}"><span class="badge bg-secondary">Pendiente</span></td>
             </tr>`;
@@ -741,54 +742,30 @@ $pendSri     = $pendientesSri ?? [];
         actualizarBtnContinuar(codigos);
         getModal('modalAsignarCodigos').show();
 
-        // Búsqueda inline (dropdown) + Enter → modal
+        // Enter: asignación directa por código interno exacto, o abre modal avanzado
         contenedor.querySelectorAll('.input-buscar-producto-cod').forEach(inp => {
-            let timer;
-            inp.addEventListener('input', () => {
-                clearTimeout(timer);
-                const q   = inp.value.trim();
-                const idx = inp.dataset.idx;
-                const lista = contenedor.querySelector(`.resultados-producto-cod[data-idx="${idx}"]`);
-                if (q.length < 2) { lista.classList.add('d-none'); lista.innerHTML = ''; return; }
-                timer = setTimeout(async () => {
-                    try {
-                        const res   = await fetch(appUrl + '/compras/documentos/productos?tipo=codigo&q=' + encodeURIComponent(q));
-                        const json  = await res.json();
-                        if (!json.ok) return;
-                        const prods = json.productos;
-                        if (!prods.length) {
-                            lista.innerHTML = '<div class="list-group-item list-group-item-action text-muted small">Sin resultados — presione Enter para búsqueda avanzada</div>';
-                            lista.classList.remove('d-none');
-                            return;
-                        }
-                        lista.innerHTML = prods.map(p =>
-                            `<button type="button" class="list-group-item list-group-item-action py-1 opcion-producto-asig"
-                                data-idx="${idx}" data-id="${p.inv_producto_id}" data-nombre="${esc(p.inv_producto_nombre)}">
-                                <strong>${esc(p.codigo_interno)}</strong> — ${esc(p.inv_producto_nombre)}
-                            </button>`
-                        ).join('');
-                        lista.classList.remove('d-none');
-                    } catch { /* silencioso */ }
-                }, 300);
-            });
-            // Enter → abrir modal de búsqueda avanzada
-            inp.addEventListener('keydown', (e) => {
+            inp.addEventListener('keydown', async (e) => {
                 if (e.key !== 'Enter') return;
                 e.preventDefault();
                 e.stopPropagation();
                 const inpHidden = inp.closest('tr')?.querySelector('.input-producto-id-asig');
                 if (inpHidden?.value) return; // ya tiene producto asignado
-                const lista = contenedor.querySelector(`.resultados-producto-cod[data-idx="${inp.dataset.idx}"]`);
-                if (lista) lista.classList.add('d-none');
-                abrirModalBuscarProductoAsig(inp.value.trim(), inp);
+                const q = inp.value.trim();
+                if (!q) { abrirModalBuscarProductoAsig('', inp); return; }
+                try {
+                    const res  = await fetch(appUrl + '/compras/documentos/productos?tipo=codigo&q=' + encodeURIComponent(q));
+                    const json = await res.json();
+                    const prods = json.productos || [];
+                    const exacto = prods.find(p => (p.codigo_interno || '').toUpperCase() === q.toUpperCase());
+                    if (exacto) {
+                        guardarAsignacionCod(inp.dataset.idx, parseInt(exacto.inv_producto_id, 10), exacto.inv_producto_nombre, parseFloat(exacto.stock_total ?? null));
+                    } else {
+                        abrirModalBuscarProductoAsig(q, inp);
+                    }
+                } catch {
+                    abrirModalBuscarProductoAsig(q, inp);
+                }
             });
-        });
-
-        // Selección de producto desde el dropdown inline
-        contenedor.addEventListener('click', (e) => {
-            const opcion = e.target.closest('.opcion-producto-asig');
-            if (!opcion) return;
-            guardarAsignacionCod(opcion.dataset.idx, parseInt(opcion.dataset.id, 10), opcion.dataset.nombre);
         });
 
         // Limpiar fila
@@ -799,26 +776,25 @@ $pendSri     = $pendientesSri ?? [];
             const fila = contenedor.querySelector(`#filaCod${idx}`);
             fila.querySelector('.input-buscar-producto-cod').value = '';
             fila.querySelector('.input-producto-id-asig').value = '';
-            contenedor.querySelector(`.resultados-producto-cod[data-idx="${idx}"]`).classList.add('d-none');
             contenedor.querySelector(`.estado-asig-${idx}`).innerHTML = '<span class="badge bg-secondary">Pendiente</span>';
+            const stockEl = contenedor.querySelector(`.stock-asig-${idx}`);
+            if (stockEl) stockEl.textContent = '—';
         });
     }
 
     /* ── Guardar asignación de código SRI → producto (reutilizable) ─────────── */
-    async function guardarAsignacionCod(idx, productoId, nombre) {
+    async function guardarAsignacionCod(idx, productoId, nombre, stockTotal = null) {
         const contenedor  = document.getElementById('tablaAsignarCodigos');
         const fila        = contenedor?.querySelector(`#filaCod${idx}`);
         if (!fila) return;
         const inpBuscar   = fila.querySelector('.input-buscar-producto-cod');
         const inpHidden   = fila.querySelector('.input-producto-id-asig');
-        const lista       = fila.querySelector('.resultados-producto-cod');
         const estadoEl    = contenedor.querySelector(`.estado-asig-${idx}`);
         const proveedorId = parseInt(inpBuscar.dataset.proveedorId, 10);
         const cod         = inpBuscar.dataset.cod;
 
         inpBuscar.value = nombre;
         inpHidden.value = productoId;
-        if (lista) lista.classList.add('d-none');
         estadoEl.innerHTML = '<span class="badge bg-info"><i class="bi bi-arrow-repeat"></i> Guardando...</span>';
 
         try {
@@ -831,9 +807,17 @@ $pendSri     = $pendientesSri ?? [];
             if (!json.ok) throw new Error(json.mensaje);
             estadoEl.innerHTML = '<span class="badge bg-success"><i class="bi bi-check"></i> Guardado</span>';
             asignarEstado[`${proveedorId}|${cod}`] = productoId;
+            if (stockTotal !== null) {
+                const stockEl = contenedor?.querySelector(`.stock-asig-${idx}`);
+                if (stockEl) stockEl.textContent = Math.round(stockTotal);
+            }
             actualizarBtnContinuar(codigosAsigActuales);
         } catch (err) {
-            estadoEl.innerHTML = `<span class="badge bg-danger" title="${esc(err.message)}"><i class="bi bi-x"></i> Error</span>`;
+            estadoEl.innerHTML = '<span class="badge bg-danger"><i class="bi bi-x"></i> Error</span>';
+            Swal.fire({
+                toast: true, position: 'top-end', icon: 'error',
+                title: err.message, showConfirmButton: false, timer: 5000, timerProgressBar: true,
+            });
         }
     }
 
@@ -904,7 +888,7 @@ $pendSri     = $pendientesSri ?? [];
         const id     = parseInt(prod.inv_producto_id, 10);
         getModal('modalBuscarProductoAsig').hide();
         inpAsigActual = null;
-        guardarAsignacionCod(idx, id, nombre);
+        guardarAsignacionCod(idx, id, nombre, parseFloat(prod.stock_total ?? null));
     });
 
     document.getElementById('modalBuscarProductoAsig')?.addEventListener('hidden.bs.modal', () => {
@@ -918,7 +902,7 @@ $pendSri     = $pendientesSri ?? [];
         if (!btn) return;
         const asignados = Object.keys(asignarEstado).length;
         const total = codigos.length;
-        btn.disabled = asignados < total;
+        btn.disabled = asignados < 1;
         btn.innerHTML = asignados >= total
             ? '<i class="bi bi-check2 me-1"></i>Continuar'
             : `<i class="bi bi-check2 me-1"></i>Continuar (${asignados}/${total} asignados)`;

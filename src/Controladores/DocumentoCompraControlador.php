@@ -523,7 +523,7 @@ final class DocumentoCompraControlador
     public function asignarCodigo(): void
     {
         $usuario = $this->exigirSesionJson();
-        $this->exigirPermiso('/compras/documentos/subir-xml'); // reutiliza permiso
+        $this->exigirPermisoJson('/compras/documentos/subir-xml'); // reutiliza permiso
 
         try {
             $empresaId  = (int) $usuario['empresa_id'];
