@@ -2104,7 +2104,7 @@
         const cuerpo = document.getElementById('tablaBuscarProductoMovimiento');
         if (!cuerpo) return;
         cuerpo.innerHTML = productos.length ? productos.map((producto, indice) => {
-            const stock = (producto.saldos || []).map((saldo) => `${escaparHtml(saldo.inv_bodega_codigo)}: ${Math.round(Number(saldo.inv_stock_cantidad_disponible || 0))}`).join('<br>');
+            const stock = (producto.saldos || []).map((saldo) => `${escaparHtml(saldo.inv_bodega_codigo)}: ${Number(saldo.inv_stock_cantidad_disponible || 0)}`).join('<br>');
             const imagen = producto.imagen_principal_id ? `<img src="${window.location.origin}${document.body.dataset.baseUrl || ''}/inventario/productos/archivos/ver?archivo_id=${producto.imagen_principal_id}" alt="" style="width:34px;height:34px;object-fit:cover;border-radius:5px;">` : '<i class="bi bi-image"></i>';
             return `<tr>
                 <td>${imagen}</td>

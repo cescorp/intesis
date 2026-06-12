@@ -217,10 +217,11 @@ final class ProveedorControlador
         $perfilId  = (int) $usuario['perfil_id'];
 
         return [
-            'crear'     => $this->menuModelo->tienePermiso($empresaId, $perfilId, '/compras/proveedores/crear'),
-            'editar'    => $this->menuModelo->tienePermiso($empresaId, $perfilId, '/compras/proveedores/editar'),
-            'activar'   => $this->menuModelo->tienePermiso($empresaId, $perfilId, '/compras/proveedores/activar'),
-            'inactivar' => $this->menuModelo->tienePermiso($empresaId, $perfilId, '/compras/proveedores/inactivar'),
+            'crear'        => $this->menuModelo->tienePermiso($empresaId, $perfilId, '/compras/proveedores/crear'),
+            'editar'       => $this->menuModelo->tienePermiso($empresaId, $perfilId, '/compras/proveedores/editar'),
+            'activar'      => $this->menuModelo->tienePermiso($empresaId, $perfilId, '/compras/proveedores/activar'),
+            'inactivar'    => $this->menuModelo->tienePermiso($empresaId, $perfilId, '/compras/proveedores/inactivar'),
+            'ver_codigos'  => $this->menuModelo->tienePermiso($empresaId, $perfilId, '/compras/codigos-proveedor/ver'),
         ];
     }
 }

@@ -19,6 +19,7 @@ use Intesis\Controladores\StockControlador;
 use Intesis\Controladores\KardexControlador;
 use Intesis\Controladores\MovimientoInternoControlador;
 use Intesis\Controladores\ProveedorControlador;
+use Intesis\Controladores\CodigoProveedorControlador;
 use Intesis\Controladores\DocumentoCompraControlador;
 use Intesis\Controladores\ClienteControlador;
 use Intesis\Controladores\UsuarioControlador;
@@ -38,6 +39,7 @@ use Intesis\Modelos\StockModelo;
 use Intesis\Modelos\KardexModelo;
 use Intesis\Modelos\MovimientoInternoModelo;
 use Intesis\Modelos\ProveedorModelo;
+use Intesis\Modelos\CodigoProveedorModelo;
 use Intesis\Modelos\DocumentoCompraModelo;
 use Intesis\Modelos\ClienteModelo;
 use Intesis\Modelos\TipoDocumentoModelo;
@@ -89,6 +91,7 @@ final class Aplicacion
         $kardexModelo = new KardexModelo($conexion);
         $movimientoInternoModelo = new MovimientoInternoModelo($conexion, $secuenciaModelo);
         $proveedorModelo = new ProveedorModelo($conexion);
+        $codigoProveedorModelo = new CodigoProveedorModelo($conexion->obtener());
         $documentoCompraModelo = new DocumentoCompraModelo($conexion);
         $clienteModelo = new ClienteModelo($conexion);
         $sriXmlServicio = new SriXmlServicio();
@@ -113,6 +116,7 @@ final class Aplicacion
             new KardexControlador($vista, $sesion, $kardexModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores, $generadorPdf),
             new MovimientoInternoControlador($vista, $sesion, $movimientoInternoModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
             new ProveedorControlador($vista, $sesion, $proveedorModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
+            new CodigoProveedorControlador($vista, $sesion, $codigoProveedorModelo, $documentoCompraModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
             new DocumentoCompraControlador($vista, $sesion, $documentoCompraModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores, $sriXmlServicio, $sriImportacionModelo),
             new ClienteControlador($vista, $sesion, $clienteModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
             $configuracion,

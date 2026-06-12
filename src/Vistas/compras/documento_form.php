@@ -322,7 +322,7 @@ function crearFila(datos) {
       <td><input type="text"   class="form-control form-control-sm inp-cod-prov"    placeholder="Cod. prov."  autocomplete="off" name="lineas[${idx}][cod_proveedor]" value="${esc(datos.cod_proveedor||'')}"></td>
       <td><input type="text"   class="form-control form-control-sm inp-cod-interno" placeholder="Codigo"      autocomplete="off" value="${esc(datos.codigo_interno||'')}"></td>
       <td><input type="text"   class="form-control form-control-sm inp-descripcion" value="${esc(datos.producto_nombre||'')}" disabled></td>
-      <td class="text-center"><input type="number" class="form-control form-control-sm text-center inp-cantidad" name="lineas[${idx}][cantidad]" value="${Math.round(datos.cantidad||1)||1}" min="1" step="1"></td>
+      <td class="text-center"><input type="number" class="form-control form-control-sm text-center inp-cantidad" name="lineas[${idx}][cantidad]" value="${datos.cantidad}" min="1" step="1"></td>
       <td><input type="number" class="form-control form-control-sm inp-costo"       name="lineas[${idx}][costo]"     value="${datos.costo||0}"    min="0"       step="0.000001"></td>
       <td><input type="number" class="form-control form-control-sm inp-descuento"   name="lineas[${idx}][descuento]" value="${datos.descuento||0}"  min="0"       step="0.01"></td>
       <td>
@@ -641,7 +641,7 @@ function renderProductosCodProv(tbody, lista) {
           <td>${esc(p.cod_proveedor||'—')}</td>
           <td>${esc(p.codigo_interno||'')}</td>
           <td>${esc(p.inv_producto_nombre||'')}</td>
-          <td class="text-center">${Math.round(parseFloat(p.stock_total||0))}</td>
+          <td class="text-center">${parseFloat(p.stock_total||0)}</td>
         </tr>`;
     }).join('');
 }
@@ -659,7 +659,7 @@ function renderProductos(tbody, lista) {
           <td>${esc(p.codigo_interno)}</td>
           <td>${esc(p.inv_producto_nombre||'')}</td>
           <td>${esc(p.marca_nombre||'—')}</td>
-          <td class="text-center">${Math.round(parseFloat(p.stock_total||0))}</td>
+          <td class="text-center">${parseFloat(p.stock_total||0)}</td>
         </tr>`;
     }).join('');
 }

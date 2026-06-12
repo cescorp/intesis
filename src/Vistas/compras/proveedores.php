@@ -9,13 +9,18 @@ $tiposId   = ['RUC' => 'RUC', 'CEDULA' => 'Cedula', 'PASAPORTE' => 'Pasaporte'];
     <nav class="app-header navbar navbar-expand navbar-intesis"><div class="container-fluid"><ul class="navbar-nav"><li class="nav-item"><button class="nav-link btn btn-link" data-lte-toggle="sidebar" type="button"><i class="bi bi-list"></i></button></li><li class="nav-item"><span class="nav-link breadcrumb-navbar"><span><?= htmlspecialchars($appNombre) ?></span><i class="bi bi-chevron-right"></i><span>Compras</span><i class="bi bi-chevron-right"></i><strong>Proveedores</strong></span></li></ul><ul class="navbar-nav ms-auto align-items-center"><li class="nav-item me-3 d-none d-md-block"><span class="usuario-navbar"><?= htmlspecialchars($usuario['nombre']) ?></span></li><li class="nav-item"><form action="<?= $appUrl ?>/salir" method="post"><button class="btn btn-salir" type="submit" title="Cerrar sesion"><i class="bi bi-power"></i></button></form></li></ul></div></nav>
     <aside class="app-sidebar sidebar-intesis" data-bs-theme="dark"><div class="sidebar-brand"><a href="<?= $appUrl ?>/dashboard" class="brand-link"><span class="brand-icon"><i class="bi bi-grid-1x2-fill"></i></span><span class="brand-text"><?= htmlspecialchars($appNombre) ?></span></a></div><div class="sidebar-wrapper"><?php require $configuracion->raiz() . '/src/Vistas/plantillas/menu_lateral.php'; ?></div></aside>
     <main class="app-main"><div class="app-content"><div class="container-fluid"><section class="panel-crud">
-        <?php if ($permisos['crear']): ?>
         <div class="panel-crud-cabecera">
+            <?php if ($permisos['crear']): ?>
             <button type="button" class="btn btn-intesis btn-crud" data-bs-toggle="modal" data-bs-target="#modalProveedor" data-modo="crear">
                 <i class="bi bi-plus-square"></i> Nuevo proveedor
             </button>
+            <?php endif; ?>
+            <?php if ($permisos['ver_codigos']): ?>
+            <a href="<?= $appUrl ?>/compras/codigos-proveedor" class="btn btn-secundario btn-crud">
+                <i class="bi bi-upc-scan"></i> Códigos de proveedor
+            </a>
+            <?php endif; ?>
         </div>
-        <?php endif; ?>
         <div class="table-responsive">
             <table id="tablaProveedores" class="table table-hover tabla-intesis align-middle w-100">
                 <thead><tr>

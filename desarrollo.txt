@@ -67,17 +67,20 @@ ok -     * Input para buscar (herede el texto)  carge  la Lista de Productos al 
 ok -     * al dar clic en toda la linea se carga el codigo de proveedor, codigo interno, descripcion, etc, etc en la compra
 ok - -campos habilitados: Cod. Porveedor, Codigo Interno, 
 
-- abajo al final  totales de costo y PVP
-2. vamos usar  tabla existente inv_codigo_proveedor
-Usar tabla inv_codigo_proveedor  y campos: 
-1.	inv_codigo_proveedor_id
-2.	inv_producto_id
-3.	inv_codigo_proveedor_codigo
-4.	inv_codigo_proveedor_estado
-5.	usuario_crea
-6.	usuario_modifica
-7.	fecha_crea
-8.	fecha_modifica
+ok - - abajo al final  totales de costo y PVP
+ok - 2. vamos usar  tabla existente inv_codigo_proveedor
+ok - Usar tabla inv_codigo_proveedor  y campos: 
+ok -     1.	inv_codigo_proveedor_id
+ok -     2.	inv_producto_id
+ok -     3.	inv_codigo_proveedor_codigo
+ok -     4.	inv_codigo_proveedor_estado
+ok -     5.	usuario_crea
+ok -     6.	usuario_modifica
+ok -     7.	fecha_crea
+ok -     8.	fecha_modifica
+ok - 3.3 CRUD Codigos de proveedor
+ok -  columas:  cod. proveedor | razón social | producto | usuario asigna | fecha | estado | acciones
+
 
 3.4 Actualización de stock: Proceso
 Al aprobar una compra, aumentar inventario.

@@ -19,6 +19,7 @@ use Intesis\Controladores\StockControlador;
 use Intesis\Controladores\KardexControlador;
 use Intesis\Controladores\MovimientoInternoControlador;
 use Intesis\Controladores\ProveedorControlador;
+use Intesis\Controladores\CodigoProveedorControlador;
 use Intesis\Controladores\DocumentoCompraControlador;
 use Intesis\Controladores\ClienteControlador;
 use Intesis\Controladores\UsuarioControlador;
@@ -44,6 +45,7 @@ final class Enrutador
         private KardexControlador $kardexControlador,
         private MovimientoInternoControlador $movimientoInternoControlador,
         private ProveedorControlador $proveedorControlador,
+        private CodigoProveedorControlador $codigoProveedorControlador,
         private DocumentoCompraControlador $documentoCompraControlador,
         private ClienteControlador $clienteControlador,
         private Configuracion $configuracion,
@@ -609,6 +611,41 @@ final class Enrutador
 
         if ($metodo === 'POST' && $ruta === '/compras/proveedores/inactivar') {
             $this->proveedorControlador->inactivar();
+            return;
+        }
+
+        if ($metodo === 'GET' && $ruta === '/compras/codigos-proveedor') {
+            $this->codigoProveedorControlador->listar();
+            return;
+        }
+
+        if ($metodo === 'POST' && $ruta === '/compras/codigos-proveedor/crear') {
+            $this->codigoProveedorControlador->crear();
+            return;
+        }
+
+        if ($metodo === 'POST' && $ruta === '/compras/codigos-proveedor/editar') {
+            $this->codigoProveedorControlador->editar();
+            return;
+        }
+
+        if ($metodo === 'POST' && $ruta === '/compras/codigos-proveedor/activar') {
+            $this->codigoProveedorControlador->activar();
+            return;
+        }
+
+        if ($metodo === 'POST' && $ruta === '/compras/codigos-proveedor/inactivar') {
+            $this->codigoProveedorControlador->inactivar();
+            return;
+        }
+
+        if ($metodo === 'POST' && $ruta === '/compras/codigos-proveedor/eliminar') {
+            $this->codigoProveedorControlador->eliminar();
+            return;
+        }
+
+        if ($metodo === 'GET' && $ruta === '/compras/codigos-proveedor/productos') {
+            $this->codigoProveedorControlador->buscarProductos();
             return;
         }
 

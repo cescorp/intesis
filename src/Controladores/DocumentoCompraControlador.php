@@ -181,7 +181,7 @@ final class DocumentoCompraControlador
     public function registrar(): void
     {
         $usuario = $this->exigirSesionJson();
-        $this->exigirPermiso('/compras/documentos/registrar');
+        $this->exigirPermisoJson('/compras/documentos/registrar');
         try {
             $documentoId = (int) ($_POST['documento_id'] ?? 0);
             $doc = $this->obtenerDocumentoPermitido($documentoId, $usuario);
