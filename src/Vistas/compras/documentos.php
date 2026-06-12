@@ -187,10 +187,15 @@ $pendSri     = $pendientesSri ?? [];
                 <div id="alertaSubirXml"></div>
                 <div class="mb-3">
                     <label class="form-label fw-semibold">Bodega destino <span class="text-danger">*</span></label>
+                    <?php
+                    $bodegaDefaultXml = 0;
+                    foreach ($bodegas ?? [] as $b) { if (!empty($b['predeterminada'])) { $bodegaDefaultXml = (int) $b['inv_bodega_id']; break; } }
+                    if (!$bodegaDefaultXml) foreach ($bodegas ?? [] as $b) { if (!empty($b['inv_bodega_es_principal'])) { $bodegaDefaultXml = (int) $b['inv_bodega_id']; break; } }
+                    ?>
                     <select id="bodegaSubirXml" class="form-select">
                         <option value="">— Seleccione —</option>
                         <?php foreach ($bodegas ?? [] as $b): ?>
-                        <option value="<?= (int) $b['inv_bodega_id'] ?>" <?= $b['inv_bodega_es_principal'] ? 'selected' : '' ?>><?= htmlspecialchars($b['inv_bodega_nombre']) ?></option>
+                        <option value="<?= (int) $b['inv_bodega_id'] ?>" <?= (int) $b['inv_bodega_id'] === $bodegaDefaultXml ? 'selected' : '' ?>><?= htmlspecialchars($b['inv_bodega_nombre']) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
@@ -274,10 +279,15 @@ $pendSri     = $pendientesSri ?? [];
                 <div id="formProcesarTxt">
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Bodega destino <span class="text-danger">*</span></label>
+                        <?php
+                        $bodegaDefaultTxt = 0;
+                        foreach ($bodegas ?? [] as $b) { if (!empty($b['predeterminada'])) { $bodegaDefaultTxt = (int) $b['inv_bodega_id']; break; } }
+                        if (!$bodegaDefaultTxt) foreach ($bodegas ?? [] as $b) { if (!empty($b['inv_bodega_es_principal'])) { $bodegaDefaultTxt = (int) $b['inv_bodega_id']; break; } }
+                        ?>
                         <select id="bodegaProcesarTxt" class="form-select">
                             <option value="">— Seleccione —</option>
                             <?php foreach ($bodegas ?? [] as $b): ?>
-                            <option value="<?= (int) $b['inv_bodega_id'] ?>" <?= $b['inv_bodega_es_principal'] ? 'selected' : '' ?>><?= htmlspecialchars($b['inv_bodega_nombre']) ?></option>
+                            <option value="<?= (int) $b['inv_bodega_id'] ?>" <?= (int) $b['inv_bodega_id'] === $bodegaDefaultTxt ? 'selected' : '' ?>><?= htmlspecialchars($b['inv_bodega_nombre']) ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
