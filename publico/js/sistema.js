@@ -2112,7 +2112,6 @@
             _tipoMovimientoPendiente = tipo;
             document.getElementById('formularioMovimientoInterno').reset();
             document.getElementById('movimiento_tipo').value = tipo;
-            document.getElementById('movimiento_fecha').value = new Date().toISOString().slice(0, 10);
             document.getElementById('modalMovimientoTitulo').textContent = tipo === 'TRANSFERENCIA' ? 'Transferencia entre bodegas' : 'Ajuste de inventario';
             document.querySelector('#tablaLineasMovimiento tbody').innerHTML = '';
             indiceLineaMovimiento = 0;
