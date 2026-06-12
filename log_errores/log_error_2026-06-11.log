@@ -391,3 +391,59 @@ Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
 Linea:   N/A
 ################################################
 
+################################################
+Fecha:   2026-06-11 23:13:27
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-11 23:23:54
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-11 23:30:42
+Archivo: C:\xampp\htdocs\intesis\src\Servicios\GeneradorPdf.php
+Detalle: ERROR PHP NIVEL 2
+Error:   Undefined array key "referencia"
+Linea:   109
+################################################
+
+################################################
+Fecha:   2026-06-11 23:30:50
+Archivo: C:\xampp\htdocs\intesis\src\Servicios\GeneradorPdf.php
+Detalle: ERROR PHP NIVEL 2
+Error:   Undefined array key "referencia"
+Linea:   108
+################################################
+
+################################################
+Fecha:   2026-06-11 23:33:50
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-11 23:34:55
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-11 23:52:51
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+

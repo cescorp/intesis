@@ -65,7 +65,7 @@ $appUrl = rtrim($configuracion->obtener('APP_URL', ''), '/');
                                         <td><?= htmlspecialchars($producto['inv_producto_nombre']) ?></td>
                                         <?php foreach ($bodegas as $bodega): ?>
                                             <?php $cantidad = (float) ($producto['saldos'][(int) $bodega['inv_bodega_id']] ?? 0); ?>
-                                            <td class="text-end"><?= number_format($cantidad, 2) ?></td>
+                                            <td class="text-center"><?= number_format($cantidad, 0) ?></td>
                                         <?php endforeach; ?>
                                         <td class="text-end"><?= number_format((float) $producto['pvp'], 2) ?></td>
                                         <td class="text-end"><span class="badge estado-badge estado-activo"><?= (int) $producto['movimientos'] ?></span></td>

@@ -178,9 +178,9 @@ final class KardexControlador
             'numero' => $cabecera['inv_movimientos_numero'],
             'fecha' => (string) $cabecera['inv_movimientos_fecha'],
             'hora' => (string) $cabecera['hora'],
-            'referencia' => $cabecera['inv_movimientos_referencia'],
             'observacion' => $cabecera['inv_movimientos_observacion'],
             'responsable' => $cabecera['responsable'],
+            'aprobado_por' => $cabecera['aprobado_por'] ?? null,
         ];
     }
 

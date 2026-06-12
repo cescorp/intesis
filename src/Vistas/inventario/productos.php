@@ -50,7 +50,7 @@ $appUrl = rtrim($configuracion->obtener('APP_URL', ''), '/');
                                         <td><?= htmlspecialchars($producto['inv_producto_unidad_medida']) ?></td>
                                         <td><span class="badge estado-badge <?= (int) $producto['inv_producto_lleva_iva'] === 1 ? 'estado-activo' : 'estado-inactivo' ?>"><?= (int) $producto['inv_producto_lleva_iva'] === 1 ? 'SI' : 'NO' ?></span></td>
                                         <td><?= number_format((float) $producto['inv_producto_costo_ultimo'], 2) ?></td>
-                                        <td><?= number_format((float) $producto['inv_producto_stock_minimo'], 2) ?></td>
+                                        <td class="text-center"><?= number_format((float) $producto['inv_producto_stock_minimo'], 0) ?></td>
                                         <td><span class="badge estado-badge estado-<?= strtolower((string) $producto['sis_estado_codigo']) ?>"><?= htmlspecialchars($producto['sis_estado_nombre']) ?></span></td>
                                         <td class="text-end acciones-tabla">
                                             <button type="button" class="btn btn-accion btn-abrir-galeria-producto" title="Galeria" data-producto="<?= (int) $producto['inv_producto_id'] ?>" data-empresa="<?= (int) $producto['sis_empresa_id'] ?>" data-nombre="<?= htmlspecialchars($producto['inv_producto_nombre']) ?>" data-bs-toggle="modal" data-bs-target="#modalGaleriaProducto"><i class="bi bi-images"></i></button>

@@ -152,11 +152,13 @@ final class KardexModelo
                 e.sis_empresa_nombre_comercial,
                 COALESCE(e.sis_empresa_direccion, '') AS sis_empresa_direccion,
                 td.sis_tipo_documento_nombre,
-                COALESCE(u.sis_usuarios_nombre, 'SIN RESPONSABLE') AS responsable
+                COALESCE(u.sis_usuarios_nombre, 'SIN RESPONSABLE') AS responsable,
+                ua.sis_usuarios_nombre AS aprobado_por
             FROM inv_movimientos m
             INNER JOIN sis_empresa e ON e.sis_empresa_id = m.sis_empresa_id
             INNER JOIN sis_tipo_documento td ON td.sis_tipo_documento_id = m.sis_tipo_documento_id
             LEFT JOIN sis_usuarios u ON u.sis_usuarios_id = m.usuario_crea
+            LEFT JOIN sis_usuarios ua ON ua.sis_usuarios_id = m.usuario_modifica
             WHERE m.sis_empresa_id = :empresa_id
               AND m.inv_movimientos_id = :movimiento_id
             LIMIT 1

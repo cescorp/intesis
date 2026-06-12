@@ -1863,16 +1863,13 @@
         });
     });
 
-    const formatearNumeroKardex = (valor) => Number(valor || 0).toLocaleString('en-US', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 4,
-    });
+    const formatearNumeroKardex = (valor) => Math.round(Number(valor || 0)).toLocaleString('en-US');
 
     const formatearCantidadKardex = (valor) => {
         const numero = Number(valor || 0);
         if (numero > 0) return `+${formatearNumeroKardex(numero)}`;
         if (numero < 0) return `-${formatearNumeroKardex(Math.abs(numero))}`;
-        return '0.00';
+        return '0';
     };
 
     const cargarDetalleKardex = async () => {
@@ -1902,8 +1899,8 @@
             ? movimientos.map((movimiento, indice) => {
                 const celdasBodega = bodegas.map((bodega) => {
                     const coincide = Number(bodega.inv_bodega_id) === Number(movimiento.bodega_id);
-                    const cantidad = coincide ? formatearCantidadKardex(movimiento.cantidad) : '0.00';
-                    const saldo = coincide ? formatearNumeroKardex(movimiento.saldo) : '0.00';
+                    const cantidad = coincide ? formatearCantidadKardex(movimiento.cantidad) : '0';
+                    const saldo = coincide ? formatearNumeroKardex(movimiento.saldo) : '0';
                     const claseCantidad = Number(movimiento.cantidad || 0) > 0 ? 'text-success' : (Number(movimiento.cantidad || 0) < 0 ? 'text-danger' : '');
                     return `<td class="text-center ${coincide ? claseCantidad : ''}">${cantidad}</td><td class="text-center">${saldo}</td>`;
                 }).join('');
@@ -2032,9 +2029,9 @@
             <td><input class="form-control form-control-sm text-end mov-linea-pvp" value="${Number(producto.pvp || 0).toFixed(2)}" disabled></td>
             <td><select class="form-control form-control-sm mov-linea-accion" ${tipo === 'TRANSFERENCIA' ? 'disabled' : ''}>${accionesMovimiento(tipo)}</select></td>
             <td><select class="form-control form-control-sm mov-linea-origen"><option value="">Origen</option>${opcionesBodegaMovimiento()}</select></td>
-            <td class="text-end mov-linea-stock-origen text-muted">—</td>
+            <td class="text-center mov-linea-stock-origen text-muted">—</td>
             <td><select class="form-control form-control-sm mov-linea-destino"><option value="">Destino</option>${opcionesBodegaMovimiento()}</select></td>
-            <td><input type="number" min="0.0001" step="0.0001" class="form-control form-control-sm text-end mov-linea-cantidad" value="1"></td>
+            <td class="text-center"><input type="number" min="1" step="1" class="form-control form-control-sm text-center mov-linea-cantidad" value="1"></td>
             <td class="text-end mov-linea-total">0.00</td>
             <td><button type="button" class="btn btn-accion btn-eliminar-linea-movimiento"><i class="bi bi-trash3"></i></button></td>
         `;
@@ -2054,7 +2051,7 @@
         const saldos   = JSON.parse(fila.dataset.saldos || '[]');
         const saldo    = saldos.find((s) => String(s.inv_bodega_id) === String(bodegaId));
         celda.classList.remove('text-muted');
-        celda.textContent = saldo ? Number(saldo.inv_stock_cantidad_disponible || 0).toFixed(2) : '—';
+        celda.textContent = saldo ? String(Math.round(Number(saldo.inv_stock_cantidad_disponible || 0))) : '0';
     };
 
     const cargarProductoEnLineaMovimiento = (fila, producto) => {
@@ -2085,7 +2082,7 @@
         const cuerpo = document.getElementById('tablaBuscarProductoMovimiento');
         if (!cuerpo) return;
         cuerpo.innerHTML = productos.length ? productos.map((producto, indice) => {
-            const stock = (producto.saldos || []).map((saldo) => `${escaparHtml(saldo.inv_bodega_codigo)}: ${Number(saldo.inv_stock_cantidad_disponible || 0).toFixed(2)}`).join('<br>');
+            const stock = (producto.saldos || []).map((saldo) => `${escaparHtml(saldo.inv_bodega_codigo)}: ${Math.round(Number(saldo.inv_stock_cantidad_disponible || 0))}`).join('<br>');
             const imagen = producto.imagen_principal_id ? `<img src="${window.location.origin}${document.body.dataset.baseUrl || ''}/inventario/productos/archivos/ver?archivo_id=${producto.imagen_principal_id}" alt="" style="width:34px;height:34px;object-fit:cover;border-radius:5px;">` : '<i class="bi bi-image"></i>';
             return `<tr>
                 <td>${imagen}</td>

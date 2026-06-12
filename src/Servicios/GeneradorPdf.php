@@ -53,15 +53,14 @@ final class GeneradorPdf
                 . '<td>' . $this->escapar((string) $detalle['codigo']) . '</td>'
                 . '<td>' . $this->escapar((string) $detalle['producto']) . '</td>'
                 . '<td>' . $this->escapar((string) $detalle['bodega']) . '</td>'
-                . '<td class="numero text-center">' . $this->numero((float) $detalle['entrada']) . '</td>'
-                . '<td class="numero text-center">' . $this->numero((float) $detalle['salida']) . '</td>'
-                . '<td class="numero text-center">' . $this->numero((float) $detalle['saldo']) . '</td>'
-                . '<td>' . $this->escapar((string) $detalle['observacion']) . '</td>'
+                . '<td class="numero text-center">' . $this->numeroEntero((float) $detalle['entrada']) . '</td>'
+                . '<td class="numero text-center">' . $this->numeroEntero((float) $detalle['salida']) . '</td>'
+                . '<td class="numero text-center">' . $this->numeroEntero((float) $detalle['saldo']) . '</td>'
                 . '</tr>';
         }
 
         if ($filas === '') {
-            $filas = '<tr><td colspan="7" class="sin-registros">Sin detalles registrados.</td></tr>';
+            $filas = '<tr><td colspan="6" class="sin-registros">Sin detalles registrados.</td></tr>';
         }
 
         return '<!doctype html>
@@ -85,6 +84,7 @@ final class GeneradorPdf
         .tabla-detalle tbody td { padding: 7px 6px; border-bottom: 1px dotted #c8d0d6; vertical-align: top; }
         .tabla-detalle tbody tr:nth-child(even) td { background: #f7faf9; }
         .numero { text-align: right; white-space: nowrap; }
+        .text-center { text-align: center; }
         .sin-registros { text-align: center; color: #667085; padding: 16px; }
         .firma { margin-top: 70px; text-align: center; color: #344054; }
         .firma-linea { width: 180px; border-top: 1px dotted #8b98a5; margin: 0 auto 7px auto; }
@@ -105,8 +105,11 @@ final class GeneradorPdf
         </div>
     </div>
     <table class="resumen">
-        <tr><td width="18%" class="etiqueta">Referencia</td><td>' . $this->escapar((string) $cabecera['referencia']) . '</td></tr>
-        <tr><td class="etiqueta">Observacion</td><td>' . $this->escapar((string) $cabecera['observacion']) . '</td></tr>
+        <tr>
+            <td width="50%"><span class="etiqueta">Realizado por:</span> ' . $this->escapar((string) $cabecera['responsable']) . '</td>
+            <td>' . (!empty($cabecera['aprobado_por']) ? '<span class="etiqueta">Aprobado por:</span> ' . $this->escapar((string) $cabecera['aprobado_por']) : '') . '</td>
+        </tr>
+        <tr><td colspan="2"><span class="etiqueta">Observacion:</span> ' . $this->escapar((string) $cabecera['observacion']) . '</td></tr>
     </table>
     <table class="tabla-detalle">
         <thead>
@@ -117,7 +120,6 @@ final class GeneradorPdf
                 <th class="numero text-center">Cantidad</th>
                 <th class="numero text-center">Salida</th>
                 <th class="numero text-center">Saldo</th>
-                <th>Detalle</th>
             </tr>
         </thead>
         <tbody>' . $filas . '</tbody>
@@ -139,5 +141,10 @@ final class GeneradorPdf
     private function numero(float $valor): string
     {
         return number_format($valor, 2, '.', '');
+    }
+
+    private function numeroEntero(float $valor): string
+    {
+        return number_format((int) round($valor), 0, '.', '');
     }
 }

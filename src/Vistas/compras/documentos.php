@@ -443,12 +443,12 @@ $pendSri     = $pendientesSri ?? [];
             </div>
             <div class="table-responsive"><table class="table table-sm tabla-intesis">
                 <thead><tr><th>#</th><th>Cod. Proveedor</th><th>Codigo</th><th>Descripcion</th><th>Marca</th>
-                <th class="text-end">Cant.</th><th class="text-end">Costo</th>
+                <th class="text-center">Cant.</th><th class="text-end">Costo</th>
                 <th class="text-center">IVA %</th><th class="text-end">PVP</th><th class="text-end">Total</th></tr></thead><tbody>`;
             lineas.forEach((l, i) => {
                 html += `<tr><td>${i+1}</td><td>${esc(l.cod_proveedor)||'—'}</td><td>${esc(l.codigo_interno)}</td>
                 <td>${esc(l.producto_nombre)}</td><td>${esc(l.marca_nombre)||'—'}</td>
-                <td class="text-end">${parseFloat(l.com_documento_detalle_cantidad).toFixed(2)}</td>
+                <td class="text-center">${Math.round(parseFloat(l.com_documento_detalle_cantidad) || 0)}</td>
                 <td class="text-end">${parseFloat(l.com_documento_detalle_precio).toFixed(4)}</td>
                 <td class="text-center">${l.sis_iva_valor !== null ? parseFloat(l.sis_iva_valor).toFixed(0)+'%' : '—'}</td>
                 <td class="text-end">${parseFloat(l.com_documento_detalle_pvp).toFixed(2)}</td>
@@ -627,7 +627,7 @@ $pendSri     = $pendientesSri ?? [];
         </div>
         <div class="table-responsive"><table class="table table-sm tabla-intesis">
         <thead><tr><th>#</th><th>Cod. SRI</th><th>Descripcion SRI</th><th>Producto asignado</th>
-        <th class="text-end">Cant.</th><th class="text-end">P.Unit</th><th class="text-end">Total</th></tr></thead><tbody>`;
+        <th class="text-center">Cant.</th><th class="text-end">P.Unit</th><th class="text-end">Total</th></tr></thead><tbody>`;
 
         detalles.forEach((det, i) => {
             const asig = det.inv_producto_id
@@ -638,7 +638,7 @@ $pendSri     = $pendientesSri ?? [];
                 <td><code>${esc(det.cod_principal)}</code></td>
                 <td>${esc(det.descripcion_sri)}</td>
                 <td>${asig}</td>
-                <td class="text-end">${parseFloat(det.cantidad||1).toFixed(2)}</td>
+                <td class="text-center">${Math.round(parseFloat(det.cantidad) || 1)}</td>
                 <td class="text-end">${parseFloat(det.precio_unitario||0).toFixed(4)}</td>
                 <td class="text-end">${parseFloat(det.precio_total_sin_impuesto||0).toFixed(2)}</td>
             </tr>`;
@@ -865,7 +865,7 @@ $pendSri     = $pendientesSri ?? [];
                     <td>${esc(p.codigo_interno || '—')}</td>
                     <td>${esc(p.inv_producto_nombre || '')}</td>
                     <td>${esc(p.marca_nombre || '—')}</td>
-                    <td class="text-end">${parseFloat(p.stock_total || 0).toFixed(2)}</td>
+                    <td class="text-center">${Math.round(parseFloat(p.stock_total) || 0)}</td>
                 </tr>`;
             }).join('');
         } catch {

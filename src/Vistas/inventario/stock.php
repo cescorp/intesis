@@ -68,9 +68,9 @@ $appUrl = rtrim($configuracion->obtener('APP_URL', ''), '/');
                                         <td><?= htmlspecialchars($producto['inv_producto_nombre']) ?></td>
                                         <?php foreach ($bodegas as $bodega): ?>
                                             <?php $cantidad = (float) ($producto['saldos'][(int) $bodega['inv_bodega_id']] ?? 0); $total += $cantidad; ?>
-                                            <td class="text-end"><?= number_format($cantidad, 2) ?></td>
+                                            <td class="text-center"><?= number_format($cantidad, 0) ?></td>
                                         <?php endforeach; ?>
-                                        <td class="text-end fw-semibold"><?= number_format($total, 2) ?></td>
+                                        <td class="text-center fw-semibold"><?= number_format($total, 0) ?></td>
                                         <td><button type="button" class="btn btn-link btn-sm btn-stock-precios" data-producto="<?= (int) $producto['inv_producto_id'] ?>" data-empresa="<?= (int) $producto['sis_empresa_id'] ?>"><?= number_format((float) $producto['pvp'], 2) ?></button></td>
                                         <td><?= htmlspecialchars($producto['inv_marca_nombre']) ?></td>
                                         <td><button type="button" class="btn btn-link btn-sm btn-stock-codigos" data-producto="<?= (int) $producto['inv_producto_id'] ?>" data-empresa="<?= (int) $producto['sis_empresa_id'] ?>"><?= htmlspecialchars($producto['inv_codigo_proveedor_codigo'] ?? 'Ver') ?></button></td>

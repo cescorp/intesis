@@ -97,7 +97,7 @@ $editObs       = $modoEditar ? htmlspecialchars((string) ($documento['com_docume
             </div>
             <div class="card-body py-2 px-2 formulario-compacto">
                 <div class="row g-2">
-                    <div class="col-md-3">
+                    <div class="col-md-3 d-none">
                         <label class="form-label mb-0 small">Tipo <span class="text-danger">*</span></label>
                         <select name="tipo_id" id="tipo_id" class="form-control form-control-sm" required>
                             <option value="">Seleccione</option>
@@ -109,7 +109,7 @@ $editObs       = $modoEditar ? htmlspecialchars((string) ($documento['com_docume
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <label class="form-label mb-0 small">Numero <span class="text-danger">*</span></label>
                         <input type="text" name="numero" id="numero" class="form-control form-control-sm" maxlength="70" placeholder="001-001-000000001" value="<?= $editNumero ?>" required>
                     </div>
@@ -117,7 +117,7 @@ $editObs       = $modoEditar ? htmlspecialchars((string) ($documento['com_docume
                         <label class="form-label mb-0 small">Fecha <span class="text-danger">*</span></label>
                         <input type="date" name="fecha_emision" id="fecha_emision" class="form-control form-control-sm" value="<?= $editFecha ?>" required>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-2">
                         <label class="form-label mb-0 small">Bodega destino <span class="text-danger">*</span></label>
                         <select name="bodega_id" id="bodega_id" class="form-control form-control-sm" required>
                             <option value="">Seleccione</option>
@@ -128,7 +128,7 @@ $editObs       = $modoEditar ? htmlspecialchars((string) ($documento['com_docume
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <label class="form-label mb-0 small">RUC / Identificacion <span class="text-danger">*</span></label>
                         <div class="input-group input-group-sm">
                             <input type="text" id="ruc_input" class="form-control form-control-sm" placeholder="Ingrese y presione Enter" autocomplete="off">
@@ -136,7 +136,7 @@ $editObs       = $modoEditar ? htmlspecialchars((string) ($documento['com_docume
                         </div>
                         <input type="hidden" name="proveedor_id" id="proveedor_id">
                     </div>
-                    <div class="col-md-5">
+                    <div class="col-md-3">
                         <label class="form-label mb-0 small">Razon social</label>
                         <input type="text" id="razon_social_display" class="form-control form-control-sm" disabled placeholder="Se carga al ingresar el RUC">
                     </div>
@@ -146,6 +146,11 @@ $editObs       = $modoEditar ? htmlspecialchars((string) ($documento['com_docume
                     </div>
                 </div>
             </div>
+        </div>
+
+        <!-- ═══ LEYENDA CODIGOS NUEVOS ═══ -->
+        <div id="leyendaCodigos" class="alert alert-warning py-1 px-2 mb-1 small d-none">
+            <i class="bi bi-plus-circle me-1"></i><span id="leyendaCodigosTexto"></span>
         </div>
 
         <!-- ═══ DETALLE ═══ -->
@@ -162,11 +167,11 @@ $editObs       = $modoEditar ? htmlspecialchars((string) ($documento['com_docume
                             <th style="min-width:105px">Cod. Proveedor</th>
                             <th style="min-width:105px">Cod. Interno</th>
                             <th>Descripcion</th>
-                            <th style="min-width:80px">Marca</th>
-                            <th style="width:70px">Cant.</th>
+                            <th style="width:70px" class="text-center">Cant.</th>
                             <th style="width:96px">Costo</th>
                             <th style="width:76px">Desc.</th>
                             <th style="width:100px">IVA</th>
+                            <th style="width:72px" class="text-center">% PVP</th>
                             <th style="width:96px">PVP</th>
                             <th style="width:88px" class="text-end">Total</th>
                             <th style="width:32px"></th>
@@ -226,15 +231,15 @@ $editObs       = $modoEditar ? htmlspecialchars((string) ($documento['com_docume
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header py-2">
-                <div><p class="modal-etiqueta mb-0">Inventario</p><h2 class="modal-title h6 mb-0">Buscar por Codigo de Proveedor</h2></div>
+                <div><p class="modal-etiqueta mb-0">Inventario</p><h2 class="modal-title h6 mb-0">Buscar Producto</h2></div>
                 <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body py-2">
                 <input type="text" id="buscarCodProvInput" class="form-control form-control-sm mb-2" placeholder="Codigo de proveedor...">
                 <div class="table-responsive" style="max-height:380px;overflow-y:auto">
                     <table class="table table-sm table-hover mb-0" style="font-size:.82rem">
-                        <thead class="table-light" style="position:sticky;top:0"><tr><th>#</th><th>Cod. Proveedor</th><th>Codigo</th><th>Descripcion</th><th>Marca</th><th class="text-end">Stock</th></tr></thead>
-                        <tbody id="cuerpoCodProvModal"><tr><td colspan="6" class="text-center text-muted py-3">Cargando...</td></tr></tbody>
+                        <thead class="table-light" style="position:sticky;top:0"><tr><th>#</th><th>Cod. Proveedor</th><th>Cod. Interno</th><th>Descripcion</th><th class="text-center">Stock</th></tr></thead>
+                        <tbody id="cuerpoCodProvModal"><tr><td colspan="5" class="text-center text-muted py-3">Cargando...</td></tr></tbody>
                     </table>
                 </div>
             </div>
@@ -317,8 +322,7 @@ function crearFila(datos) {
       <td><input type="text"   class="form-control form-control-sm inp-cod-prov"    placeholder="Cod. prov."  autocomplete="off" name="lineas[${idx}][cod_proveedor]" value="${esc(datos.cod_proveedor||'')}"></td>
       <td><input type="text"   class="form-control form-control-sm inp-cod-interno" placeholder="Codigo"      autocomplete="off" value="${esc(datos.codigo_interno||'')}"></td>
       <td><input type="text"   class="form-control form-control-sm inp-descripcion" value="${esc(datos.producto_nombre||'')}" disabled></td>
-      <td><input type="text"   class="form-control form-control-sm inp-marca"       value="${esc(datos.marca_nombre||'')}"    disabled></td>
-      <td><input type="number" class="form-control form-control-sm inp-cantidad"    name="lineas[${idx}][cantidad]"  value="${datos.cantidad||1}" min="0.0001" step="0.0001"></td>
+      <td class="text-center"><input type="number" class="form-control form-control-sm text-center inp-cantidad" name="lineas[${idx}][cantidad]" value="${Math.round(datos.cantidad||1)||1}" min="1" step="1"></td>
       <td><input type="number" class="form-control form-control-sm inp-costo"       name="lineas[${idx}][costo]"     value="${datos.costo||0}"    min="0"       step="0.000001"></td>
       <td><input type="number" class="form-control form-control-sm inp-descuento"   name="lineas[${idx}][descuento]" value="${datos.descuento||0}"  min="0"       step="0.01"></td>
       <td>
@@ -328,8 +332,9 @@ function crearFila(datos) {
         <input type="hidden" name="lineas[${idx}][iva_valor]" class="inp-iva-valor"
                value="${datos.iva_valor !== undefined ? datos.iva_valor : ivaDefaultVal}">
       </td>
+      <td class="text-center"><input type="number" class="form-control form-control-sm text-center inp-pvp-pct" value="0" min="0" step="0.01"></td>
       <td><input type="number" class="form-control form-control-sm inp-pvp"
-                 name="lineas[${idx}][pvp]" value="${datos.pvp||0}" min="0" step="0.01"></td>
+                 name="lineas[${idx}][pvp]" value="${datos.pvp ?? datos.costo ?? 0}" min="0" step="0.01"></td>
       <td class="text-end fw-semibold align-middle inp-total-display">$ 0.00</td>
       <td class="text-center align-middle">
         <button type="button" class="btn btn-sm btn-outline-danger btn-eliminar-linea p-0 px-1" tabindex="-1">
@@ -398,14 +403,18 @@ function actualizarNumeros() {
 
 /* ── Cargar producto en fila ──────────────────────────────────────────────── */
 function cargarProductoEnFila(tr, prod) {
-    tr.dataset.productoId = String(prod.inv_producto_id || '');
-    tr.querySelector('.inp-cod-prov').value    = prod.cod_proveedor   || '';
-    tr.querySelector('.inp-cod-interno').value = prod.codigo_interno  || '';
+    tr.dataset.productoId      = String(prod.inv_producto_id || '');
+    tr.dataset.codProvOriginal = prod.cod_proveedor || '';
+    const costo = parseFloat(prod.costo || 0);
+    tr.querySelector('.inp-cod-prov').value    = prod.cod_proveedor       || '';
+    tr.querySelector('.inp-cod-interno').value = prod.codigo_interno      || '';
     tr.querySelector('.inp-descripcion').value = prod.inv_producto_nombre || '';
-    tr.querySelector('.inp-marca').value       = prod.marca_nombre    || '';
-    tr.querySelector('.inp-costo').value       = parseFloat(prod.costo || 0).toFixed(6);
+    tr.querySelector('.inp-costo').value       = costo.toFixed(6);
+    tr.querySelector('.inp-pvp-pct').value     = 0;
+    tr.querySelector('.inp-pvp').value         = costo.toFixed(2);
     tr.querySelector('.inp-producto-id').value = String(prod.inv_producto_id || '');
     calcularFila(tr);
+    actualizarLeyendaCodigos();
 }
 
 /* ── Eventos del cuerpo de detalle ───────────────────────────────────────── */
@@ -413,7 +422,14 @@ const cuerpoDetalle = document.getElementById('cuerpoDetalle');
 
 cuerpoDetalle.addEventListener('input', (e) => {
     const tr = e.target.closest('tr');
-    if (tr && e.target.matches('.inp-cantidad,.inp-costo,.inp-descuento,.inp-pvp')) calcularFila(tr);
+    if (!tr) return;
+    if (e.target.matches('.inp-costo,.inp-pvp-pct')) {
+        const costo = parseFloat(tr.querySelector('.inp-costo')?.value) || 0;
+        const pct   = parseFloat(tr.querySelector('.inp-pvp-pct')?.value) || 0;
+        tr.querySelector('.inp-pvp').value = (costo * (1 + pct / 100)).toFixed(2);
+    }
+    if (e.target.matches('.inp-cantidad,.inp-costo,.inp-descuento,.inp-pvp,.inp-pvp-pct')) calcularFila(tr);
+    if (e.target.matches('.inp-cod-prov')) actualizarLeyendaCodigos();
 });
 cuerpoDetalle.addEventListener('change', (e) => {
     const tr = e.target.closest('tr');
@@ -561,11 +577,11 @@ function abrirModalCodProv(texto) {
 
 async function buscarPorCodProv(term) {
     const tbody = q('#cuerpoCodProvModal');
-    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Buscando...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Buscando...</td></tr>';
     try {
         const json = await fetchJson(appUrl + '/compras/documentos/productos?tipo=cod_proveedor&q=' + encodeURIComponent(term));
-        renderProductos(tbody, json.productos || []);
-    } catch { tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Error</td></tr>'; }
+        renderProductosCodProv(tbody, json.productos || []);
+    } catch { tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Error</td></tr>'; }
 }
 q('#buscarCodProvInput').addEventListener('input', (e) => {
     clearTimeout(timerCodProv);
@@ -612,7 +628,25 @@ q('#cuerpoCodigoModal').addEventListener('click', (e) => {
 });
 q('#modalProductosCodigo').addEventListener('hidden.bs.modal', () => { filaActual = null; });
 
-/* ── Render tabla productos ───────────────────────────────────────────────── */
+/* ── Render tabla productos: modal Cod. Proveedor ─────────────────────────── */
+function renderProductosCodProv(tbody, lista) {
+    if (!lista.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">Sin resultados</td></tr>';
+        return;
+    }
+    tbody.innerHTML = lista.map((p, i) => {
+        const safeJson = JSON.stringify(p).replace(/'/g, '&#39;');
+        return `<tr style="cursor:pointer" data-prod='${safeJson}'>
+          <td>${i+1}</td>
+          <td>${esc(p.cod_proveedor||'—')}</td>
+          <td>${esc(p.codigo_interno||'')}</td>
+          <td>${esc(p.inv_producto_nombre||'')}</td>
+          <td class="text-center">${Math.round(parseFloat(p.stock_total||0))}</td>
+        </tr>`;
+    }).join('');
+}
+
+/* ── Render tabla productos: modal Cod. Interno ───────────────────────────── */
 function renderProductos(tbody, lista) {
     if (!lista.length) {
         tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">Sin resultados</td></tr>';
@@ -625,9 +659,29 @@ function renderProductos(tbody, lista) {
           <td>${esc(p.codigo_interno)}</td>
           <td>${esc(p.inv_producto_nombre||'')}</td>
           <td>${esc(p.marca_nombre||'—')}</td>
-          <td class="text-end">${parseFloat(p.stock_total||0).toFixed(2)}</td>
+          <td class="text-center">${Math.round(parseFloat(p.stock_total||0))}</td>
         </tr>`;
     }).join('');
+}
+
+/* ── Leyenda codigos nuevos ───────────────────────────────────────────────── */
+function actualizarLeyendaCodigos() {
+    const codigos = [];
+    document.querySelectorAll('#cuerpoDetalle tr').forEach(tr => {
+        const productoId = tr.dataset.productoId || tr.querySelector('.inp-producto-id')?.value || '';
+        if (!productoId) return;
+        const original = tr.dataset.codProvOriginal || '';
+        const actual   = (tr.querySelector('.inp-cod-prov')?.value || '').trim();
+        if (actual && actual !== original) codigos.push(actual);
+    });
+    const div  = document.getElementById('leyendaCodigos');
+    const span = document.getElementById('leyendaCodigosTexto');
+    if (codigos.length) {
+        span.textContent = 'Se creará el código ' + codigos.map(c => '[' + c + ']').join(', ');
+        div.classList.remove('d-none');
+    } else {
+        div.classList.add('d-none');
+    }
 }
 
 /* ── Guardar: validar y enviar (botón type="button" → submit explícito) ──── */

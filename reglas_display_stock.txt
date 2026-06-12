@@ -1,0 +1,23 @@
+REGLAS DE VISUALIZACIÓN DE STOCK - INVENTARIO Y COMPRAS
+=========================================================
+Fecha: 2026-06-11
+
+REGLA 1 - Cantidades de stock: números enteros sin decimales
+  - Toda cantidad de stock (disponible, reservado, en tránsito, etc.)
+    debe mostrarse como número entero. Sin .00 ni decimales.
+  - Aplica en tablas, modales, PDFs, tarjetas resumen y tooltips.
+  - La columna de BD sigue siendo numérica (no se toca la BD).
+  - Solo afecta la capa de presentación (PHP/JS).
+
+REGLA 2 - Stock vacío siempre muestra 0
+  - Si una bodega no tiene registro en inv_stock, o el valor es NULL,
+    mostrar "0" (no guion, no vacío, no "—", no null).
+  - Aplica en todas las vistas, incluyendo búsqueda de productos
+    en movimientos, kardex, lista de productos y compras.
+
+REGLA 3 - Cantidades en tablas: alineadas al centro
+  - Todas las columnas de cantidad (stock, cantidad pedida,
+    cantidad recibida, cantidad en movimiento, etc.) deben estar
+    centradas en la celda (text-center).
+  - Las columnas de valores monetarios (precio, costo, total)
+    conservan su alineación actual (text-end/derecha).
