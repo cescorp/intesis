@@ -367,6 +367,11 @@ final class Enrutador
             return;
         }
 
+        if ($metodo === 'POST' && $ruta === '/inventario/bodegas/usuarios/predeterminada') {
+            $this->bodegaControlador->predeterminadaUsuario();
+            return;
+        }
+
         if ($metodo === 'GET' && $ruta === '/inventario/productos/archivos/listar') {
             $this->archivoProductoControlador->listar();
             return;

@@ -221,7 +221,30 @@ final class BodegaControlador
      */
     public function inactivarUsuario(): void
     {
-        $this->cambiarEstadoUsuario('/inventario/bodegas/usuarios/inactivar', 0, 'Usuario inactivado para la bodega.');
+        $this->cambiarEstadoUsuario('/inventario/bodegas/usuarios/inactivar', 0, 'Usuario eliminado de la bodega.');
+    }
+
+    /**
+     * ***************************************************************************
+     * * MARCA ASIGNACION COMO BODEGA PREDETERMINADA DEL USUARIO.
+     * ***************************************************************************
+     */
+    public function predeterminadaUsuario(): void
+    {
+        $usuario = $this->exigirSesionJson();
+        $this->exigirPermisoJson('/inventario/bodegas/usuarios/guardar');
+        try {
+            $bodega = $this->obtenerBodegaPermitida((int) ($_POST['bodega_id'] ?? 0), $usuario);
+            $this->bodegaModelo->setPredeterminadaUsuarioBodega(
+                (int) $bodega['sis_empresa_id'],
+                (int) ($_POST['asignacion_id'] ?? 0),
+                (int) $usuario['id']
+            );
+            $this->responderJson(true, 'OK', 'Bodega predeterminada actualizada.');
+        } catch (Throwable $excepcion) {
+            $this->registrarErrorCrud('PREDETERMINADA USUARIO BODEGA', $excepcion);
+            $this->responderJson(false, 'ERROR', $excepcion->getMessage());
+        }
     }
 
     /**
@@ -349,8 +372,8 @@ final class BodegaControlador
             'eliminar' => $this->menuModelo->tienePermiso($empresaId, $perfilId, '/inventario/bodegas/eliminar'),
             'usuarios' => $this->menuModelo->tienePermiso($empresaId, $perfilId, '/inventario/bodegas/usuarios'),
             'usuariosGuardar' => $this->menuModelo->tienePermiso($empresaId, $perfilId, '/inventario/bodegas/usuarios/guardar'),
-            'usuariosActivar' => $this->menuModelo->tienePermiso($empresaId, $perfilId, '/inventario/bodegas/usuarios/activar'),
             'usuariosInactivar' => $this->menuModelo->tienePermiso($empresaId, $perfilId, '/inventario/bodegas/usuarios/inactivar'),
+            'usuariosPredeterminada' => $this->menuModelo->tienePermiso($empresaId, $perfilId, '/inventario/bodegas/usuarios/guardar'),
         ];
     }
 

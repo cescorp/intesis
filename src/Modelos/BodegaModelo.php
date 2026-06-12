@@ -501,6 +501,47 @@ final class BodegaModelo
 
     /**
      * ***************************************************************************
+     * * MARCA ASIGNACION COMO BODEGA PREDETERMINADA DEL USUARIO.
+     * ***************************************************************************
+     */
+    public function setPredeterminadaUsuarioBodega(int $empresaId, int $asignacionId, int $usuarioActualId): void
+    {
+        $asignacion = $this->buscarAsignacionUsuarioBodega($empresaId, $asignacionId);
+        if (!$asignacion) {
+            throw new \InvalidArgumentException('Asignacion de bodega no valida.');
+        }
+        $pdo = $this->conexionBaseDatos->obtener();
+        $sentencia = $pdo->prepare("
+            UPDATE inv_bodega_usuarios
+            SET inv_bodega_usuarios_predeterminada = FALSE,
+                usuario_modifica = :usuario_modifica,
+                fecha_modifica = now()
+            WHERE sis_empresa_id = :empresa_id
+              AND sis_usuarios_id = :usuario_id
+              AND inv_bodega_usuarios_estado = 1
+        ");
+        $sentencia->execute([
+            'empresa_id' => $empresaId,
+            'usuario_id' => (int) $asignacion['sis_usuarios_id'],
+            'usuario_modifica' => $usuarioActualId,
+        ]);
+        $sentencia = $pdo->prepare("
+            UPDATE inv_bodega_usuarios
+            SET inv_bodega_usuarios_predeterminada = TRUE,
+                usuario_modifica = :usuario_modifica,
+                fecha_modifica = now()
+            WHERE inv_bodega_usuarios_id = :asignacion_id
+              AND sis_empresa_id = :empresa_id
+        ");
+        $sentencia->execute([
+            'asignacion_id' => $asignacionId,
+            'empresa_id' => $empresaId,
+            'usuario_modifica' => $usuarioActualId,
+        ]);
+    }
+
+    /**
+     * ***************************************************************************
      * * LIMPIA BODEGA PREDETERMINADA PREVIA DEL USUARIO EN UNA EMPRESA.
      * ***************************************************************************
      */

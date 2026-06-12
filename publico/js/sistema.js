@@ -952,20 +952,22 @@
 
         const cuerpo = document.querySelector('#tablaBodegaUsuarios tbody');
         if (cuerpo) {
-            cuerpo.innerHTML = asignaciones.length ? asignaciones.map((asignacion) => {
-                const activo = Number(asignacion.inv_bodega_usuarios_estado) === 1;
+            const activos = asignaciones.filter((a) => Number(a.inv_bodega_usuarios_estado) === 1);
+            cuerpo.innerHTML = activos.length ? activos.map((asignacion) => {
                 const predeterminada = asignacion.inv_bodega_usuarios_predeterminada === true || asignacion.inv_bodega_usuarios_predeterminada === 't' || Number(asignacion.inv_bodega_usuarios_predeterminada) === 1;
-                const botonEstado = activo
-                    ? (permisosBodegaUsuarios.usuariosInactivar ? `<button type="button" class="btn btn-accion btn-bodega-usuario-estado" data-ruta="/inactivar" data-id="${asignacion.inv_bodega_usuarios_id}" title="Inactivar usuario"><i class="bi bi-toggle-off"></i></button>` : '')
-                    : (permisosBodegaUsuarios.usuariosActivar ? `<button type="button" class="btn btn-accion btn-bodega-usuario-estado" data-ruta="/activar" data-id="${asignacion.inv_bodega_usuarios_id}" title="Activar usuario"><i class="bi bi-toggle-on"></i></button>` : '');
+                const botonEstrella = permisosBodegaUsuarios.usuariosPredeterminada
+                    ? `<button type="button" class="btn btn-accion btn-bodega-usuario-predeterminada" data-id="${asignacion.inv_bodega_usuarios_id}" title="${predeterminada ? 'Bodega predeterminada' : 'Marcar como predeterminada'}" style="color:${predeterminada ? '#28a745' : '#6c757d'}"><i class="bi bi-star${predeterminada ? '-fill' : ''}"></i></button>`
+                    : (predeterminada ? '<i class="bi bi-star-fill" style="color:#28a745"></i>' : '');
+                const botonEliminar = permisosBodegaUsuarios.usuariosInactivar
+                    ? `<button type="button" class="btn btn-accion btn-bodega-usuario-estado" data-ruta="/inactivar" data-id="${asignacion.inv_bodega_usuarios_id}" title="Eliminar usuario de bodega"><i class="bi bi-trash3"></i></button>`
+                    : '';
                 return `<tr>
                     <td>${escaparHtml(asignacion.sis_usuarios_nombre)}</td>
                     <td>${escaparHtml(asignacion.sis_usuarios_correo)}</td>
-                    <td><span class="badge estado-badge ${predeterminada ? 'estado-activo' : 'estado-inactivo'}">${predeterminada ? 'SI' : 'NO'}</span></td>
-                    <td><span class="badge estado-badge ${activo ? 'estado-activo' : 'estado-inactivo'}">${activo ? 'ACTIVO' : 'INACTIVO'}</span></td>
-                    <td class="text-end">${botonEstado}</td>
+                    <td class="text-center">${botonEstrella}</td>
+                    <td class="text-end">${botonEliminar}</td>
                 </tr>`;
-            }).join('') : '<tr><td colspan="5" class="text-center text-muted">Sin usuarios asignados.</td></tr>';
+            }).join('') : '<tr><td colspan="4" class="text-center text-muted">Sin usuarios asignados.</td></tr>';
         }
     };
 
@@ -1087,6 +1089,26 @@
             }
             await cargarUsuariosBodega();
             mostrarAlerta({ icono: 'success', titulo: 'Actualizado', texto: json.mensaje || 'Cambio aplicado.', posicion: 2, tiempo: 1800 });
+        } catch (error) {
+            mostrarAlerta({ icono: 'error', titulo: 'No se pudo actualizar', texto: error.message });
+        }
+    });
+
+    document.addEventListener('click', async (evento) => {
+        const boton = evento.target.closest('.btn-bodega-usuario-predeterminada');
+        if (!boton) return;
+        try {
+            const datos = new FormData();
+            datos.append('bodega_id', bodegaUsuariosActual);
+            datos.append('asignacion_id', boton.dataset.id || '');
+            const respuesta = await fetch(urlBodegaUsuarios('/predeterminada'), {
+                method: 'POST',
+                body: datos,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            });
+            const json = await respuesta.json();
+            if (!json.ok) throw new Error(json.mensaje || 'No se pudo actualizar.');
+            await cargarUsuariosBodega();
         } catch (error) {
             mostrarAlerta({ icono: 'error', titulo: 'No se pudo actualizar', texto: error.message });
         }

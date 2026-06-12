@@ -119,7 +119,7 @@ $appUrl = rtrim($configuracion->obtener('APP_URL', ''), '/');
 
 <?php if ($permisos['usuarios']): ?>
 <div class="modal fade modal-intesis" id="modalBodegaUsuarios" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-dialog modal-md modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <div><p class="modal-etiqueta">Inventario</p><h2 class="modal-title">Usuarios <span id="bodegaUsuariosTitulo"></span></h2></div>
@@ -128,17 +128,11 @@ $appUrl = rtrim($configuracion->obtener('APP_URL', ''), '/');
             <div class="modal-body formulario-compacto">
                 <form id="formularioBodegaUsuarios" class="row g-2 align-items-end">
                     <input type="hidden" id="bodega_usuarios_bodega_id" name="bodega_id">
-                    <div class="col-md-7">
+                    <div class="col-md-10">
                         <label class="form-label" for="bodega_usuarios_usuario_id">Usuario</label>
                         <select class="form-control form-control-sm" id="bodega_usuarios_usuario_id" name="usuario_id" required>
                             <option value="">Seleccione</option>
                         </select>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="form-check mb-1">
-                            <input class="form-check-input" type="checkbox" id="bodega_usuarios_predeterminada" name="predeterminada" value="1">
-                            <label class="form-check-label" for="bodega_usuarios_predeterminada">Predeterminada</label>
-                        </div>
                     </div>
                     <div class="col-md-2 text-end">
                         <?php if ($permisos['usuariosGuardar']): ?>
@@ -148,8 +142,8 @@ $appUrl = rtrim($configuracion->obtener('APP_URL', ''), '/');
                 </form>
                 <div class="table-responsive mt-3">
                     <table class="table table-hover align-middle w-100" id="tablaBodegaUsuarios">
-                        <thead><tr><th>Usuario</th><th>Correo</th><th>Predeterminada</th><th>Estado</th><th class="text-end">Acciones</th></tr></thead>
-                        <tbody><tr><td colspan="5" class="text-center text-muted">Seleccione una bodega.</td></tr></tbody>
+                        <thead><tr><th>Usuario</th><th>Correo</th><th class="text-center">Predeterminada</th><th class="text-end">Acciones</th></tr></thead>
+                        <tbody><tr><td colspan="4" class="text-center text-muted">Seleccione una bodega.</td></tr></tbody>
                     </table>
                 </div>
             </div>
