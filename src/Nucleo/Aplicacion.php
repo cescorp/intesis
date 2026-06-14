@@ -22,6 +22,7 @@ use Intesis\Controladores\ProveedorControlador;
 use Intesis\Controladores\CodigoProveedorControlador;
 use Intesis\Controladores\DocumentoCompraControlador;
 use Intesis\Controladores\ClienteControlador;
+use Intesis\Controladores\ProformaControlador;
 use Intesis\Controladores\UsuarioControlador;
 use Intesis\Modelos\EmpresaModelo;
 use Intesis\Modelos\ArchivoProductoModelo;
@@ -42,6 +43,7 @@ use Intesis\Modelos\ProveedorModelo;
 use Intesis\Modelos\CodigoProveedorModelo;
 use Intesis\Modelos\DocumentoCompraModelo;
 use Intesis\Modelos\ClienteModelo;
+use Intesis\Modelos\ProformaModelo;
 use Intesis\Modelos\TipoDocumentoModelo;
 use Intesis\Modelos\UsuarioEmpresaModelo;
 use Intesis\Modelos\UsuarioModelo;
@@ -93,7 +95,8 @@ final class Aplicacion
         $proveedorModelo = new ProveedorModelo($conexion);
         $codigoProveedorModelo = new CodigoProveedorModelo($conexion->obtener());
         $documentoCompraModelo = new DocumentoCompraModelo($conexion);
-        $clienteModelo = new ClienteModelo($conexion);
+        $clienteModelo   = new ClienteModelo($conexion);
+        $proformaModelo  = new ProformaModelo($conexion, $secuenciaModelo);
         $sriXmlServicio = new SriXmlServicio();
         $sriImportacionModelo = new SriImportacionModelo($conexion->obtener());
         $autenticacionServicio = new AutenticacionServicio($usuarioModelo, $registroErrores);
@@ -119,6 +122,7 @@ final class Aplicacion
             new CodigoProveedorControlador($vista, $sesion, $codigoProveedorModelo, $documentoCompraModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
             new DocumentoCompraControlador($vista, $sesion, $documentoCompraModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores, $sriXmlServicio, $sriImportacionModelo),
             new ClienteControlador($vista, $sesion, $clienteModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
+            new ProformaControlador($vista, $sesion, $proformaModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
             $configuracion,
             $vista,
             $sesion

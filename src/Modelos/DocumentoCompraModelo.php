@@ -17,10 +17,12 @@ final class DocumentoCompraModelo
     // LISTADO Y BÚSQUEDA
     // =========================================================================
 
-    public function listar(int $empresaId, bool $verTodas, string $estado = ''): array
+    public function listar(int $empresaId, bool $verTodas, string $estado = '', string $desde = '', string $hasta = ''): array
     {
         $filtroEmpresa = $verTodas ? '' : 'AND d.sis_empresa_id = :empresa_id';
         $filtroEstado  = $estado !== '' ? 'AND es.sis_estado_codigo = :estado' : '';
+        $filtroDesde   = $desde !== '' ? 'AND (d.com_documento_fecha_emision IS NULL OR d.com_documento_fecha_emision >= :desde)' : '';
+        $filtroHasta   = $hasta !== '' ? 'AND (d.com_documento_fecha_emision IS NULL OR d.com_documento_fecha_emision <= :hasta)' : '';
         $sentencia = $this->pdo()->prepare("
             SELECT d.*,
                    p.com_proveedor_razon_social,
@@ -39,11 +41,15 @@ final class DocumentoCompraModelo
             WHERE es.sis_estado_codigo <> 'ELIMINADO'
             {$filtroEmpresa}
             {$filtroEstado}
+            {$filtroDesde}
+            {$filtroHasta}
             ORDER BY d.fecha_crea DESC
         ");
         $params = [];
         if (!$verTodas) $params['empresa_id'] = $empresaId;
         if ($estado !== '') $params['estado']  = $estado;
+        if ($desde  !== '') $params['desde']   = $desde;
+        if ($hasta  !== '') $params['hasta']   = $hasta;
         $sentencia->execute($params);
         return $sentencia->fetchAll();
     }
@@ -561,7 +567,19 @@ final class DocumentoCompraModelo
                    p.inv_producto_costo_ultimo      AS costo,
                    COALESCE(m.inv_marca_nombre, '')  AS marca_nombre,
                    cp.inv_codigo_proveedor_codigo    AS cod_proveedor,
-                   COALESCE(SUM(s.inv_stock_cantidad_disponible), 0) AS stock_total
+                   COALESCE(SUM(s.inv_stock_cantidad_disponible), 0) AS stock_total,
+                   (SELECT COALESCE(d.ven_lista_precio_detalle_valor, 0)
+                    FROM ven_lista_precio lp
+                    INNER JOIN ven_lista_precio_detalle d
+                           ON d.ven_lista_precio_id = lp.ven_lista_precio_id
+                          AND d.inv_producto_id     = p.inv_producto_id
+                          AND d.sis_empresa_id      = :empresa_pvp
+                          AND COALESCE(d.ven_lista_precio_detalle_estado, 1) = 1
+                    WHERE lp.sis_empresa_id = :empresa_pvp2
+                      AND lp.ven_lista_precio_predeterminado = 1
+                      AND lp.sis_estado = 1
+                    ORDER BY lp.ven_lista_precio_id
+                    LIMIT 1) AS pvp
             FROM inv_codigo_proveedor cp
             INNER JOIN inv_producto p    ON p.inv_producto_id  = cp.inv_producto_id
             LEFT  JOIN inv_marca m       ON m.inv_marca_id     = p.inv_marca_id
@@ -577,7 +595,13 @@ final class DocumentoCompraModelo
             ORDER BY p.inv_producto_nombre
             LIMIT 50
         ");
-        $sentencia->execute(['empresa_id' => $empresaId, 'empresa_id2' => $empresaId, 'like' => $like]);
+        $sentencia->execute([
+            'empresa_id'   => $empresaId,
+            'empresa_id2'  => $empresaId,
+            'empresa_pvp'  => $empresaId,
+            'empresa_pvp2' => $empresaId,
+            'like'         => $like,
+        ]);
         return $sentencia->fetchAll();
     }
 
@@ -590,7 +614,19 @@ final class DocumentoCompraModelo
                    p.inv_producto_nombre,
                    p.inv_producto_costo_ultimo      AS costo,
                    COALESCE(m.inv_marca_nombre, '')  AS marca_nombre,
-                   COALESCE(SUM(s.inv_stock_cantidad_disponible), 0) AS stock_total
+                   COALESCE(SUM(s.inv_stock_cantidad_disponible), 0) AS stock_total,
+                   (SELECT COALESCE(d.ven_lista_precio_detalle_valor, 0)
+                    FROM ven_lista_precio lp
+                    INNER JOIN ven_lista_precio_detalle d
+                           ON d.ven_lista_precio_id = lp.ven_lista_precio_id
+                          AND d.inv_producto_id     = p.inv_producto_id
+                          AND d.sis_empresa_id      = :empresa_pvp
+                          AND COALESCE(d.ven_lista_precio_detalle_estado, 1) = 1
+                    WHERE lp.sis_empresa_id = :empresa_pvp2
+                      AND lp.ven_lista_precio_predeterminado = 1
+                      AND lp.sis_estado = 1
+                    ORDER BY lp.ven_lista_precio_id
+                    LIMIT 1) AS pvp
             FROM inv_producto p
             LEFT  JOIN inv_marca m  ON m.inv_marca_id    = p.inv_marca_id
             LEFT  JOIN inv_stock s  ON s.inv_producto_id = p.inv_producto_id
@@ -607,7 +643,14 @@ final class DocumentoCompraModelo
             ORDER BY p.inv_producto_nombre
             LIMIT 50
         ");
-        $sentencia->execute(['empresa_id' => $empresaId, 'empresa_id2' => $empresaId, 'like' => $like, 'like2' => $like]);
+        $sentencia->execute([
+            'empresa_id'   => $empresaId,
+            'empresa_id2'  => $empresaId,
+            'empresa_pvp'  => $empresaId,
+            'empresa_pvp2' => $empresaId,
+            'like'         => $like,
+            'like2'        => $like,
+        ]);
         return $sentencia->fetchAll();
     }
 
@@ -801,16 +844,28 @@ final class DocumentoCompraModelo
 
     private function actualizarPvp(\PDO $pdo, int $empresaId, int $productoId, float $pvp, int $usuarioId): void
     {
-        // Buscar lista predeterminada de la empresa
+        // Buscar lista PVP predeterminada de la empresa; crearla si no existe
         $stmtLista = $pdo->prepare("
             SELECT ven_lista_precio_id FROM ven_lista_precio
-            WHERE sis_empresa_id = :empresa_id AND ven_lista_precio_predeterminado = 1 AND sis_estado = 1
+            WHERE sis_empresa_id                 = :empresa_id
+              AND ven_lista_precio_predeterminado = 1
+              AND sis_estado                      = 1
             LIMIT 1
         ");
         $stmtLista->execute(['empresa_id' => $empresaId]);
         $listaId = $stmtLista->fetchColumn();
+
         if (!$listaId) {
-            return; // No hay lista predeterminada, no se actualiza
+            $pdo->prepare("
+                INSERT INTO ven_lista_precio (
+                    sis_empresa_id, ven_lista_precio_descripcion,
+                    ven_lista_precio_predeterminado, ven_lista_precio_descuento,
+                    ven_lista_precio_orden, sis_estado, id_session, user_crea, fecha_crea
+                ) VALUES (
+                    :empresa_id, 'PVP', 1, 0, 1, 1, 0, :usuario, now()
+                )
+            ")->execute(['empresa_id' => $empresaId, 'usuario' => $usuarioId]);
+            $listaId = $pdo->lastInsertId();
         }
 
         $stmtExiste = $pdo->prepare("

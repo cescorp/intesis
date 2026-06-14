@@ -1784,14 +1784,39 @@
                 <td>${escaparHtml(fila.codigo_bodega)}</td>
                 <td class="text-end">${escaparHtml(fila.cantidad)}</td>
                 <td class="text-end">${escaparHtml(fila.costo)}</td>
-                <td><span class="badge estado-badge ${fila.estado === 'OK' ? 'estado-activo' : 'estado-inactivo'}">${escaparHtml(fila.estado)}</span></td>
-                <td>${escaparHtml(fila.mensaje)}</td>
+                <td class="text-end ${parseFloat(fila.pvp) === 0 ? 'text-warning' : ''}">${escaparHtml(fila.pvp)}</td>
+                <td>
+                    <button type="button"
+                        class="badge estado-badge ${fila.estado === 'OK' ? 'estado-activo' : 'estado-inactivo'} border-0 btn-detalle-importacion"
+                        data-linea="${escaparHtml(String(fila.linea))}"
+                        data-estado="${escaparHtml(fila.estado)}"
+                        data-mensaje="${escaparHtml(fila.mensaje)}"
+                        data-codigo="${escaparHtml(fila.codigo_producto)}"
+                        data-nombre="${escaparHtml(fila.nombre_producto)}">
+                        ${escaparHtml(fila.estado)}
+                    </button>
+                </td>
             </tr>
         `).join('');
         if (botonConfirmar) {
             botonConfirmar.disabled = !filas.some((fila) => fila.estado === 'OK');
         }
     };
+
+    document.getElementById('tablaPrevisualizacionStock')?.addEventListener('click', (e) => {
+        const btn = e.target.closest('.btn-detalle-importacion');
+        if (!btn) return;
+        const esOk = btn.dataset.estado === 'OK';
+        Swal.fire({
+            title: `Línea ${btn.dataset.linea} — ${btn.dataset.estado}`,
+            html: `<p class="mb-1"><strong>${escaparHtml(btn.dataset.codigo)}</strong> ${escaparHtml(btn.dataset.nombre)}</p>
+                   <p class="mb-0 ${esOk ? 'text-success' : 'text-danger'}">${escaparHtml(btn.dataset.mensaje)}</p>`,
+            icon: esOk ? 'success' : 'warning',
+            confirmButtonText: 'Cerrar',
+            confirmButtonColor: '#1f6f68',
+            width: 420,
+        });
+    });
 
     document.getElementById('btnPrevisualizarStock')?.addEventListener('click', async () => {
         const archivo = document.getElementById('stock_importar_archivo');
@@ -1855,34 +1880,34 @@
         bootstrap.Modal.getOrCreateInstance(modal).show();
     };
 
-    document.querySelectorAll('.btn-stock-precios').forEach((boton) => {
-        boton.addEventListener('click', async () => {
-            try {
-                await abrirDetalleStock({
-                    url: `${window.location.origin}${document.body.dataset.baseUrl || ''}/inventario/stock/precios?empresa_id=${encodeURIComponent(boton.dataset.empresa || '')}&producto_id=${encodeURIComponent(boton.dataset.producto || '')}`,
-                    titulo: 'Precios',
-                    columnas: ['Lista', 'PVP', 'Pred.'],
-                    mapear: (data) => (data.precios || []).map((precio) => `<tr><td>${escaparHtml(precio.ven_lista_precio_descripcion)}</td><td class="text-end">${Number(precio.precio || 0).toFixed(2)}</td><td>${Number(precio.ven_lista_precio_predeterminado || 0) === 1 ? 'SI' : ''}</td></tr>`),
-                });
-            } catch (error) {
-                mostrarAlerta({ icono: 'error', titulo: 'No se pudo cargar', texto: error.message || 'Revise precios.' });
-            }
-        });
+    document.addEventListener('click', async (e) => {
+        const boton = e.target.closest('.btn-stock-precios');
+        if (!boton) return;
+        try {
+            await abrirDetalleStock({
+                url: `${window.location.origin}${document.body.dataset.baseUrl || ''}/inventario/stock/precios?empresa_id=${encodeURIComponent(boton.dataset.empresa || '')}&producto_id=${encodeURIComponent(boton.dataset.producto || '')}`,
+                titulo: 'Precios',
+                columnas: ['Lista', 'PVP', 'Pred.'],
+                mapear: (data) => (data.precios || []).map((precio) => `<tr><td>${escaparHtml(precio.ven_lista_precio_descripcion)}</td><td class="text-left">${Number(precio.precio || 0).toFixed(2)}</td><td class="text-left">${Number(precio.ven_lista_precio_predeterminado || 0) === 1 ? 'SI' : ''}</td></tr>`),
+            });
+        } catch (error) {
+            mostrarAlerta({ icono: 'error', titulo: 'No se pudo cargar', texto: error.message || 'Revise precios.' });
+        }
     });
 
-    document.querySelectorAll('.btn-stock-codigos').forEach((boton) => {
-        boton.addEventListener('click', async () => {
-            try {
-                await abrirDetalleStock({
-                    url: `${window.location.origin}${document.body.dataset.baseUrl || ''}/inventario/stock/codigos-proveedor?empresa_id=${encodeURIComponent(boton.dataset.empresa || '')}&producto_id=${encodeURIComponent(boton.dataset.producto || '')}`,
-                    titulo: 'Codigos proveedor',
-                    columnas: ['Cod. proveedor', 'Proveedor'],
-                    mapear: (data) => (data.codigos || []).map((codigo) => `<tr><td>${escaparHtml(codigo.inv_codigo_proveedor_codigo)}</td><td>${escaparHtml(codigo.proveedor)}</td></tr>`),
-                });
-            } catch (error) {
-                mostrarAlerta({ icono: 'error', titulo: 'No se pudo cargar', texto: error.message || 'Revise codigos.' });
-            }
-        });
+    document.addEventListener('click', async (e) => {
+        const boton = e.target.closest('.btn-stock-codigos');
+        if (!boton) return;
+        try {
+            await abrirDetalleStock({
+                url: `${window.location.origin}${document.body.dataset.baseUrl || ''}/inventario/stock/codigos-proveedor?empresa_id=${encodeURIComponent(boton.dataset.empresa || '')}&producto_id=${encodeURIComponent(boton.dataset.producto || '')}`,
+                titulo: 'Codigos proveedor',
+                columnas: ['Cod. proveedor', 'Proveedor'],
+                mapear: (data) => (data.codigos || []).map((codigo) => `<tr><td>${escaparHtml(codigo.inv_codigo_proveedor_codigo)}</td><td>${escaparHtml(codigo.proveedor)}</td></tr>`),
+            });
+        } catch (error) {
+            mostrarAlerta({ icono: 'error', titulo: 'No se pudo cargar', texto: error.message || 'Revise codigos.' });
+        }
     });
 
     const formatearNumeroKardex = (valor) => Math.round(Number(valor || 0)).toLocaleString('en-US');
@@ -1940,20 +1965,20 @@
             : `<tr><td colspan="${columnas.length}" class="text-muted">Sin movimientos.</td></tr>`;
     };
 
-    document.querySelectorAll('.btn-kardex-detalle').forEach((boton) => {
-        boton.addEventListener('click', async () => {
-            const modal = document.getElementById('modalDetalleKardex');
-            if (!modal) return;
-            document.getElementById('kardex_detalle_empresa_id').value = boton.dataset.empresa || '';
-            document.getElementById('kardex_detalle_producto_id').value = boton.dataset.producto || '';
-            document.getElementById('modalDetalleKardexTitulo').textContent = `Codigo: ${boton.dataset.codigo || ''} - ${boton.dataset.nombre || ''}`.trim();
-            try {
-                await cargarDetalleKardex();
-                bootstrap.Modal.getOrCreateInstance(modal).show();
-            } catch (error) {
-                mostrarAlerta({ icono: 'error', titulo: 'No se pudo cargar', texto: error.message || 'Revise kardex.' });
-            }
-        });
+    document.addEventListener('click', async (e) => {
+        const boton = e.target.closest('.btn-kardex-detalle');
+        if (!boton) return;
+        const modal = document.getElementById('modalDetalleKardex');
+        if (!modal) return;
+        document.getElementById('kardex_detalle_empresa_id').value = boton.dataset.empresa || '';
+        document.getElementById('kardex_detalle_producto_id').value = boton.dataset.producto || '';
+        document.getElementById('modalDetalleKardexTitulo').textContent = `Codigo: ${boton.dataset.codigo || ''} - ${boton.dataset.nombre || ''}`.trim();
+        try {
+            await cargarDetalleKardex();
+            bootstrap.Modal.getOrCreateInstance(modal).show();
+        } catch (error) {
+            mostrarAlerta({ icono: 'error', titulo: 'No se pudo cargar', texto: error.message || 'Revise kardex.' });
+        }
     });
 
     document.getElementById('btnConsultarDetalleKardex')?.addEventListener('click', async () => {

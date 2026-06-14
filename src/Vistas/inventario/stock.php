@@ -134,7 +134,7 @@ $appUrl = rtrim($configuracion->obtener('APP_URL', ''), '/');
                 </div>
                 <div class="table-responsive mt-3">
                     <table class="table table-sm align-middle" id="tablaPrevisualizacionStock">
-                        <thead><tr><th>Linea</th><th>Codigo</th><th>Nombre</th><th>Marca</th><th>Bodega</th><th>Cantidad</th><th>Costo</th><th>Estado</th><th>Mensaje</th></tr></thead>
+                        <thead><tr><th>Linea</th><th>Codigo</th><th>Nombre</th><th>Marca</th><th>Bodega</th><th>Cantidad</th><th>Costo</th><th>PVP</th><th>Estado</th></tr></thead>
                         <tbody><tr><td colspan="9" class="text-muted">Sin previsualizacion.</td></tr></tbody>
                     </table>
                 </div>

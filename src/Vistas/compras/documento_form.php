@@ -332,9 +332,9 @@ function crearFila(datos) {
         <input type="hidden" name="lineas[${idx}][iva_valor]" class="inp-iva-valor"
                value="${datos.iva_valor !== undefined ? datos.iva_valor : ivaDefaultVal}">
       </td>
-      <td class="text-center"><input type="number" class="form-control form-control-sm text-center inp-pvp-pct" value="0" min="0" step="0.01"></td>
+      <td class="text-center"><input type="number" class="form-control form-control-sm text-center inp-pvp-pct" value="${calcularPvpPct(parseFloat(datos.costo||0), parseFloat(datos.pvp||datos.costo||0)).toFixed(2)}" min="0" step="0.01"></td>
       <td><input type="number" class="form-control form-control-sm inp-pvp"
-                 name="lineas[${idx}][pvp]" value="${datos.pvp ?? datos.costo ?? 0}" min="0" step="0.01"></td>
+                 name="lineas[${idx}][pvp]" value="${parseFloat(datos.pvp||datos.costo||0).toFixed(2)}" min="0" step="0.01"></td>
       <td class="text-end fw-semibold align-middle inp-total-display">$ 0.00</td>
       <td class="text-center align-middle">
         <button type="button" class="btn btn-sm btn-outline-danger btn-eliminar-linea p-0 px-1" tabindex="-1">
@@ -402,16 +402,22 @@ function actualizarNumeros() {
 }
 
 /* ── Cargar producto en fila ──────────────────────────────────────────────── */
+function calcularPvpPct(costo, pvp) {
+    if (costo <= 0) return 0;
+    return Math.max(0, ((pvp / costo) - 1) * 100);
+}
+
 function cargarProductoEnFila(tr, prod) {
     tr.dataset.productoId      = String(prod.inv_producto_id || '');
     tr.dataset.codProvOriginal = prod.cod_proveedor || '';
     const costo = parseFloat(prod.costo || 0);
+    const pvp   = parseFloat(prod.pvp  || 0) > 0 ? parseFloat(prod.pvp) : costo;
     tr.querySelector('.inp-cod-prov').value    = prod.cod_proveedor       || '';
     tr.querySelector('.inp-cod-interno').value = prod.codigo_interno      || '';
     tr.querySelector('.inp-descripcion').value = prod.inv_producto_nombre || '';
     tr.querySelector('.inp-costo').value       = costo.toFixed(6);
-    tr.querySelector('.inp-pvp-pct').value     = 0;
-    tr.querySelector('.inp-pvp').value         = costo.toFixed(2);
+    tr.querySelector('.inp-pvp-pct').value     = calcularPvpPct(costo, pvp).toFixed(2);
+    tr.querySelector('.inp-pvp').value         = pvp.toFixed(2);
     tr.querySelector('.inp-producto-id').value = String(prod.inv_producto_id || '');
     calcularFila(tr);
     actualizarLeyendaCodigos();
@@ -427,6 +433,11 @@ cuerpoDetalle.addEventListener('input', (e) => {
         const costo = parseFloat(tr.querySelector('.inp-costo')?.value) || 0;
         const pct   = parseFloat(tr.querySelector('.inp-pvp-pct')?.value) || 0;
         tr.querySelector('.inp-pvp').value = (costo * (1 + pct / 100)).toFixed(2);
+    }
+    if (e.target.matches('.inp-pvp')) {
+        const costo = parseFloat(tr.querySelector('.inp-costo')?.value) || 0;
+        const pvp   = parseFloat(tr.querySelector('.inp-pvp')?.value)   || 0;
+        tr.querySelector('.inp-pvp-pct').value = calcularPvpPct(costo, pvp).toFixed(2);
     }
     if (e.target.matches('.inp-cantidad,.inp-costo,.inp-descuento,.inp-pvp,.inp-pvp-pct')) calcularFila(tr);
     if (e.target.matches('.inp-cod-prov')) actualizarLeyendaCodigos();
@@ -685,21 +696,36 @@ function actualizarLeyendaCodigos() {
 }
 
 /* ── Guardar: validar y enviar (botón type="button" → submit explícito) ──── */
-q('#btnGuardar').addEventListener('click', () => {
+q('#btnGuardar').addEventListener('click', async () => {
     if (!q('#proveedor_id').value) {
         alert('Debe seleccionar un proveedor antes de guardar.');
         q('#ruc_input').focus();
         return;
     }
-    if (!document.querySelectorAll('#cuerpoDetalle tr').length) {
+    const filas = document.querySelectorAll('#cuerpoDetalle tr');
+    if (!filas.length) {
         alert('Debe agregar al menos una linea de detalle.');
         return;
     }
     // Sincronizar producto_id desde dataset al hidden input
-    document.querySelectorAll('#cuerpoDetalle tr').forEach(tr => {
+    filas.forEach(tr => {
         const h = tr.querySelector('.inp-producto-id');
         if (h && tr.dataset.productoId) h.value = tr.dataset.productoId;
     });
+    // Advertir si alguna línea tiene PVP = 0
+    const sinPvp = [...filas].some(tr => (parseFloat(tr.querySelector('.inp-pvp')?.value) || 0) <= 0);
+    if (sinPvp) {
+        const res = await Swal.fire({
+            icon: 'warning',
+            title: 'PVP sin definir',
+            text: 'Una o más líneas tienen PVP en 0. ¿Desea guardar de todas formas?',
+            showCancelButton: true,
+            confirmButtonText: 'Guardar igual',
+            cancelButtonText: 'Revisar',
+            confirmButtonColor: '#f59e0b',
+        });
+        if (!res.isConfirmed) return;
+    }
     document.getElementById('formDocumento').submit();
 });
 

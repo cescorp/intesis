@@ -18,7 +18,7 @@ final class StockControlador
 {
     use ControladorComun;
 
-    private const COLUMNAS_CSV = ['codigo_producto', 'nombre_producto', 'marca', 'codigo_bodega', 'cantidad_inicial', 'costo_unitario', 'descripcion'];
+    private const COLUMNAS_CSV = ['codigo_producto', 'nombre_producto', 'marca', 'codigo_bodega', 'cantidad_inicial', 'costo_unitario', 'pvp'];
 
     public function __construct(
         private Vista $vista,
@@ -137,6 +137,7 @@ final class StockControlador
             $empresaId = $this->obtenerEmpresaPermitida($usuario, (int) $importacion['empresa_id']);
             $registradas = 0;
             $omitidas = 0;
+            $productosCreados = [];
             foreach ($importacion['filas'] as $fila) {
                 if ($fila['estado'] !== 'OK') {
                     $omitidas++;
@@ -148,28 +149,35 @@ final class StockControlador
                         $omitidas++;
                         continue;
                     }
-                    $categoriaId = $this->stockModelo->obtenerOCrearCategoriaGeneral($empresaId, (int) $usuario['id']);
-                    $marcaId = $this->stockModelo->obtenerOCrearMarca($empresaId, $fila['marca'], (int) $usuario['id']);
-                    $productoId = $this->stockModelo->crearProductoImportado([
-                        'empresa_id' => $empresaId,
-                        'categoria_id' => $categoriaId,
-                        'marca_id' => $marcaId,
-                        'codigo' => $fila['codigo_producto'],
-                        'nombre' => $fila['nombre_producto'],
-                        'descripcion' => $fila['descripcion'],
-                        'costo' => $fila['costo'],
-                    ], (int) $usuario['id']);
+                    $codigoUpper = strtoupper($fila['codigo_producto']);
+                    if (isset($productosCreados[$codigoUpper])) {
+                        $productoId = $productosCreados[$codigoUpper];
+                    } else {
+                        $categoriaId = $this->stockModelo->obtenerOCrearCategoriaGeneral($empresaId, (int) $usuario['id']);
+                        $marcaId = $this->stockModelo->obtenerOCrearMarca($empresaId, $fila['marca'], (int) $usuario['id']);
+                        $productoId = $this->stockModelo->crearProductoImportado([
+                            'empresa_id'  => $empresaId,
+                            'categoria_id'=> $categoriaId,
+                            'marca_id'    => $marcaId,
+                            'codigo'      => $fila['codigo_producto'],
+                            'nombre'      => $fila['nombre_producto'],
+                            'descripcion' => 'IMPORTACION MASIVA',
+                            'costo'       => $fila['costo'],
+                        ], (int) $usuario['id']);
+                        $productosCreados[$codigoUpper] = $productoId;
+                    }
                 }
                 $this->stockModelo->registrarSaldoInicial([
-                    'empresa_id' => $empresaId,
+                    'empresa_id'  => $empresaId,
                     'producto_id' => $productoId,
-                    'bodega_id' => (int) $fila['bodega_id'],
-                    'cantidad' => $fila['cantidad'],
-                    'costo' => $fila['costo'],
-                    'descripcion' => $fila['descripcion'],
-                    'accion' => $importacion['accion'],
-                    'referencia' => 'IMPORTACION CSV STOCK',
+                    'bodega_id'   => (int) $fila['bodega_id'],
+                    'cantidad'    => $fila['cantidad'],
+                    'costo'       => $fila['costo'],
+                    'descripcion' => 'IMPORTACION MASIVA',
+                    'accion'      => $importacion['accion'],
+                    'referencia'  => 'IMPORTACION MASIVA',
                 ], (int) $usuario['id']);
+                $this->stockModelo->actualizarPvp($empresaId, $productoId, (float) $fila['pvp'], (int) $usuario['id']);
                 $registradas++;
             }
             unset($_SESSION['stock_importacion']);
@@ -192,7 +200,7 @@ final class StockControlador
         header('Content-Type: text/csv; charset=utf-8');
         header('Content-Disposition: attachment; filename="plantilla_stock.csv"');
         echo implode(';', self::COLUMNAS_CSV) . "\n";
-        echo "COD001;LAMPARA LED;GENIUS;BODEGA001;5;12.40;Saldo inicial\n";
+        echo "COD001;LAMPARA LED;GENIUS;BODEGA001;5;12.40;13.64\n";
         exit;
     }
 
@@ -283,6 +291,9 @@ final class StockControlador
             throw new \InvalidArgumentException('La cabecera del CSV no coincide con la plantilla.');
         }
 
+        $productos = $this->stockModelo->cargarProductosPorEmpresa($empresaId);
+        $bodegas   = $this->stockModelo->cargarBodegasPorEmpresa($empresaId);
+
         $filas = [];
         $linea = 2;
         while (($datos = fgetcsv($manejador, 0, ';')) !== false) {
@@ -292,7 +303,8 @@ final class StockControlador
                 continue;
             }
             $fila = array_combine(self::COLUMNAS_CSV, array_map('trim', $datos));
-            $errores = [];
+            $errores  = [];
+            $avisos   = [];
             foreach (['cantidad_inicial', 'costo_unitario'] as $campo) {
                 if (str_contains((string) $fila[$campo], ',')) {
                     $errores[] = 'Use punto decimal, no coma.';
@@ -301,8 +313,17 @@ final class StockControlador
                     $errores[] = $campo . ' invalido.';
                 }
             }
-            $producto = $this->stockModelo->buscarProductoPorCodigo($empresaId, strtoupper($fila['codigo_producto']));
-            $bodega = $this->stockModelo->buscarBodegaPorCodigo($empresaId, strtoupper($fila['codigo_bodega']));
+            if (str_contains((string) $fila['pvp'], ',')) {
+                $errores[] = 'Use punto decimal en pvp.';
+            } elseif (!is_numeric($fila['pvp']) || (float) $fila['pvp'] < 0) {
+                $errores[] = 'pvp invalido.';
+            } elseif ((float) $fila['pvp'] === 0.0) {
+                $avisos[] = 'PVP en 0, se actualizara a 0.';
+            }
+            $codigoProd = strtoupper($fila['codigo_producto']);
+            $codigoBod  = strtoupper($fila['codigo_bodega']);
+            $producto   = $productos[$codigoProd] ?? null;
+            $bodega     = $bodegas[$codigoBod]    ?? null;
             if (!$bodega) {
                 $errores[] = 'Bodega no existe.';
             }
@@ -312,20 +333,24 @@ final class StockControlador
             if (!$producto && ($fila['nombre_producto'] === '' || $fila['marca'] === '')) {
                 $errores[] = 'Producto nuevo requiere nombre y marca.';
             }
+            $estado  = $errores ? 'OMITIDA' : 'OK';
+            $mensaje = $errores
+                ? implode(' ', array_unique($errores))
+                : (($producto ? 'Producto existente.' : 'Producto nuevo.') . ($avisos ? ' ' . implode(' ', $avisos) : ''));
             $filas[] = [
-                'linea' => $linea,
-                'codigo_producto' => strtoupper($fila['codigo_producto']),
+                'linea'           => $linea,
+                'codigo_producto' => $codigoProd,
                 'nombre_producto' => $fila['nombre_producto'],
-                'marca' => $fila['marca'] !== '' ? strtoupper($fila['marca']) : 'GENERAL',
-                'codigo_bodega' => strtoupper($fila['codigo_bodega']),
-                'cantidad' => $fila['cantidad_inicial'],
-                'costo' => $fila['costo_unitario'],
-                'descripcion' => $fila['descripcion'],
-                'producto_id' => $producto ? (int) $producto['inv_producto_id'] : 0,
-                'bodega_id' => $bodega ? (int) $bodega['inv_bodega_id'] : 0,
-                'accion' => $accion,
-                'estado' => $errores ? 'OMITIDA' : 'OK',
-                'mensaje' => $errores ? implode(' ', array_unique($errores)) : ($producto ? 'Producto existente.' : 'Producto nuevo.'),
+                'marca'           => $fila['marca'] !== '' ? strtoupper($fila['marca']) : 'GENERAL',
+                'codigo_bodega'   => $codigoBod,
+                'cantidad'        => $fila['cantidad_inicial'],
+                'costo'           => $fila['costo_unitario'],
+                'pvp'             => $fila['pvp'],
+                'producto_id'     => $producto ? (int) $producto['inv_producto_id'] : 0,
+                'bodega_id'       => $bodega   ? (int) $bodega['inv_bodega_id']    : 0,
+                'accion'          => $accion,
+                'estado'          => $estado,
+                'mensaje'         => $mensaje,
             ];
             $linea++;
         }
@@ -337,19 +362,19 @@ final class StockControlador
     private function filaError(int $linea, array $datos, string $mensaje): array
     {
         return [
-            'linea' => $linea,
+            'linea'           => $linea,
             'codigo_producto' => $datos[0] ?? '',
             'nombre_producto' => $datos[1] ?? '',
-            'marca' => $datos[2] ?? '',
-            'codigo_bodega' => $datos[3] ?? '',
-            'cantidad' => $datos[4] ?? '',
-            'costo' => $datos[5] ?? '',
-            'descripcion' => $datos[6] ?? '',
-            'producto_id' => 0,
-            'bodega_id' => 0,
-            'accion' => '',
-            'estado' => 'OMITIDA',
-            'mensaje' => $mensaje,
+            'marca'           => $datos[2] ?? '',
+            'codigo_bodega'   => $datos[3] ?? '',
+            'cantidad'        => $datos[4] ?? '',
+            'costo'           => $datos[5] ?? '',
+            'pvp'             => $datos[6] ?? '',
+            'producto_id'     => 0,
+            'bodega_id'       => 0,
+            'accion'          => '',
+            'estado'          => 'OMITIDA',
+            'mensaje'         => $mensaje,
         ];
     }
 

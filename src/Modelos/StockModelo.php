@@ -158,6 +158,37 @@ final class StockModelo
         return $producto ?: null;
     }
 
+    public function cargarProductosPorEmpresa(int $empresaId): array
+    {
+        $sentencia = $this->conexionBaseDatos->obtener()->prepare("
+            SELECT inv_producto_id, inv_producto_codigo_principal, inv_producto_nombre,
+                   inv_marca_id, sis_empresa_id
+            FROM inv_producto
+            WHERE sis_empresa_id = :empresa_id
+        ");
+        $sentencia->execute(['empresa_id' => $empresaId]);
+        $mapa = [];
+        foreach ($sentencia->fetchAll() as $row) {
+            $mapa[strtoupper((string) $row['inv_producto_codigo_principal'])] = $row;
+        }
+        return $mapa;
+    }
+
+    public function cargarBodegasPorEmpresa(int $empresaId): array
+    {
+        $sentencia = $this->conexionBaseDatos->obtener()->prepare("
+            SELECT inv_bodega_id, inv_bodega_codigo, sis_empresa_id
+            FROM inv_bodega
+            WHERE sis_empresa_id = :empresa_id
+        ");
+        $sentencia->execute(['empresa_id' => $empresaId]);
+        $mapa = [];
+        foreach ($sentencia->fetchAll() as $row) {
+            $mapa[strtoupper((string) $row['inv_bodega_codigo'])] = $row;
+        }
+        return $mapa;
+    }
+
     /**
      * ***************************************************************************
      * * BUSCA BODEGA POR CODIGO EN UNA EMPRESA.
@@ -368,6 +399,65 @@ final class StockModelo
         ]);
 
         return (int) $sentencia->fetchColumn();
+    }
+
+    public function actualizarPvp(int $empresaId, int $productoId, float $pvp, int $usuarioId): void
+    {
+        $pdo = $this->conexionBaseDatos->obtener();
+
+        $stmt = $pdo->prepare("
+            SELECT ven_lista_precio_id FROM ven_lista_precio
+            WHERE sis_empresa_id                 = :empresa_id
+              AND ven_lista_precio_predeterminado = 1
+              AND sis_estado                      = 1
+            LIMIT 1
+        ");
+        $stmt->execute(['empresa_id' => $empresaId]);
+        $listaId = $stmt->fetchColumn();
+
+        if (!$listaId) {
+            $pdo->prepare("
+                INSERT INTO ven_lista_precio (
+                    sis_empresa_id, ven_lista_precio_descripcion,
+                    ven_lista_precio_predeterminado, ven_lista_precio_descuento,
+                    ven_lista_precio_orden, sis_estado, id_session, user_crea, fecha_crea
+                ) VALUES (:empresa_id, 'PVP', 1, 0, 1, 1, 0, :usuario, now())
+            ")->execute(['empresa_id' => $empresaId, 'usuario' => $usuarioId]);
+            $listaId = $pdo->lastInsertId();
+        }
+
+        $stmtExiste = $pdo->prepare("
+            SELECT ven_lista_precio_detalle_id FROM ven_lista_precio_detalle
+            WHERE ven_lista_precio_id = :lista_id
+              AND inv_producto_id     = :producto_id
+              AND sis_empresa_id      = :empresa_id
+            LIMIT 1
+        ");
+        $stmtExiste->execute(['lista_id' => $listaId, 'producto_id' => $productoId, 'empresa_id' => $empresaId]);
+        $detalleId = $stmtExiste->fetchColumn();
+
+        if ($detalleId) {
+            $pdo->prepare("
+                UPDATE ven_lista_precio_detalle
+                SET ven_lista_precio_detalle_valor = :pvp,
+                    user_modifica = :usuario,
+                    fecha_modifica = now()
+                WHERE ven_lista_precio_detalle_id = :id
+            ")->execute(['pvp' => $pvp, 'usuario' => $usuarioId, 'id' => $detalleId]);
+        } else {
+            $pdo->prepare("
+                INSERT INTO ven_lista_precio_detalle (
+                    ven_lista_precio_id, inv_producto_id, ven_lista_precio_detalle_valor,
+                    sis_empresa_id, id_session, user_crea, fecha_crea, ven_lista_precio_detalle_estado
+                ) VALUES (:lista_id, :producto_id, :pvp, :empresa_id, 0, :usuario, now(), 1)
+            ")->execute([
+                'lista_id'    => $listaId,
+                'producto_id' => $productoId,
+                'pvp'         => $pvp,
+                'empresa_id'  => $empresaId,
+                'usuario'     => $usuarioId,
+            ]);
+        }
     }
 
     /**

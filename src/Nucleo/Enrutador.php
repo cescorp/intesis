@@ -22,6 +22,7 @@ use Intesis\Controladores\ProveedorControlador;
 use Intesis\Controladores\CodigoProveedorControlador;
 use Intesis\Controladores\DocumentoCompraControlador;
 use Intesis\Controladores\ClienteControlador;
+use Intesis\Controladores\ProformaControlador;
 use Intesis\Controladores\UsuarioControlador;
 use Intesis\Nucleo\Sesion;
 use Intesis\Nucleo\Vista;
@@ -48,6 +49,7 @@ final class Enrutador
         private CodigoProveedorControlador $codigoProveedorControlador,
         private DocumentoCompraControlador $documentoCompraControlador,
         private ClienteControlador $clienteControlador,
+        private ProformaControlador $proformaControlador,
         private Configuracion $configuracion,
         private Vista $vista,
         private Sesion $sesion
@@ -756,6 +758,61 @@ final class Enrutador
 
         if ($metodo === 'POST' && $ruta === '/ventas/clientes/inactivar') {
             $this->clienteControlador->inactivar();
+            return;
+        }
+
+        if ($metodo === 'GET' && $ruta === '/ventas/proformas') {
+            $this->proformaControlador->listar();
+            return;
+        }
+
+        if ($metodo === 'GET' && $ruta === '/ventas/proformas/nuevo') {
+            $this->proformaControlador->nuevo();
+            return;
+        }
+
+        if ($metodo === 'GET' && $ruta === '/ventas/proformas/editar') {
+            $this->proformaControlador->editar();
+            return;
+        }
+
+        if ($metodo === 'POST' && $ruta === '/ventas/proformas/guardar') {
+            $this->proformaControlador->guardar();
+            return;
+        }
+
+        if ($metodo === 'POST' && $ruta === '/ventas/proformas/anular') {
+            $this->proformaControlador->anular();
+            return;
+        }
+
+        if ($metodo === 'POST' && $ruta === '/ventas/proformas/facturar') {
+            $this->proformaControlador->facturar();
+            return;
+        }
+
+        if ($metodo === 'GET' && $ruta === '/ventas/proformas/detalle') {
+            $this->proformaControlador->detalle();
+            return;
+        }
+
+        if ($metodo === 'GET' && $ruta === '/ventas/proformas/buscar-cliente') {
+            $this->proformaControlador->buscarCliente();
+            return;
+        }
+
+        if ($metodo === 'GET' && $ruta === '/ventas/proformas/buscar-clientes') {
+            $this->proformaControlador->buscarClientes();
+            return;
+        }
+
+        if ($metodo === 'GET' && $ruta === '/ventas/proformas/productos') {
+            $this->proformaControlador->productos();
+            return;
+        }
+
+        if ($metodo === 'POST' && $ruta === '/ventas/proformas/verificar-aprobacion') {
+            $this->proformaControlador->verificarAprobacion();
             return;
         }
 

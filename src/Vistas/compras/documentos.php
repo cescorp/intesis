@@ -4,7 +4,9 @@ require $configuracion->raiz() . '/src/Vistas/plantillas/encabezado.php';
 $appNombre   = $configuracion->obtener('APP_NOMBRE', 'INTESIS');
 $appUrl      = rtrim($configuracion->obtener('APP_URL', ''), '/');
 $estadoActual = $estadoFiltro ?? '';
-$pendSri     = $pendientesSri ?? [];
+$desdeFiltro  = $desdeFiltro  ?? '';
+$hastaFiltro  = $hastaFiltro  ?? '';
+$pendSri      = $pendientesSri ?? [];
 ?>
 <div class="app-wrapper">
     <nav class="app-header navbar navbar-expand navbar-intesis"><div class="container-fluid"><ul class="navbar-nav"><li class="nav-item"><button class="nav-link btn btn-link" data-lte-toggle="sidebar" type="button"><i class="bi bi-list"></i></button></li><li class="nav-item"><span class="nav-link breadcrumb-navbar"><span><?= htmlspecialchars($appNombre) ?></span><i class="bi bi-chevron-right"></i><span>Compras</span><i class="bi bi-chevron-right"></i><strong>Documentos</strong></span></li></ul><ul class="navbar-nav ms-auto align-items-center"><li class="nav-item me-3 d-none d-md-block"><span class="usuario-navbar"><?= htmlspecialchars($usuario['nombre']) ?></span></li><li class="nav-item"><form action="<?= $appUrl ?>/salir" method="post"><button class="btn btn-salir" type="submit" title="Cerrar sesion"><i class="bi bi-power"></i></button></form></li></ul></div></nav>
@@ -37,15 +39,26 @@ $pendSri     = $pendientesSri ?? [];
             </button>
             <?php endif; ?>
 
-            <!-- Filtro por estado (server-side) -->
-            <form method="get" action="<?= $appUrl ?>/compras/documentos" class="d-flex align-items-center gap-1 ms-auto">
-                <label class="form-label mb-0 small fw-semibold text-muted">Estado:</label>
-                <select name="estado" class="form-select form-select-sm" style="width:160px" onchange="this.form.submit()">
-                    <option value=""<?= $estadoActual === '' ? ' selected' : '' ?>>Todos</option>
-                    <option value="BORRADOR"<?= $estadoActual === 'BORRADOR' ? ' selected' : '' ?>>Borrador</option>
-                    <option value="REGISTRADO"<?= $estadoActual === 'REGISTRADO' ? ' selected' : '' ?>>Registrado</option>
-                    <option value="ANULADO"<?= $estadoActual === 'ANULADO' ? ' selected' : '' ?>>Anulado</option>
-                </select>
+            <!-- Filtro por fechas y estado (server-side) -->
+            <form method="get" action="<?= $appUrl ?>/compras/documentos" class="d-flex align-items-center gap-2 ms-auto flex-wrap">
+                <div class="d-flex align-items-center gap-1">
+                    <label class="form-label mb-0 small fw-semibold text-muted">Desde:</label>
+                    <input type="date" name="desde" class="form-control form-control-sm" style="width:140px" value="<?= htmlspecialchars($desdeFiltro ?? '') ?>">
+                </div>
+                <div class="d-flex align-items-center gap-1">
+                    <label class="form-label mb-0 small fw-semibold text-muted">Hasta:</label>
+                    <input type="date" name="hasta" class="form-control form-control-sm" style="width:140px" value="<?= htmlspecialchars($hastaFiltro ?? '') ?>">
+                </div>
+                <div class="d-flex align-items-center gap-1">
+                    <label class="form-label mb-0 small fw-semibold text-muted">Estado:</label>
+                    <select name="estado" class="form-select form-select-sm" style="width:140px">
+                        <option value=""<?= $estadoActual === '' ? ' selected' : '' ?>>Todos</option>
+                        <option value="BORRADOR"<?= $estadoActual === 'BORRADOR' ? ' selected' : '' ?>>Borrador</option>
+                        <option value="REGISTRADO"<?= $estadoActual === 'REGISTRADO' ? ' selected' : '' ?>>Registrado</option>
+                        <option value="ANULADO"<?= $estadoActual === 'ANULADO' ? ' selected' : '' ?>>Anulado</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-secundario btn-sm"><i class="bi bi-search"></i> Filtrar</button>
             </form>
         </div>
 

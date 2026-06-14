@@ -100,7 +100,7 @@ trait ControladorComun
     private function responderJson(bool $ok, string $codigo, string $mensaje, array $data = []): never
     {
         header('Content-Type: application/json; charset=utf-8');
-        echo json_encode(['ok' => $ok, 'codigo' => $codigo, 'mensaje' => $mensaje, 'data' => $data], JSON_UNESCAPED_UNICODE);
+        echo json_encode(['ok' => $ok, 'codigo' => $codigo, 'mensaje' => $mensaje, 'data' => $data], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
         exit;
     }
 

@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+ini_set('error_log', __DIR__ . '/log_errores/log_error_' . date('Y-m-d') . '.log');
+
 require_once __DIR__ . '/src/Nucleo/Aplicacion.php';
 require_once __DIR__ . '/src/Nucleo/Configuracion.php';
 require_once __DIR__ . '/src/Nucleo/RegistroErrores.php';
@@ -33,6 +35,7 @@ require_once __DIR__ . '/src/Modelos/CodigoProveedorModelo.php';
 require_once __DIR__ . '/src/Modelos/DocumentoCompraModelo.php';
 require_once __DIR__ . '/src/Modelos/SriImportacionModelo.php';
 require_once __DIR__ . '/src/Modelos/ClienteModelo.php';
+require_once __DIR__ . '/src/Modelos/ProformaModelo.php';
 if (is_file(__DIR__ . '/vendor/autoload.php')) {
     require_once __DIR__ . '/vendor/autoload.php';
 }
@@ -60,6 +63,7 @@ require_once __DIR__ . '/src/Controladores/ProveedorControlador.php';
 require_once __DIR__ . '/src/Controladores/CodigoProveedorControlador.php';
 require_once __DIR__ . '/src/Controladores/DocumentoCompraControlador.php';
 require_once __DIR__ . '/src/Controladores/ClienteControlador.php';
+require_once __DIR__ . '/src/Controladores/ProformaControlador.php';
 
 use Intesis\Nucleo\Aplicacion;
 

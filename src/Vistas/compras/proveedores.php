@@ -25,10 +25,9 @@ $tiposId   = ['RUC' => 'RUC', 'CEDULA' => 'Cedula', 'PASAPORTE' => 'Pasaporte'];
             <table id="tablaProveedores" class="table table-hover tabla-intesis align-middle w-100">
                 <thead><tr>
                     <?php if ($esSuperusuario): ?><th>Empresa</th><?php endif; ?>
-                    <th>Tipo ID</th>
                     <th>Identificacion</th>
                     <th>Razon social</th>
-                    <th>Nombre comercial</th>
+                    <?php if ($esSuperusuario): ?><th>Nombre comercial</th><?php endif; ?>
                     <th>Telefono</th>
                     <th>Correo</th>
                     <th>Estado</th>
@@ -38,10 +37,9 @@ $tiposId   = ['RUC' => 'RUC', 'CEDULA' => 'Cedula', 'PASAPORTE' => 'Pasaporte'];
                 <?php foreach ($proveedores as $prov): ?>
                 <tr>
                     <?php if ($esSuperusuario): ?><td><?= htmlspecialchars($prov['sis_empresa_nombre_comercial']) ?></td><?php endif; ?>
-                    <td><?= htmlspecialchars($prov['com_proveedor_tipo_identificacion']) ?></td>
                     <td><?= htmlspecialchars($prov['com_proveedor_identificacion']) ?></td>
                     <td><?= htmlspecialchars($prov['com_proveedor_razon_social']) ?></td>
-                    <td><?= htmlspecialchars((string) ($prov['com_proveedor_nombre_comercial'] ?? '')) ?></td>
+                    <?php if ($esSuperusuario): ?><td><?= htmlspecialchars((string) ($prov['com_proveedor_nombre_comercial'] ?? '')) ?></td><?php endif; ?>
                     <td><?= htmlspecialchars((string) ($prov['com_proveedor_telefono'] ?? '')) ?></td>
                     <td><?= htmlspecialchars((string) ($prov['com_proveedor_email']    ?? '')) ?></td>
                     <td><span class="badge estado-badge estado-<?= strtolower((string) $prov['sis_estado_codigo']) ?>"><?= htmlspecialchars($prov['sis_estado_nombre']) ?></span></td>

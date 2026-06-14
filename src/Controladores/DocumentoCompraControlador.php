@@ -51,6 +51,12 @@ final class DocumentoCompraControlador
             $estadoFiltro = '';
         }
 
+        $hoy   = date('Y-m-d');
+        $desde = trim((string) ($_GET['desde'] ?? date('Y-m-d', strtotime('-30 days'))));
+        $hasta = trim((string) ($_GET['hasta'] ?? $hoy));
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $desde)) { $desde = date('Y-m-d', strtotime('-30 days')); }
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $hasta)) { $hasta = $hoy; }
+
         // Tipo FACTURA_COMPRA id (para el modal subir XML)
         $tiposDoc = $this->documentoCompraModelo->listarTiposDocumento();
         $tipoFacturaId = null;
@@ -65,10 +71,12 @@ final class DocumentoCompraControlador
             'titulo'          => 'Documentos de Compra',
             'usuario'         => $usuario,
             'menus'           => $this->menuModelo->listarMenusPorPerfil($empresaId, (int) $usuario['perfil_id']),
-            'documentos'      => $this->documentoCompraModelo->listar($empresaId, $verTodas, $estadoFiltro),
+            'documentos'      => $this->documentoCompraModelo->listar($empresaId, $verTodas, $estadoFiltro, $desde, $hasta),
             'bodegas'         => $this->documentoCompraModelo->listarBodegasPermitidas($empresaId, $usuarioId, $verTodas),
             'esSuperusuario'  => $verTodas,
             'estadoFiltro'    => $estadoFiltro,
+            'desdeFiltro'     => $desde,
+            'hastaFiltro'     => $hasta,
             'permisos'        => $this->obtenerPermisos($usuario),
             'tipoFacturaId'   => $tipoFacturaId,
             'mensaje'         => $this->sesion->consumirMensaje(),

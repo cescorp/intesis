@@ -226,6 +226,7 @@ final class SecuenciaModelo
         $prefijo = match ($tipoCodigo) {
             'AJUSTE'        => 'AJ',
             'TRANSFERENCIA' => 'TR',
+            'PROFORMA'      => 'PRF',
             default         => strtoupper(substr($tipoCodigo, 0, 2)),
         };
 
