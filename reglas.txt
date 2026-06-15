@@ -1,0 +1,82 @@
+================================================================================
+  INTESIS — REGLAS PARA ASISTENTES DE IA (Claude, Codex, Copilot, Cursor, etc.)
+================================================================================
+Última actualización: 2026-06-15
+
+Estas reglas DEBEN seguirse al sugerir o generar código para este proyecto.
+Léelas antes de modificar cualquier archivo.
+
+────────────────────────────────────────────────────────────────────────────────
+1. SEGURIDAD — OBLIGATORIO
+────────────────────────────────────────────────────────────────────────────────
+- NUNCA construir SQL concatenando variables del usuario. Siempre PDO con
+  bindParam / bindValue o parámetros nombrados (:param).
+- Passwords con hash Argon2id (password_hash + PASSWORD_ARGON2ID).
+  Nunca guardar ni mostrar contraseñas en texto plano.
+- Toda acción POST/PUT/PATCH/DELETE DEBE validar token CSRF.
+- Validar permisos en el backend antes de ejecutar cualquier acción.
+  No confiar solo en ocultar botones del frontend.
+- Configuración sensible va en .env, nunca hardcodeada.
+- Proteger rutas: verificar sesión activa en cada controlador.
+- Regenerar sesión (session_regenerate_id) después del login.
+- Logout: destruir sesión y token CSRF.
+- Sin XSS: escapar siempre con htmlspecialchars() al renderizar datos
+  del usuario en HTML.
+
+────────────────────────────────────────────────────────────────────────────────
+2. NOMENCLATURA DE BASE DE DATOS
+────────────────────────────────────────────────────────────────────────────────
+- Prefijos de tablas según módulo:
+    sis_   → sistema (empresas, usuarios, perfiles, menús, IVA, estados, archivos)
+    inv_   → inventario (productos, bodegas, marcas, categorías, kardex)
+    com_   → compras (documentos, proveedores, detalles)
+    ven_   → ventas (documentos/proformas, clientes, detalles)
+- NUNCA añadir sufijos de origen al nombre de columnas (_sri, _interno, _prov)
+  sin confirmación explícita del usuario.
+- Al agregar una columna a un modelo, avisar explícitamente si hay SQL
+  pendiente de ejecutar en la base de datos.
+
+────────────────────────────────────────────────────────────────────────────────
+3. ARQUITECTURA Y PATRONES
+────────────────────────────────────────────────────────────────────────────────
+- MVC puro. Namespace raíz: Intesis\
+  Capas: Nucleo/ · Controladores/ · Modelos/ · Vistas/ · Servicios/
+- El enrutador (src/Nucleo/Enrutador.php) es el único punto de entrada de rutas.
+  Todas las rutas se registran ahí con if ($metodo === 'X' && $ruta === '/...').
+- Los modelos usan ConexionBaseDatos (PDO). No usar mysqli ni globals.
+- Los controladores heredan de ControladorComun. No lógica de negocio en vistas.
+- Las vistas son PHP puro (sin frameworks de plantillas). Usar htmlspecialchars().
+
+────────────────────────────────────────────────────────────────────────────────
+4. FRONTEND
+────────────────────────────────────────────────────────────────────────────────
+- Stack: AdminLTE 4 + Bootstrap 5 + Bootstrap Icons + SweetAlert2.
+- Clases de estilo compartido: formulario-compacto, form-control-sm, table-sm.
+- JavaScript: usar patrón IIFE → (function(){ ... }());
+  Las funciones dentro del IIFE NO son accesibles desde atributos onclick inline.
+  Usar event delegation sobre elementos padres estáticos para eventos dinámicos.
+- Para modales de búsqueda: abrir/cerrar con bootstrap.Modal.getOrCreateInstance().
+- Nunca usar jQuery (no está incluido).
+- CSRF token: incluir en cada formulario POST como campo oculto.
+
+────────────────────────────────────────────────────────────────────────────────
+5. CALIDAD DE CÓDIGO
+────────────────────────────────────────────────────────────────────────────────
+- PHP 8.x con declare(strict_types=1) en todos los archivos.
+- No agregar funcionalidades que no fueron pedidas.
+- No agregar manejo de errores para escenarios imposibles.
+- Comentarios solo cuando el "por qué" no es obvio.
+- No crear archivos de documentación (.md) salvo que se pida explícitamente.
+- Preferir editar archivos existentes sobre crear nuevos.
+
+────────────────────────────────────────────────────────────────────────────────
+6. BASE DE DATOS
+────────────────────────────────────────────────────────────────────────────────
+- Motor: PostgreSQL 14+. Conexión via PDO (src/Nucleo/ConexionBaseDatos.php).
+- Multi-empresa: casi todas las tablas tienen columna sis_empresa_id.
+  Filtrar siempre por empresa activa del usuario en sesión.
+- Tabla de archivos: sis_archivos (imágenes de productos, etc.)
+  sis_archivos_tabla identifica la entidad padre (ej: 'INV_PRODUCTO').
+  sis_archivos_principal=TRUE marca la imagen principal.
+
+================================================================================

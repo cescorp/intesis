@@ -84,6 +84,15 @@ $msgFacturar  = $msgs['CONFIRMAR_FACTURAR_PROFORMA'] ?? null;
                     </td>
                     <td class="text-end">
                         <div class="d-flex gap-1 justify-content-end">
+                            <!-- Ver detalle -->
+                            <button type="button"
+                                class="btn btn-sm btn-outline-secondary btn-ver-proforma"
+                                data-id="<?= $prof['ven_documento_id'] ?>"
+                                data-numero="<?= htmlspecialchars($prof['ven_documento_numero']) ?>"
+                                data-estado="<?= $estadoCod ?>"
+                                title="Ver detalle">
+                                <i class="bi bi-eye"></i>
+                            </button>
                             <?php if ($permisos['editar'] && $estadoCod === 'CREADA'): ?>
                             <a href="<?= $appUrl ?>/ventas/proformas/editar?id=<?= $prof['ven_documento_id'] ?>"
                                class="btn btn-sm btn-outline-secondary" title="Editar">
@@ -99,14 +108,11 @@ $msgFacturar  = $msgs['CONFIRMAR_FACTURAR_PROFORMA'] ?? null;
                                 <i class="bi bi-receipt"></i>
                             </button>
                             <?php endif; ?>
-                            <?php if ($permisos['anular'] && $estadoCod === 'CREADA'): ?>
-                            <button type="button"
-                                class="btn btn-sm btn-outline-danger btn-anular-proforma"
-                                data-id="<?= $prof['ven_documento_id'] ?>"
-                                data-numero="<?= htmlspecialchars($prof['ven_documento_numero']) ?>"
-                                title="Anular">
-                                <i class="bi bi-x-circle"></i>
-                            </button>
+                            <?php if ($permisos['pdf']): ?>
+                            <a href="<?= $appUrl ?>/ventas/proformas/pdf?id=<?= $prof['ven_documento_id'] ?>"
+                               class="btn btn-sm btn-outline-danger" title="PDF" target="_blank">
+                                <i class="bi bi-file-earmark-pdf"></i>
+                            </a>
                             <?php endif; ?>
                         </div>
                     </td>
@@ -117,6 +123,30 @@ $msgFacturar  = $msgs['CONFIRMAR_FACTURAR_PROFORMA'] ?? null;
         </div>
 
     </section></div></div></main>
+</div>
+
+<!-- Modal Ver Detalle -->
+<div class="modal fade modal-intesis" id="modalVerProforma" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <div>
+                    <p class="modal-etiqueta mb-0">Ventas</p>
+                    <h2 class="modal-title h6 mb-0">Detalle de Proforma <span id="lblVerNumero" class="font-monospace text-muted ms-1"></span></h2>
+                </div>
+                <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body py-2 px-3" id="cuerpoVerProforma">
+                <div class="text-center text-muted py-4"><div class="spinner-border spinner-border-sm me-2"></div>Cargando...</div>
+            </div>
+            <div class="modal-footer py-2 d-flex justify-content-between">
+                <button type="button" id="btnAnularDesdeDetalle" class="btn btn-sm btn-outline-danger d-none">
+                    <i class="bi bi-x-circle me-1"></i>Anular
+                </button>
+                <button type="button" class="btn btn-sm btn-secundario" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Modal Facturar -->
@@ -163,13 +193,140 @@ $msgFacturar  = $msgs['CONFIRMAR_FACTURAR_PROFORMA'] ?? null;
     let proformaIdActual = 0;
 
     // ── DataTables ──────────────────────────────────────────────────────────
-    if (typeof $.fn.DataTable !== 'undefined') {
-        $('#tablaProformas').DataTable({
-            language: { url: appUrl + '/publico/plugins/datatables/es-ES.json' },
-            pageLength: 25,
-            order: [[0, 'desc']],
-        });
+    try {
+        if (typeof $.fn.DataTable !== 'undefined') {
+            $('#tablaProformas').DataTable({
+                language: { url: appUrl + '/publico/plugins/datatables/es-ES.json' },
+                pageLength: 25,
+                columnDefs: [{ orderable: false, targets: -1 }],
+            });
+        }
+    } catch(ex) { console.warn('DataTables:', ex); }
+
+    // ── Ver detalle ──────────────────────────────────────────────────────────
+    let proformaVerActual = { id: 0, numero: '', estado: '' };
+
+    document.addEventListener('click', async (e) => {
+        const btn = e.target.closest('.btn-ver-proforma');
+        if (!btn) return;
+        proformaVerActual = { id: parseInt(btn.dataset.id), numero: btn.dataset.numero, estado: btn.dataset.estado };
+        document.getElementById('lblVerNumero').textContent = proformaVerActual.numero;
+        document.getElementById('cuerpoVerProforma').innerHTML =
+            '<div class="text-center text-muted py-4"><div class="spinner-border spinner-border-sm me-2"></div>Cargando...</div>';
+
+        const btnAnular = document.getElementById('btnAnularDesdeDetalle');
+        <?php if ($permisos['anular']): ?>
+        btnAnular.classList.toggle('d-none', proformaVerActual.estado !== 'CREADA');
+        btnAnular.dataset.id     = proformaVerActual.id;
+        btnAnular.dataset.numero = proformaVerActual.numero;
+        <?php else: ?>
+        btnAnular.classList.add('d-none');
+        <?php endif; ?>
+
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('modalVerProforma')).show();
+
+        try {
+            const resp = await fetch(appUrl + '/ventas/proformas/detalle?id=' + proformaVerActual.id);
+            const data = await resp.json();
+            if (!data.ok) { document.getElementById('cuerpoVerProforma').innerHTML = `<p class="text-danger">${escHtml(data.mensaje)}</p>`; return; }
+            renderizarDetalleVer(data.data);
+        } catch {
+            document.getElementById('cuerpoVerProforma').innerHTML = '<p class="text-danger">Error al cargar.</p>';
+        }
+    });
+
+    function renderizarDetalleVer(datos) {
+        const p  = datos.proforma || {};
+        const ls = datos.lineas   || [];
+        const fmt = (n, d=2) => parseFloat(n||0).toFixed(d);
+        const fe = (s) => { const d=document.createElement('div'); d.textContent=s; return d.innerHTML; };
+
+        let filas = ls.map((l, i) => {
+            const cant  = parseFloat(l.ven_documento_detalle_cantidad || 0);
+            const precio= parseFloat(l.ven_documento_detalle_precio_unitario || l.ven_documento_detalle_precio || 0);
+            const desc  = parseFloat(l.ven_documento_detalle_descuento || 0);
+            const iva   = parseFloat(l.ven_documento_detalle_impuesto_total || l.ven_documento_detalle_iva_valor || 0);
+            const base  = parseFloat(l.ven_documento_detalle_precio_total_sin_impuestos || l.ven_documento_detalle_total || 0);
+            return `<tr>
+                <td class="text-muted text-center">${i+1}</td>
+                <td class="font-monospace small">${fe(l.codigo_interno||l.ven_documento_detalle_codigo||'')}</td>
+                <td>${fe(l.producto_nombre||l.ven_documento_detalle_descripcion||'')}</td>
+                <td class="text-end">${fmt(cant,4)}</td>
+                <td class="text-end">$${fmt(precio,4)}</td>
+                <td class="text-end">${fmt(desc,2)}%</td>
+                <td class="text-end">$${fmt(iva,2)}</td>
+                <td class="text-end fw-semibold">$${fmt(base+iva,2)}</td>
+            </tr>`;
+        }).join('') || '<tr><td colspan="8" class="text-center text-muted">Sin líneas</td></tr>';
+
+        const subtotal = parseFloat(p.ven_documento_subtotal_sin_impuestos || p.ven_documento_subtotal || 0);
+        const descuento= parseFloat(p.ven_documento_descuento || 0);
+        const ivaTotal = parseFloat(p.ven_documento_impuesto_total || p.ven_documento_iva || 0);
+        const total    = parseFloat(p.ven_documento_valor_total || p.ven_documento_total || 0);
+        const fecha    = (p.ven_documento_fecha_emision||'').substring(0,10);
+        const obs      = p.ven_documento_observacion || '';
+
+        document.getElementById('cuerpoVerProforma').innerHTML = `
+        <div class="row g-2 mb-3" style="font-size:.85rem">
+            <div class="col-md-4"><span class="text-muted">Cliente:</span> <strong>${fe(p.ven_cliente_razon_social||'')}</strong></div>
+            <div class="col-md-3"><span class="text-muted">RUC/ID:</span> ${fe(p.ven_cliente_identificacion||'')}</div>
+            <div class="col-md-2"><span class="text-muted">Fecha:</span> ${fe(fecha)}</div>
+            <div class="col-md-3"><span class="text-muted">Estado:</span> <span class="badge estado-badge estado-${(p.sis_estado_codigo||'').toLowerCase()}">${fe(p.sis_estado_nombre||'')}</span></div>
+            ${obs ? `<div class="col-12"><span class="text-muted">Obs:</span> ${fe(obs)}</div>` : ''}
+        </div>
+        <div class="table-responsive">
+        <table class="table table-sm tabla-intesis align-middle mb-0" style="font-size:.82rem">
+            <thead class="table-light"><tr>
+                <th style="width:26px">#</th>
+                <th style="width:15%">Codigo</th>
+                <th>Descripcion</th>
+                <th class="text-end" style="width:8%">Cant.</th>
+                <th class="text-end" style="width:10%">Precio</th>
+                <th class="text-end" style="width:7%">Desc.</th>
+                <th class="text-end" style="width:8%">IVA</th>
+                <th class="text-end" style="width:10%">Total</th>
+            </tr></thead>
+            <tbody>${filas}</tbody>
+        </table>
+        </div>
+        <div class="d-flex justify-content-end mt-2">
+            <table style="font-size:.82rem;min-width:220px">
+                <tr><td class="text-muted pe-3">Subtotal</td><td class="text-end fw-semibold">$${subtotal.toFixed(2)}</td></tr>
+                <tr><td class="text-muted pe-3">Descuento</td><td class="text-end fw-semibold">$${descuento.toFixed(2)}</td></tr>
+                <tr><td class="text-muted pe-3">IVA</td><td class="text-end fw-semibold">$${ivaTotal.toFixed(2)}</td></tr>
+                <tr style="border-top:2px solid #1f6f68"><td class="fw-bold pe-3">TOTAL</td><td class="text-end fw-bold" style="color:#1f6f68">$${total.toFixed(2)}</td></tr>
+            </table>
+        </div>`;
     }
+
+    // ── Anular desde modal detalle ───────────────────────────────────────────
+    document.getElementById('btnAnularDesdeDetalle').addEventListener('click', async () => {
+        const id     = parseInt(document.getElementById('btnAnularDesdeDetalle').dataset.id);
+        const numero = document.getElementById('btnAnularDesdeDetalle').dataset.numero;
+        bootstrap.Modal.getInstance(document.getElementById('modalVerProforma'))?.hide();
+        await new Promise(r => setTimeout(r, 300));
+        const res = await Swal.fire({
+            title:  msgAnular.sis_mensaje_errores_titulo,
+            text:   `${msgAnular.sis_mensaje_errores_mensaje}\nProforma: ${numero}`,
+            icon:   msgAnular.sis_mensaje_errores_icono,
+            showCancelButton: true, confirmButtonText: 'Sí, anular',
+            cancelButtonText: 'Cancelar', confirmButtonColor: '#dc3545',
+        });
+        if (!res.isConfirmed) return;
+        try {
+            const resp = await fetch(appUrl + '/ventas/proformas/anular', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ proforma_id: id }),
+            });
+            const data = await resp.json();
+            if (data.ok) {
+                await Swal.fire({ title: 'Anulada', text: data.mensaje, icon: 'success', timer: 1500, showConfirmButton: false });
+                location.reload();
+            } else {
+                Swal.fire({ title: 'Error', text: data.mensaje, icon: 'error' });
+            }
+        } catch { Swal.fire({ title: 'Error', text: 'Error de conexión.', icon: 'error' }); }
+    });
 
     // ── Anular ───────────────────────────────────────────────────────────────
     document.addEventListener('click', async (e) => {
@@ -214,7 +371,7 @@ $msgFacturar  = $msgs['CONFIRMAR_FACTURAR_PROFORMA'] ?? null;
         proformaIdActual = id;
         document.getElementById('lblNumProforma').textContent = numero;
         document.getElementById('cuerpoLineasFacturar').innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3"><div class="spinner-border spinner-border-sm"></div> Cargando...</td></tr>';
-        const modal = new bootstrap.Modal(document.getElementById('modalFacturar'));
+        const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalFacturar'));
         modal.show();
 
         try {
@@ -237,9 +394,11 @@ $msgFacturar  = $msgs['CONFIRMAR_FACTURAR_PROFORMA'] ?? null;
             return;
         }
         tbody.innerHTML = lineas.map(l => {
-            const cant  = parseFloat(l.ven_documento_detalle_cantidad);
-            const precio = parseFloat(l.ven_documento_detalle_precio);
-            const total  = parseFloat(l.ven_documento_detalle_total);
+            const cant   = parseFloat(l.ven_documento_detalle_cantidad);
+            const precio  = parseFloat(l.ven_documento_detalle_precio_unitario || 0);
+            const base    = parseFloat(l.ven_documento_detalle_precio_total_sin_impuestos || 0);
+            const iva     = parseFloat(l.ven_documento_detalle_impuesto_total || 0);
+            const total   = base + iva;
             return `<tr data-detalle-id="${l.ven_documento_detalle_id}" data-cant-max="${cant}" data-precio="${precio}">
                 <td class="font-monospace small">${escHtml(l.ven_documento_detalle_codigo || l.codigo_interno || '')}</td>
                 <td>${escHtml(l.ven_documento_detalle_descripcion || l.producto_nombre || '')}</td>

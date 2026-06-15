@@ -4,10 +4,10 @@ require $configuracion->raiz() . '/src/Vistas/plantillas/encabezado.php';
 $appNombre = $configuracion->obtener('APP_NOMBRE', 'INTESIS');
 $appUrl    = rtrim($configuracion->obtener('APP_URL', ''), '/');
 $tiposId   = [
-    'RUC'             => 'RUC',
-    'CEDULA'          => 'Cedula',
-    'PASAPORTE'       => 'Pasaporte',
-    'CONSUMIDOR_FINAL' => 'Consumidor Final',
+    'R' => 'RUC',
+    'C' => 'Cedula',
+    'P' => 'Pasaporte',
+    'O' => 'Consumidor Final',
 ];
 ?>
 <div class="app-wrapper">
@@ -41,7 +41,7 @@ $tiposId   = [
                     <td><?= htmlspecialchars($cli['ven_cliente_identificacion']) ?></td>
                     <td><?= htmlspecialchars($cli['ven_cliente_razon_social']) ?></td>
                     <td><?= htmlspecialchars($cli['ven_cliente_telefono']) ?></td>
-                    <td><?= htmlspecialchars($cli['ven_cliente_correo']) ?></td>
+                    <td><?= htmlspecialchars($cli['ven_cliente_email']) ?></td>
                     <td><span class="badge estado-badge estado-<?= strtolower((string) $cli['sis_estado_codigo']) ?>"><?= htmlspecialchars($cli['sis_estado_nombre']) ?></span></td>
                     <td class="text-end acciones-tabla">
                         <button type="button" class="btn btn-accion btn-fila-cliente" title="Ver cliente"
@@ -52,7 +52,8 @@ $tiposId   = [
                             data-identificacion="<?= htmlspecialchars($cli['ven_cliente_identificacion']) ?>"
                             data-razon="<?= htmlspecialchars($cli['ven_cliente_razon_social']) ?>"
                             data-telefono="<?= htmlspecialchars($cli['ven_cliente_telefono']) ?>"
-                            data-correo="<?= htmlspecialchars($cli['ven_cliente_correo']) ?>"
+                            data-email="<?= htmlspecialchars($cli['ven_cliente_email']) ?>"
+                            data-nombre-comercial="<?= htmlspecialchars((string)($cli['ven_cliente_nombre_comercial'] ?? '')) ?>"
                             data-direccion="<?= htmlspecialchars($cli['ven_cliente_direccion']) ?>">
                             <i class="bi bi-eye"></i>
                         </button>
@@ -65,7 +66,8 @@ $tiposId   = [
                             data-identificacion="<?= htmlspecialchars($cli['ven_cliente_identificacion']) ?>"
                             data-razon="<?= htmlspecialchars($cli['ven_cliente_razon_social']) ?>"
                             data-telefono="<?= htmlspecialchars($cli['ven_cliente_telefono']) ?>"
-                            data-correo="<?= htmlspecialchars($cli['ven_cliente_correo']) ?>"
+                            data-email="<?= htmlspecialchars($cli['ven_cliente_email']) ?>"
+                            data-nombre-comercial="<?= htmlspecialchars((string)($cli['ven_cliente_nombre_comercial'] ?? '')) ?>"
                             data-direccion="<?= htmlspecialchars($cli['ven_cliente_direccion']) ?>">
                             <i class="bi bi-pencil-square"></i>
                         </button>
@@ -117,7 +119,7 @@ $tiposId   = [
                     </div>
                     <?php endif; ?>
                     <div class="col-md-4">
-                        <label class="form-label" for="cli_tipo_identificacion">Tipo identificacion</label>
+                        <label class="form-label" for="cli_tipo_identificacion">Tipo</label>
                         <select class="form-control form-control-sm" id="cli_tipo_identificacion" name="tipo_identificacion" required>
                             <option value="">Seleccione</option>
                             <?php foreach ($tiposId as $val => $etiq): ?>
@@ -129,17 +131,21 @@ $tiposId   = [
                         <label class="form-label" for="cli_identificacion">Numero de identificacion</label>
                         <input class="form-control form-control-sm" id="cli_identificacion" name="identificacion" maxlength="20" required>
                     </div>
-                    <div class="col-12">
+                    <div class="col-md-6">
                         <label class="form-label" for="cli_razon_social">Razon social</label>
                         <input class="form-control form-control-sm" id="cli_razon_social" name="razon_social" maxlength="300" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="cli_nombre_comercial">Nombre comercial</label>
+                        <input class="form-control form-control-sm" id="cli_nombre_comercial" name="nombre_comercial" maxlength="300">
                     </div>
                     <div class="col-md-4">
                         <label class="form-label" for="cli_telefono">Telefono</label>
                         <input class="form-control form-control-sm" id="cli_telefono" name="telefono" maxlength="20" required>
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label" for="cli_correo">Correo</label>
-                        <input class="form-control form-control-sm" id="cli_correo" name="correo" type="email" maxlength="150" required>
+                        <label class="form-label" for="cli_email">Correo</label>
+                        <input class="form-control form-control-sm" id="cli_email" name="email" type="email" maxlength="150" required>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label" for="cli_direccion">Direccion</label>
@@ -168,8 +174,9 @@ $tiposId   = [
         'cli_tipo_identificacion',
         'cli_identificacion',
         'cli_razon_social',
+        'cli_nombre_comercial',
         'cli_telefono',
-        'cli_correo',
+        'cli_email',
         'cli_direccion',
     ];
 
@@ -178,7 +185,7 @@ $tiposId   = [
 
     if (tipoSelect && inputId) {
         tipoSelect.addEventListener('change', function () {
-            if (this.value === 'CONSUMIDOR_FINAL') {
+            if (this.value === 'O') {
                 inputId.value    = '9999999999999';
                 inputId.disabled = true;
             } else {
@@ -219,10 +226,11 @@ $tiposId   = [
             setVal('cli_tipo_identificacion', boton.dataset.tipo);
             setVal('cli_identificacion',      boton.dataset.identificacion);
             setVal('cli_razon_social',        boton.dataset.razon);
+            setVal('cli_nombre_comercial',    boton.dataset.nombreComercial);
             setVal('cli_telefono',            boton.dataset.telefono);
-            setVal('cli_correo',              boton.dataset.correo);
+            setVal('cli_email',               boton.dataset.email);
             setVal('cli_direccion',           boton.dataset.direccion);
-            if (!dis && inputId && tipoSelect && tipoSelect.value === 'CONSUMIDOR_FINAL') {
+            if (inputId && tipoSelect && tipoSelect.value === 'CONSUMIDOR_FINAL') {
                 inputId.disabled = true;
             }
             setDis(ver);

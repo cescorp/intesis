@@ -68,6 +68,37 @@ final class ClienteControlador
 
     /**
      * ***************************************************************************
+     * * CREA UN CLIENTE RAPIDO DESDE MODAL (AJAX - JSON).
+     * ***************************************************************************
+     */
+    public function crearRapido(): void
+    {
+        header('Content-Type: application/json; charset=utf-8');
+        $usuario = $this->sesion->usuario();
+        if (!$usuario) {
+            echo json_encode(['ok' => false, 'mensaje' => 'Sesion no activa.']);
+            return;
+        }
+        if (!$this->menuModelo->tienePermiso((int) $usuario['empresa_id'], (int) $usuario['perfil_id'], '/ventas/clientes/crear')) {
+            echo json_encode(['ok' => false, 'mensaje' => 'Sin permiso para crear clientes.']);
+            return;
+        }
+        try {
+            $datos = $this->normalizarDatos($usuario);
+            /* en creacion rapida la empresa siempre es la activa del usuario */
+            $datos['empresa_id'] = (int) $usuario['empresa_id'];
+            $this->validarDatos($datos);
+            $id = $this->clienteModelo->crear($datos, (int) $usuario['id']);
+            $cliente = $this->clienteModelo->buscar($id);
+            echo json_encode(['ok' => true, 'data' => $cliente]);
+        } catch (\Throwable $excepcion) {
+            $this->registroErrores->escribirExcepcion('CREAR RAPIDO CLIENTE', $excepcion);
+            echo json_encode(['ok' => false, 'mensaje' => $excepcion->getMessage()]);
+        }
+    }
+
+    /**
+     * ***************************************************************************
      * * EDITA UN CLIENTE.
      * ***************************************************************************
      */
@@ -148,18 +179,19 @@ final class ClienteControlador
      */
     private function normalizarDatos(array $usuario): array
     {
-        $tiposValidos = ['RUC', 'CEDULA', 'PASAPORTE', 'CONSUMIDOR_FINAL'];
+        $tiposValidos = ['R', 'C', 'P', 'O'];
         $tipoRaw = strtoupper(trim((string) ($_POST['tipo_identificacion'] ?? '')));
         $tipo = in_array($tipoRaw, $tiposValidos, true) ? $tipoRaw : '';
 
         return [
             'empresa_id'          => $this->esSuperusuario($usuario) ? (int) ($_POST['empresa_id'] ?? 0) : (int) $usuario['empresa_id'],
             'tipo_identificacion' => $tipo,
-            'identificacion'      => trim((string) ($_POST['identificacion'] ?? '')),
-            'razon_social'        => trim((string) ($_POST['razon_social']   ?? '')),
-            'telefono'            => trim((string) ($_POST['telefono']        ?? '')),
-            'correo'              => trim((string) ($_POST['correo']          ?? '')),
-            'direccion'           => trim((string) ($_POST['direccion']       ?? '')),
+            'identificacion'      => trim((string) ($_POST['identificacion']    ?? '')),
+            'razon_social'        => trim((string) ($_POST['razon_social']      ?? '')),
+            'nombre_comercial'    => trim((string) ($_POST['nombre_comercial']  ?? '')),
+            'telefono'            => trim((string) ($_POST['telefono']           ?? '')),
+            'email'               => trim((string) ($_POST['email']              ?? '')),
+            'direccion'           => trim((string) ($_POST['direccion']          ?? '')),
         ];
     }
 
@@ -179,13 +211,13 @@ final class ClienteControlador
         if ($datos['identificacion'] === '') {
             throw new \InvalidArgumentException('El numero de identificacion es obligatorio.');
         }
-        if ($datos['tipo_identificacion'] === 'RUC' && strlen($datos['identificacion']) !== 13) {
+        if ($datos['tipo_identificacion'] === 'R' && strlen($datos['identificacion']) !== 13) {
             throw new \InvalidArgumentException('El RUC debe tener 13 digitos.');
         }
-        if ($datos['tipo_identificacion'] === 'CEDULA' && strlen($datos['identificacion']) !== 10) {
+        if ($datos['tipo_identificacion'] === 'C' && strlen($datos['identificacion']) !== 10) {
             throw new \InvalidArgumentException('La cedula debe tener 10 digitos.');
         }
-        if ($datos['tipo_identificacion'] === 'CONSUMIDOR_FINAL') {
+        if ($datos['tipo_identificacion'] === 'O') {
             $datos['identificacion'] = '9999999999999';
         }
         if ($datos['razon_social'] === '') {
@@ -194,7 +226,7 @@ final class ClienteControlador
         if ($datos['telefono'] === '') {
             throw new \InvalidArgumentException('El telefono es obligatorio.');
         }
-        if ($datos['correo'] === '') {
+        if ($datos['email'] === '') {
             throw new \InvalidArgumentException('El correo es obligatorio.');
         }
         if ($datos['direccion'] === '') {

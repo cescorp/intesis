@@ -157,11 +157,55 @@ $editNumero = $esEdicion ? htmlspecialchars((string)$proforma['ven_documento_num
             </div>
             <div class="modal-body py-2">
                 <input type="text" id="buscarClienteInput" class="form-control form-control-sm mb-2" placeholder="Buscar por RUC o razon social...">
-                <div class="table-responsive" style="max-height:340px;overflow-y:auto">
+                <div class="table-responsive" style="max-height:280px;overflow-y:auto">
                     <table class="table table-sm table-hover mb-0" style="font-size:.82rem">
                         <thead class="table-light" style="position:sticky;top:0"><tr><th>#</th><th>Identificacion</th><th>Razon Social</th><th>Nombre Comercial</th></tr></thead>
                         <tbody id="cuerpoClientesModal"><tr><td colspan="4" class="text-center text-muted py-3">Escriba para buscar...</td></tr></tbody>
                     </table>
+                </div>
+
+                <!-- FORMULARIO RAPIDO: aparece solo cuando no hay resultados -->
+                <div id="panelNuevoCliente" class="d-none mt-3 border rounded p-2" style="background:#f8f9fa">
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="bi bi-person-plus me-2 text-intesis"></i>
+                        <span class="fw-semibold small">Crear cliente nuevo</span>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-md-4">
+                            <label class="form-label mb-0 small">Tipo</label>
+                            <select id="nc_tipo" class="form-control form-control-sm">
+                                <option value="">Seleccione</option>
+                                <option value="R">RUC</option>
+                                <option value="C">Cedula</option>
+                                <option value="P">Pasaporte</option>
+                                <option value="O">Consumidor Final</option>
+                            </select>
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label mb-0 small">Numero de identificacion</label>
+                            <input type="text" id="nc_identificacion" class="form-control form-control-sm" maxlength="20">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label mb-0 small">Razon social</label>
+                            <input type="text" id="nc_razon_social" class="form-control form-control-sm" maxlength="300">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label mb-0 small">Telefono</label>
+                            <input type="text" id="nc_telefono" class="form-control form-control-sm" maxlength="20">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label mb-0 small">Correo</label>
+                            <input type="email" id="nc_correo" class="form-control form-control-sm" maxlength="150">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label mb-0 small">Direccion</label>
+                            <input type="text" id="nc_direccion" class="form-control form-control-sm" maxlength="300">
+                        </div>
+                        <div class="col-12 d-flex justify-content-end gap-2 mt-1">
+                            <button type="button" id="btnCancelarNuevoCliente" class="btn btn-sm btn-secundario"><i class="bi bi-x-lg me-1"></i>Cancelar</button>
+                            <button type="button" id="btnGuardarNuevoCliente" class="btn btn-sm btn-intesis"><i class="bi bi-save2 me-1"></i>Guardar</button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -286,18 +330,18 @@ function crearFila(datos) {
     tr.dataset.aprobadoPor = String(datos.aprobado_por || 0);
 
     tr.innerHTML = `
-      <td class="text-center text-muted small align-middle num-linea">${num}</td>
-      <td>
+      <td class="text-center text-muted small align-middle num-linea"></td>
+      <td data-label="Codigo">
         <div class="input-group input-group-sm">
           <input type="text" class="form-control form-control-sm inp-codigo" placeholder="Codigo" autocomplete="off" value="${esc(datos.codigo_interno||datos.codigo||'')}">
           <span class="input-group-text inp-codigo-lock d-none" style="color:#6c757d;cursor:default" title="Producto cargado"><i class="bi bi-lock-fill" style="font-size:.75rem"></i></span>
         </div>
       </td>
-      <td><input type="text" class="form-control form-control-sm inp-descripcion" value="${esc(datos.producto_nombre||datos.descripcion||'')}" disabled></td>
-      <td class="text-center"><input type="number" class="form-control form-control-sm text-center inp-cantidad" value="${datos.cantidad||1}" min="0.0001" step="0.0001"></td>
-      <td><input type="number" class="form-control form-control-sm inp-precio" value="${parseFloat(datos.precio||datos.pvp||0).toFixed(4)}" min="0" step="0.000001"></td>
-      <td class="text-center"><input type="number" class="form-control form-control-sm text-center inp-descuento" value="${parseFloat(datos.descuento||0).toFixed(2)}" min="0" max="100" step="0.01"></td>
-      <td>
+      <td data-label="Descripcion"><input type="text" class="form-control form-control-sm inp-descripcion" value="${esc(datos.producto_nombre||datos.descripcion||'')}" disabled></td>
+      <td class="text-center" data-label="Cant."><input type="number" class="form-control form-control-sm text-center inp-cantidad" value="${datos.cantidad||1}" min="0.0001" step="0.0001"></td>
+      <td data-label="Precio"><input type="number" class="form-control form-control-sm inp-precio" value="${parseFloat(datos.precio||datos.pvp||0).toFixed(4)}" min="0" step="0.000001"></td>
+      <td class="text-center" data-label="Desc%"><input type="number" class="form-control form-control-sm text-center inp-descuento" value="${parseFloat(datos.descuento||0).toFixed(2)}" min="0" max="100" step="0.01"></td>
+      <td data-label="IVA">
         <select class="form-control form-control-sm inp-iva">
           ${opcionesIva(parseInt(datos.iva_id) || ivaDefault)}
         </select>
@@ -305,7 +349,7 @@ function crearFila(datos) {
         <input type="hidden" class="inp-precio-min" value="${parseFloat(datos.precio_min||0).toFixed(6)}">
         <input type="hidden" class="inp-aprobado-por" value="${parseInt(datos.aprobado_por||0)}">
       </td>
-      <td class="text-end fw-semibold align-middle inp-total-display">$ 0.00</td>
+      <td class="text-end fw-semibold align-middle inp-total-display" data-label="Total">$ 0.00</td>
       <td class="text-center align-middle">
         <button type="button" class="btn btn-sm btn-outline-danger btn-eliminar-linea p-0 px-1" tabindex="-1">
           <i class="bi bi-trash" style="font-size:.75rem"></i>
@@ -508,14 +552,49 @@ function abrirModalCliente(texto) {
     setTimeout(() => q('#buscarClienteInput')?.focus(), 300);
 }
 
+let _terminoSinResultado = '';
+
+function ocultarPanelNuevoCliente() {
+    q('#panelNuevoCliente').classList.add('d-none');
+    ['nc_tipo','nc_identificacion','nc_razon_social','nc_telefono','nc_correo','nc_direccion'].forEach(id => {
+        const el = q('#' + id);
+        if (el) { el.value = ''; el.disabled = false; }
+    });
+}
+
+function expandirFormularioNuevoCliente() {
+    const panel  = q('#panelNuevoCliente');
+    const nc_id  = q('#nc_identificacion');
+    const nc_tipo = q('#nc_tipo');
+    const limpio = _terminoSinResultado.trim().replace(/\D/g, '');
+
+    nc_id.value  = limpio || _terminoSinResultado.trim();
+    nc_id.disabled = false;
+
+    if      (limpio.length === 13) nc_tipo.value = 'R';
+    else if (limpio.length === 10) nc_tipo.value = 'C';
+    else                           nc_tipo.value = '';
+
+    panel.classList.remove('d-none');
+    setTimeout(() => q('#nc_razon_social')?.focus(), 50);
+}
+
 async function buscarClientes(term) {
     const tbody = q('#cuerpoClientesModal');
+    ocultarPanelNuevoCliente();
     tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Buscando...</td></tr>';
     try {
         const json = await fetchJson(appUrl + '/ventas/proformas/buscar-clientes?q=' + encodeURIComponent(term));
         const lista = json.ok ? (json.data?.clientes || []) : [];
         if (!lista.length) {
-            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-3">Sin resultados</td></tr>';
+            _terminoSinResultado = term;
+            tbody.innerHTML = `<tr><td colspan="4" class="py-2 text-center">
+                <span class="text-muted me-2">Sin resultados para "<strong>${esc(term)}</strong>"</span>
+                <button type="button" class="btn btn-sm btn-intesis" id="btnAbrirNuevoCliente">
+                    <i class="bi bi-person-plus me-1"></i>Crear cliente
+                </button>
+            </td></tr>`;
+            q('#btnAbrirNuevoCliente').addEventListener('click', expandirFormularioNuevoCliente);
             return;
         }
         tbody.innerHTML = lista.map((c, i) => `
@@ -541,6 +620,74 @@ q('#cuerpoClientesModal').addEventListener('click', (e) => {
     if (!tr) return;
     cargarCliente({ ven_cliente_id: tr.dataset.id, ven_cliente_identificacion: tr.dataset.ruc, ven_cliente_razon_social: tr.dataset.razon });
     bootstrap.Modal.getInstance(q('#modalBuscarCliente'))?.hide();
+});
+
+/* ocultar panel al cerrar el modal */
+q('#modalBuscarCliente').addEventListener('hidden.bs.modal', () => ocultarPanelNuevoCliente());
+
+/* cancelar creacion rapida */
+q('#btnCancelarNuevoCliente').addEventListener('click', () => ocultarPanelNuevoCliente());
+
+/* tipo CONSUMIDOR_FINAL bloquea identificacion */
+q('#nc_tipo').addEventListener('change', function () {
+    const nc_id = q('#nc_identificacion');
+    if (this.value === 'O') {
+        nc_id.value    = '9999999999999';
+        nc_id.disabled = true;
+    } else {
+        nc_id.disabled = false;
+        if (nc_id.value === '9999999999999') nc_id.value = '';
+    }
+});
+
+/* guardar cliente rapido */
+q('#btnGuardarNuevoCliente').addEventListener('click', async () => {
+    const tipo       = q('#nc_tipo').value.trim();
+    const idNum      = q('#nc_identificacion').value.trim();
+    const razon      = q('#nc_razon_social').value.trim();
+    const telefono   = q('#nc_telefono').value.trim();
+    const email      = q('#nc_correo').value.trim();
+    const direccion  = q('#nc_direccion').value.trim();
+
+    if (!tipo)     { Swal.fire({ icon:'warning', title:'Datos incompletos', text:'Seleccione el tipo de identificacion.',  toast:true, position:'top-end', showConfirmButton:false, timer:3000 }); return; }
+    if (!idNum)    { Swal.fire({ icon:'warning', title:'Datos incompletos', text:'Ingrese el numero de identificacion.',   toast:true, position:'top-end', showConfirmButton:false, timer:3000 }); return; }
+    if (!razon)    { Swal.fire({ icon:'warning', title:'Datos incompletos', text:'La razon social es obligatoria.',        toast:true, position:'top-end', showConfirmButton:false, timer:3000 }); return; }
+    if (!telefono) { Swal.fire({ icon:'warning', title:'Datos incompletos', text:'El telefono es obligatorio.',            toast:true, position:'top-end', showConfirmButton:false, timer:3000 }); return; }
+    if (!email)    { Swal.fire({ icon:'warning', title:'Datos incompletos', text:'El correo es obligatorio.',              toast:true, position:'top-end', showConfirmButton:false, timer:3000 }); return; }
+    if (!direccion){ Swal.fire({ icon:'warning', title:'Datos incompletos', text:'La direccion es obligatoria.',           toast:true, position:'top-end', showConfirmButton:false, timer:3000 }); return; }
+
+    const btn = q('#btnGuardarNuevoCliente');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Guardando...';
+
+    try {
+        const form = new FormData();
+        form.append('tipo_identificacion', tipo);
+        form.append('identificacion',      idNum);
+        form.append('razon_social',        razon);
+        form.append('nombre_comercial',    '');
+        form.append('telefono',            telefono);
+        form.append('email',               email);
+        form.append('direccion',           direccion);
+
+        const resp = await fetch(appUrl + '/ventas/clientes/crear-rapido', { method:'POST', body: form });
+        const json = await resp.json();
+
+        if (!json.ok) throw new Error(json.mensaje || 'Error al crear cliente');
+
+        cargarCliente({
+            ven_cliente_id:            json.data.ven_cliente_id,
+            ven_cliente_identificacion: json.data.ven_cliente_identificacion,
+            ven_cliente_razon_social:   json.data.ven_cliente_razon_social,
+        });
+        bootstrap.Modal.getInstance(q('#modalBuscarCliente'))?.hide();
+        Swal.fire({ icon:'success', title:'Cliente creado', text:'El cliente fue registrado y cargado en la proforma.', toast:true, position:'top-end', showConfirmButton:false, timer:3000 });
+    } catch(err) {
+        Swal.fire({ icon:'error', title:'No se pudo crear', text: err.message, toast:true, position:'top-end', showConfirmButton:false, timer:4000 });
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-save2 me-1"></i>Guardar';
+    }
 });
 
 /* ── Modal productos: Codigo ──────────────────────────────────────────── */
@@ -784,7 +931,7 @@ crearFila(<?= json_encode([
     'codigo_interno'  => (string)($linea['ven_documento_detalle_codigo']   ?? $linea['codigo_interno'] ?? ''),
     'descripcion'     => (string)($linea['ven_documento_detalle_descripcion'] ?? $linea['producto_nombre'] ?? ''),
     'cantidad'        => (float)  $linea['ven_documento_detalle_cantidad'],
-    'precio'          => (float)  $linea['ven_documento_detalle_precio'],
+    'precio'          => (float)  ($linea['ven_documento_detalle_precio_unitario'] ?? $linea['ven_documento_detalle_precio'] ?? 0),
     'descuento'       => (float)  $linea['ven_documento_detalle_descuento'],
     'pvp'             => (float)  ($linea['ven_documento_detalle_pvp']       ?? 0),
     'precio_min'      => (float)  ($linea['ven_documento_detalle_precio_min']?? 0),
@@ -810,4 +957,90 @@ crearFila({});
 
 }());
 </script>
+
+<style>
+/* ── Mobile: tabla detalle como tarjetas ── */
+@media (max-width: 767.98px) {
+
+    /* Ocultar encabezado de la tabla */
+    #tablaDetalle thead { display: none; }
+
+    /* Cada fila = tarjeta */
+    #tablaDetalle tbody tr {
+        display: block;
+        position: relative;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        margin-bottom: .75rem;
+        padding: 1.8rem .5rem .5rem .5rem;
+        background: #fff;
+        box-shadow: 0 1px 3px rgba(0,0,0,.06);
+    }
+
+    /* Celdas: bloque apilado con etiqueta */
+    #tablaDetalle tbody td {
+        display: block;
+        border: none !important;
+        padding: .2rem .25rem;
+    }
+
+    /* Etiqueta antes de cada campo */
+    #tablaDetalle tbody td[data-label]::before {
+        content: attr(data-label);
+        display: block;
+        font-size: .7rem;
+        font-weight: 600;
+        color: #6c757d;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        margin-bottom: 1px;
+    }
+
+    /* Sin etiqueta: celda # y botón eliminar */
+    #tablaDetalle tbody td:not([data-label]) { padding: 0; }
+
+    /* Número de linea: celda posicionada esquina sup-izq */
+    #tablaDetalle tbody td.num-linea {
+        position: absolute !important;
+        top: .35rem;
+        left: .5rem;
+        width: auto;
+        padding: 0;
+        font-size: .7rem;
+        color: #adb5bd;
+        display: block;
+    }
+
+    /* Celda del botón eliminar: esquina sup-der */
+    #tablaDetalle tbody td:nth-child(9) {
+        position: absolute !important;
+        top: .3rem;
+        right: .4rem;
+        padding: 0;
+        display: block;
+        width: auto;
+    }
+
+    /* Total en negrita y más grande */
+    #tablaDetalle tbody td[data-label="Total"] {
+        font-size: 1rem;
+        font-weight: 700;
+        text-align: right !important;
+    }
+
+    /* Inputs ocupan 100% */
+    #tablaDetalle tbody td input,
+    #tablaDetalle tbody td select {
+        width: 100% !important;
+    }
+
+    /* ── Totales debajo de la tabla ── */
+    #totalesCard .row > div {
+        margin-bottom: .4rem;
+    }
+
+    /* ── Cabecera: apilar en columna ── */
+    .formulario-compacto .row { margin-bottom: 0; }
+}
+</style>
 <?php require $configuracion->raiz() . '/src/Vistas/plantillas/pie.php'; ?>

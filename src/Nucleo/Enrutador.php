@@ -761,6 +761,11 @@ final class Enrutador
             return;
         }
 
+        if ($metodo === 'POST' && $ruta === '/ventas/clientes/crear-rapido') {
+            $this->clienteControlador->crearRapido();
+            return;
+        }
+
         if ($metodo === 'GET' && $ruta === '/ventas/proformas') {
             $this->proformaControlador->listar();
             return;
@@ -813,6 +818,10 @@ final class Enrutador
 
         if ($metodo === 'POST' && $ruta === '/ventas/proformas/verificar-aprobacion') {
             $this->proformaControlador->verificarAprobacion();
+            return;
+        }
+        if ($metodo === 'GET' && $ruta === '/ventas/proformas/pdf') {
+            $this->proformaControlador->pdf();
             return;
         }
 

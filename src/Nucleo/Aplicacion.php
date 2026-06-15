@@ -122,7 +122,7 @@ final class Aplicacion
             new CodigoProveedorControlador($vista, $sesion, $codigoProveedorModelo, $documentoCompraModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
             new DocumentoCompraControlador($vista, $sesion, $documentoCompraModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores, $sriXmlServicio, $sriImportacionModelo),
             new ClienteControlador($vista, $sesion, $clienteModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
-            new ProformaControlador($vista, $sesion, $proformaModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
+            new ProformaControlador($vista, $sesion, $proformaModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores, $generadorPdf),
             $configuracion,
             $vista,
             $sesion

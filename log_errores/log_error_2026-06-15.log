@@ -1,0 +1,104 @@
+################################################
+Fecha:   2026-06-15 17:37:38
+Archivo: C:\xampp\htdocs\intesis\src\Modelos\ProformaModelo.php
+Detalle: PDOException
+Error:   SQLSTATE[42703]: Undefined column: 7 ERROR:  no existe la columna c.ven_cliente_correo
+LINE 7:                    c.ven_cliente_correo,
+                           ^
+Linea:   80
+################################################
+
+################################################
+Fecha:   2026-06-15 17:37:44
+Archivo: C:\xampp\htdocs\intesis\src\Modelos\ProformaModelo.php
+Detalle: PDOException
+Error:   SQLSTATE[42703]: Undefined column: 7 ERROR:  no existe la columna c.ven_cliente_correo
+LINE 7:                    c.ven_cliente_correo,
+                           ^
+Linea:   80
+################################################
+
+################################################
+Fecha:   2026-06-15 17:39:19
+Archivo: C:\xampp\htdocs\intesis\src\Modelos\ProformaModelo.php
+Detalle: PDOException
+Error:   SQLSTATE[42703]: Undefined column: 7 ERROR:  no existe la columna c.ven_cliente_correo
+LINE 7:                    c.ven_cliente_correo,
+                           ^
+Linea:   80
+################################################
+
+################################################
+Fecha:   2026-06-15 17:39:33
+Archivo: C:\xampp\htdocs\intesis\src\Modelos\ProformaModelo.php
+Detalle: PDOException
+Error:   SQLSTATE[42703]: Undefined column: 7 ERROR:  no existe la columna c.ven_cliente_correo
+LINE 7:                    c.ven_cliente_correo,
+                           ^
+Linea:   80
+################################################
+
+################################################
+Fecha:   2026-06-15 17:40:11
+Archivo: C:\xampp\htdocs\intesis\src\Vistas\ventas\proforma_form.php
+Detalle: ERROR PHP NIVEL 2
+Error:   Undefined array key "ven_documento_detalle_precio"
+Linea:   934
+################################################
+
+################################################
+Fecha:   2026-06-15 17:46:25
+Archivo: C:\xampp\htdocs\intesis\src\Controladores\ProformaControlador.php
+Detalle: ArgumentCountError
+Error:   Too few arguments to function Intesis\Controladores\ProformaControlador::__construct(), 7 passed in C:\xampp\htdocs\intesis\src\Nucleo\Aplicacion.php on line 125 and exactly 8 expected
+Linea:   22
+################################################
+
+################################################
+Fecha:   2026-06-15 17:46:29
+Archivo: C:\xampp\htdocs\intesis\src\Controladores\ProformaControlador.php
+Detalle: ArgumentCountError
+Error:   Too few arguments to function Intesis\Controladores\ProformaControlador::__construct(), 7 passed in C:\xampp\htdocs\intesis\src\Nucleo\Aplicacion.php on line 125 and exactly 8 expected
+Linea:   22
+################################################
+
+################################################
+Fecha:   2026-06-15 17:46:30
+Archivo: C:\xampp\htdocs\intesis\src\Controladores\ProformaControlador.php
+Detalle: ArgumentCountError
+Error:   Too few arguments to function Intesis\Controladores\ProformaControlador::__construct(), 7 passed in C:\xampp\htdocs\intesis\src\Nucleo\Aplicacion.php on line 125 and exactly 8 expected
+Linea:   22
+################################################
+
+################################################
+Fecha:   2026-06-15 17:46:31
+Archivo: C:\xampp\htdocs\intesis\src\Controladores\ProformaControlador.php
+Detalle: ArgumentCountError
+Error:   Too few arguments to function Intesis\Controladores\ProformaControlador::__construct(), 7 passed in C:\xampp\htdocs\intesis\src\Nucleo\Aplicacion.php on line 125 and exactly 8 expected
+Linea:   22
+################################################
+
+################################################
+Fecha:   2026-06-15 17:46:32
+Archivo: C:\xampp\htdocs\intesis\src\Controladores\ProformaControlador.php
+Detalle: ArgumentCountError
+Error:   Too few arguments to function Intesis\Controladores\ProformaControlador::__construct(), 7 passed in C:\xampp\htdocs\intesis\src\Nucleo\Aplicacion.php on line 125 and exactly 8 expected
+Linea:   22
+################################################
+
+################################################
+Fecha:   2026-06-15 17:46:32
+Archivo: C:\xampp\htdocs\intesis\src\Controladores\ProformaControlador.php
+Detalle: ArgumentCountError
+Error:   Too few arguments to function Intesis\Controladores\ProformaControlador::__construct(), 7 passed in C:\xampp\htdocs\intesis\src\Nucleo\Aplicacion.php on line 125 and exactly 8 expected
+Linea:   22
+################################################
+
+################################################
+Fecha:   2026-06-15 17:46:35
+Archivo: C:\xampp\htdocs\intesis\src\Controladores\ProformaControlador.php
+Detalle: ArgumentCountError
+Error:   Too few arguments to function Intesis\Controladores\ProformaControlador::__construct(), 7 passed in C:\xampp\htdocs\intesis\src\Nucleo\Aplicacion.php on line 125 and exactly 8 expected
+Linea:   22
+################################################
+

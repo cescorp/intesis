@@ -12,6 +12,7 @@ use Intesis\Nucleo\ControladorComun;
 use Intesis\Nucleo\RegistroErrores;
 use Intesis\Nucleo\Sesion;
 use Intesis\Nucleo\Vista;
+use Intesis\Servicios\GeneradorPdf;
 use Throwable;
 
 final class ProformaControlador
@@ -25,7 +26,8 @@ final class ProformaControlador
         private MenuModelo $menuModelo,
         private MensajeSistemaModelo $mensajeSistemaModelo,
         private Configuracion $configuracion,
-        private RegistroErrores $registroErrores
+        private RegistroErrores $registroErrores,
+        private GeneradorPdf $generadorPdf
     ) {
     }
 
@@ -384,6 +386,30 @@ final class ProformaControlador
         }
     }
 
+    public function pdf(): void
+    {
+        $usuario = $this->exigirSesion();
+        $this->exigirPermiso('/ventas/proformas/pdf');
+        $empresaId  = (int) $usuario['empresa_id'];
+        $proformaId = (int) ($_GET['id'] ?? 0);
+
+        $proforma = $this->proformaModelo->buscar($proformaId, $empresaId);
+        if (!$proforma) {
+            http_response_code(404);
+            echo 'Proforma no encontrada.';
+            return;
+        }
+        $lineas = $this->proformaModelo->listarDetalle($proformaId);
+        $empresa = $this->proformaModelo->obtenerDatosEmpresa($empresaId);
+
+        $pdf = $this->generadorPdf->generarProforma($proforma, $lineas, $empresa);
+        $numero = preg_replace('/[^A-Za-z0-9\-]/', '_', $proforma['ven_documento_numero']);
+        header('Content-Type: application/pdf');
+        header('Content-Disposition: inline; filename="proforma_' . $numero . '.pdf"');
+        header('Content-Length: ' . strlen($pdf));
+        echo $pdf;
+    }
+
     private function obtenerPermisos(array $usuario): array
     {
         $eId = (int) $usuario['empresa_id'];
@@ -393,6 +419,7 @@ final class ProformaControlador
             'editar'   => $this->menuModelo->tienePermiso($eId, $pId, '/ventas/proformas/editar'),
             'anular'   => $this->menuModelo->tienePermiso($eId, $pId, '/ventas/proformas/anular'),
             'facturar' => $this->menuModelo->tienePermiso($eId, $pId, '/ventas/proformas/facturar'),
+            'pdf'      => $this->menuModelo->tienePermiso($eId, $pId, '/ventas/proformas/pdf'),
         ];
     }
 }

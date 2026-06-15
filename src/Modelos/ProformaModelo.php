@@ -64,7 +64,7 @@ final class ProformaModelo
                    c.ven_cliente_identificacion,
                    c.ven_cliente_tipo_identificacion,
                    c.ven_cliente_telefono,
-                   c.ven_cliente_correo,
+                   c.ven_cliente_email,
                    td.sis_tipo_documento_nombre AS tipo_nombre,
                    td.sis_tipo_documento_codigo AS tipo_codigo,
                    es.sis_estado_codigo,
@@ -113,30 +113,46 @@ final class ProformaModelo
             $sentencia = $pdo->prepare("
                 INSERT INTO ven_documento (
                     sis_empresa_id, ven_cliente_id, sis_tipo_documento_id,
+                    sis_usuarios_id, inv_bodega_id,
                     ven_documento_numero, ven_documento_fecha_emision,
                     ven_documento_subtotal, ven_documento_descuento,
                     ven_documento_iva, ven_documento_total,
+                    ven_documento_subtotal_sin_impuestos,
+                    ven_documento_impuesto_total,
+                    ven_documento_valor_total,
+                    ven_documento_forma_pago,
                     ven_documento_observacion, sis_estado_id, usuario_crea
                 ) VALUES (
                     :empresa_id, :cliente_id, :tipo_id,
+                    :usuarios_id, :bodega_id,
                     :numero, :fecha_emision,
                     :subtotal, :descuento, :iva, :total,
+                    :subtotal_sin_impuestos,
+                    :impuesto_total,
+                    :valor_total,
+                    :forma_pago,
                     :observacion, :estado_id, :usuario_crea
                 ) RETURNING ven_documento_id
             ");
             $sentencia->execute([
-                'empresa_id'    => $cabecera['empresa_id'],
-                'cliente_id'    => $cabecera['cliente_id'],
-                'tipo_id'       => $this->obtenerTipoDocumentoId('PROFORMA'),
-                'numero'        => $numero,
-                'fecha_emision' => $cabecera['fecha_emision'] !== '' ? $cabecera['fecha_emision'] : null,
-                'subtotal'      => $cabecera['subtotal'],
-                'descuento'     => $cabecera['descuento'],
-                'iva'           => $cabecera['iva'],
-                'total'         => $cabecera['total'],
-                'observacion'   => $cabecera['observacion'] !== '' ? $cabecera['observacion'] : null,
-                'estado_id'     => $this->obtenerEstadoId('CREADA'),
-                'usuario_crea'  => $usuarioId,
+                'empresa_id'             => $cabecera['empresa_id'],
+                'cliente_id'             => $cabecera['cliente_id'],
+                'tipo_id'                => $this->obtenerTipoDocumentoId('PROFORMA'),
+                'usuarios_id'            => $usuarioId,
+                'bodega_id'              => $this->obtenerBodegaId((int) $cabecera['empresa_id'], $usuarioId),
+                'numero'                 => $numero,
+                'fecha_emision'          => $cabecera['fecha_emision'] !== '' ? $cabecera['fecha_emision'] : date('Y-m-d'),
+                'subtotal'               => $cabecera['subtotal'],
+                'descuento'              => $cabecera['descuento'],
+                'iva'                    => $cabecera['iva'],
+                'total'                  => $cabecera['total'],
+                'subtotal_sin_impuestos' => $cabecera['subtotal'],
+                'impuesto_total'         => $cabecera['iva'],
+                'valor_total'            => $cabecera['total'],
+                'forma_pago'             => 'PROFORMA',
+                'observacion'            => $cabecera['observacion'] !== '' ? $cabecera['observacion'] : null,
+                'estado_id'              => $this->obtenerEstadoId('CREADA'),
+                'usuario_crea'           => $usuarioId,
             ]);
             $proformaId = (int) $sentencia->fetchColumn();
 
@@ -361,32 +377,48 @@ final class ProformaModelo
             $stmtFact = $pdo->prepare("
                 INSERT INTO ven_documento (
                     sis_empresa_id, ven_cliente_id, sis_tipo_documento_id,
+                    sis_usuarios_id, inv_bodega_id,
                     ven_documento_numero, ven_documento_fecha_emision,
                     ven_documento_subtotal, ven_documento_descuento,
                     ven_documento_iva, ven_documento_total,
+                    ven_documento_subtotal_sin_impuestos,
+                    ven_documento_impuesto_total,
+                    ven_documento_valor_total,
+                    ven_documento_forma_pago,
                     ven_documento_proforma_id,
                     sis_estado_id, usuario_crea
                 ) VALUES (
                     :empresa_id, :cliente_id, :tipo_id,
+                    :usuarios_id, :bodega_id,
                     :numero, :fecha_emision,
                     :subtotal, :descuento, :iva, :total,
+                    :subtotal_sin_impuestos,
+                    :impuesto_total,
+                    :valor_total,
+                    :forma_pago,
                     :proforma_id,
                     :estado_id, :usuario_crea
                 ) RETURNING ven_documento_id
             ");
             $stmtFact->execute([
-                'empresa_id'    => $empresaId,
-                'cliente_id'    => $proforma['ven_cliente_id'],
-                'tipo_id'       => $this->obtenerTipoDocumentoId('FACTURA_VENTA'),
-                'numero'        => $numero,
-                'fecha_emision' => date('Y-m-d'),
-                'subtotal'      => round($subtotal, 4),
-                'descuento'     => round($descuento, 4),
-                'iva'           => round($ivaTotal, 4),
-                'total'         => $total,
-                'proforma_id'   => $proformaId,
-                'estado_id'     => $this->obtenerEstadoId('CREADA'),
-                'usuario_crea'  => $usuarioId,
+                'empresa_id'             => $empresaId,
+                'cliente_id'             => $proforma['ven_cliente_id'],
+                'tipo_id'                => $this->obtenerTipoDocumentoId('FACTURA_VENTA'),
+                'usuarios_id'            => $usuarioId,
+                'bodega_id'              => $this->obtenerBodegaId($empresaId, $usuarioId),
+                'numero'                 => $numero,
+                'fecha_emision'          => date('Y-m-d'),
+                'subtotal'               => round($subtotal, 4),
+                'descuento'              => round($descuento, 4),
+                'iva'                    => round($ivaTotal, 4),
+                'total'                  => $total,
+                'subtotal_sin_impuestos' => round($subtotal, 4),
+                'impuesto_total'         => round($ivaTotal, 4),
+                'valor_total'            => $total,
+                'forma_pago'             => 'EFECTIVO',
+                'proforma_id'            => $proformaId,
+                'estado_id'              => $this->obtenerEstadoId('CREADA'),
+                'usuario_crea'           => $usuarioId,
             ]);
             $facturaId = (int) $stmtFact->fetchColumn();
 
@@ -483,7 +515,7 @@ final class ProformaModelo
         $sentencia = $this->pdo()->prepare("
             SELECT c.ven_cliente_id, c.ven_cliente_identificacion,
                    c.ven_cliente_tipo_identificacion, c.ven_cliente_razon_social,
-                   c.ven_cliente_telefono, c.ven_cliente_correo, c.ven_cliente_direccion
+                   c.ven_cliente_telefono, c.ven_cliente_email, c.ven_cliente_direccion
             FROM ven_cliente c
             INNER JOIN sis_estado es ON es.sis_estado_id = c.sis_estado_id
             WHERE c.sis_empresa_id = :empresa_id
@@ -657,9 +689,13 @@ final class ProformaModelo
             INSERT INTO ven_documento_detalle (
                 sis_empresa_id, ven_documento_id, inv_producto_id,
                 ven_documento_detalle_codigo, ven_documento_detalle_descripcion,
-                ven_documento_detalle_cantidad, ven_documento_detalle_precio,
+                ven_documento_detalle_cantidad,
+                ven_documento_detalle_precio_unitario,
                 ven_documento_detalle_descuento, ven_documento_detalle_descuento_val,
-                ven_documento_detalle_total, ven_documento_detalle_marca_iva,
+                ven_documento_detalle_precio_total_sin_impuestos,
+                ven_documento_detalle_impuesto_total,
+                ven_documento_detalle_precio_total,
+                ven_documento_detalle_marca_iva,
                 sis_iva_id, ven_documento_detalle_iva_valor,
                 ven_documento_detalle_pvp, ven_documento_detalle_precio_min,
                 ven_documento_detalle_aprobado_por,
@@ -667,9 +703,13 @@ final class ProformaModelo
             ) VALUES (
                 :empresa_id, :documento_id, :producto_id,
                 :codigo, :descripcion,
-                :cantidad, :precio,
+                :cantidad,
+                :precio_unitario,
                 :descuento, :descuento_val,
-                :total, :marca_iva,
+                :precio_total_sin_impuestos,
+                :impuesto_total,
+                :precio_total,
+                :marca_iva,
                 :iva_id, :iva_valor,
                 :pvp, :precio_min,
                 :aprobado_por,
@@ -677,26 +717,51 @@ final class ProformaModelo
             )
         ");
         foreach ($lineas as $linea) {
+            $cantidad    = (float) $linea['cantidad'];
+            $precio      = (float) $linea['precio'];
+            $descPct     = (float) ($linea['descuento'] ?? 0);
+            $descVal     = (float) ($linea['descuento_valor'] ?? 0);
+            $ivaVal      = (float) ($linea['iva_valor'] ?? 0);
+            $base        = (float) $linea['total'];          // total ya viene sin IVA
+            $impuesto    = round($base * ((float)($linea['iva_pct'] ?? 0)) / 100, 4);
+            // iva_valor que viene del JS es el monto de IVA de la línea
+            $impuestoTotal = (float) ($linea['iva_valor'] ?? 0);
+            $precioTotal   = round($base + $impuestoTotal, 4);
+
             $stmt->execute([
-                'empresa_id'   => $empresaId,
-                'documento_id' => $documentoId,
-                'producto_id'  => (int) $linea['producto_id'],
-                'codigo'       => $linea['codigo'] !== '' ? $linea['codigo'] : null,
-                'descripcion'  => $linea['descripcion'] !== '' ? $linea['descripcion'] : null,
-                'cantidad'     => (float) $linea['cantidad'],
-                'precio'       => (float) $linea['precio'],
-                'descuento'    => (float) ($linea['descuento'] ?? 0),
-                'descuento_val'=> (float) ($linea['descuento_valor'] ?? 0),
-                'total'        => (float) $linea['total'],
-                'marca_iva'    => ((float) ($linea['iva_valor'] ?? 0)) > 0 ? 'S' : 'N',
-                'iva_id'       => ((int) ($linea['iva_id'] ?? 0)) > 0 ? (int) $linea['iva_id'] : null,
-                'iva_valor'    => (float) ($linea['iva_valor'] ?? 0),
-                'pvp'          => (float) ($linea['pvp'] ?? 0),
-                'precio_min'   => (float) ($linea['precio_min'] ?? 0),
-                'aprobado_por' => ((int) ($linea['aprobado_por'] ?? 0)) > 0 ? (int) $linea['aprobado_por'] : null,
-                'usuario_crea' => $usuarioId,
+                'empresa_id'                  => $empresaId,
+                'documento_id'                => $documentoId,
+                'producto_id'                 => ((int) $linea['producto_id']) > 0 ? (int) $linea['producto_id'] : throw new \RuntimeException('Todas las líneas deben tener un producto seleccionado.'),
+                'codigo'                      => $linea['codigo'] !== '' ? $linea['codigo'] : null,
+                'descripcion'                 => $linea['descripcion'] !== '' ? $linea['descripcion'] : null,
+                'cantidad'                    => $cantidad,
+                'precio_unitario'             => $precio,
+                'descuento'                   => $descPct,
+                'descuento_val'               => $descVal,
+                'precio_total_sin_impuestos'  => $base,
+                'impuesto_total'              => $impuestoTotal,
+                'precio_total'                => $precioTotal,
+                'marca_iva'                   => $impuestoTotal > 0 ? 'S' : 'N',
+                'iva_id'                      => ((int) ($linea['iva_id'] ?? 0)) > 0 ? (int) $linea['iva_id'] : null,
+                'iva_valor'                   => $ivaVal,
+                'pvp'                         => (float) ($linea['pvp'] ?? 0),
+                'precio_min'                  => (float) ($linea['precio_min'] ?? 0),
+                'aprobado_por'                => ((int) ($linea['aprobado_por'] ?? 0)) > 0 ? (int) $linea['aprobado_por'] : null,
+                'usuario_crea'                => $usuarioId,
             ]);
         }
+    }
+
+    public function obtenerDatosEmpresa(int $empresaId): array
+    {
+        $stmt = $this->pdo()->prepare("
+            SELECT sis_empresa_ruc, sis_empresa_razon_social,
+                   sis_empresa_nombre_comercial, sis_empresa_direccion,
+                   sis_empresa_telefono, sis_empresa_email
+            FROM sis_empresa WHERE sis_empresa_id = :id LIMIT 1
+        ");
+        $stmt->execute(['id' => $empresaId]);
+        return $stmt->fetch() ?: [];
     }
 
     private function obtenerEstadoId(string $codigo): int
@@ -730,6 +795,49 @@ final class ProformaModelo
             throw new RuntimeException("Tipo de documento '{$codigo}' no encontrado. Ejecute la migración.");
         }
         return $id;
+    }
+
+    /**
+     * ***************************************************************************
+     * * OBTIENE LA BODEGA PREDETERMINADA DEL USUARIO O LA PRINCIPAL DE LA EMPRESA.
+     * ***************************************************************************
+     */
+    private function obtenerBodegaId(int $empresaId, int $usuarioId): int
+    {
+        /* Bodega predeterminada asignada al usuario */
+        $sentencia = $this->pdo()->prepare("
+            SELECT bu.inv_bodega_id
+            FROM inv_bodega_usuarios bu
+            INNER JOIN inv_bodega b ON b.inv_bodega_id = bu.inv_bodega_id
+            WHERE bu.sis_empresa_id = :empresa_id
+              AND bu.sis_usuarios_id = :usuario_id
+              AND bu.inv_bodega_usuarios_estado = 1
+              AND b.inv_bodega_virtual = FALSE
+            ORDER BY bu.inv_bodega_usuarios_predeterminada DESC, bu.inv_bodega_id ASC
+            LIMIT 1
+        ");
+        $sentencia->execute(['empresa_id' => $empresaId, 'usuario_id' => $usuarioId]);
+        $id = (int) $sentencia->fetchColumn();
+        if ($id > 0) {
+            return $id;
+        }
+
+        /* Fallback: bodega principal de la empresa */
+        $sentencia = $this->pdo()->prepare("
+            SELECT inv_bodega_id FROM inv_bodega
+            WHERE sis_empresa_id = :empresa_id
+              AND inv_bodega_es_principal = TRUE
+              AND inv_bodega_virtual = FALSE
+            ORDER BY inv_bodega_id ASC
+            LIMIT 1
+        ");
+        $sentencia->execute(['empresa_id' => $empresaId]);
+        $id = (int) $sentencia->fetchColumn();
+        if ($id > 0) {
+            return $id;
+        }
+
+        throw new \RuntimeException('No hay una bodega activa configurada para este usuario. Configure una en Inventario → Bodegas.');
     }
 
     private function pdo(): \PDO
