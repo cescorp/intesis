@@ -17,9 +17,9 @@ $msgFacturar  = $msgs['CONFIRMAR_FACTURAR_PROFORMA'] ?? null;
 
         <div class="panel-crud-cabecera d-flex align-items-center gap-2 flex-wrap">
             <?php if ($permisos['crear']): ?>
-            <a href="<?= $appUrl ?>/ventas/proformas/nuevo" class="btn btn-intesis btn-crud">
+            <button type="button" class="btn btn-intesis btn-crud" onclick="window.location.href='<?= $appUrl ?>/ventas/proformas/nuevo'">
                 <i class="bi bi-plus-square"></i> Nueva Proforma
-            </a>
+            </button>
             <?php endif; ?>
 
             <form method="get" action="<?= $appUrl ?>/ventas/proformas" class="d-flex align-items-center gap-2 ms-auto flex-wrap">

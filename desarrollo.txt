@@ -93,9 +93,10 @@ Generar obligación al proveedor si la compra es a crédito.
 ________________________________________
 ok - 4. Ventas
 ok - 4.1 Clientes: CRUD
-ok - Identificación, razón social, correo, teléfono, dirección.
-4.2 Documento de venta: CRUD
-Cabecera de factura, 
+ok - Identificación, razón social, correo, teléfono, dirección
+
+4.2 Documento de venta: CRUD (PARA FACTURACION ELECTRONICA)
+Cabecera de factura, mismo datos de proformas + forma de pago
 4.3 Detalle de venta: CRUD
 Productos, cantidades, precios, descuentos, IVA.
 4.4 Validación de stock: Proceso
@@ -109,7 +110,6 @@ Generar saldo pendiente si la venta es a crédito.
 
 al da click en facturar muestra un modal con una calculadora donde ingrese:
 Total [] Valor Recibido []  Cambio [CALCULO DEL TOTAL]
-FORMA DE PAGO [EFCTIVO/TARJETA/ETC]
 
 ________________________________________
 5. Contabilidad

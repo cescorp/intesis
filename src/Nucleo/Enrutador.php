@@ -23,6 +23,7 @@ use Intesis\Controladores\CodigoProveedorControlador;
 use Intesis\Controladores\DocumentoCompraControlador;
 use Intesis\Controladores\ClienteControlador;
 use Intesis\Controladores\ProformaControlador;
+use Intesis\Controladores\FacturaControlador;
 use Intesis\Controladores\UsuarioControlador;
 use Intesis\Nucleo\Sesion;
 use Intesis\Nucleo\Vista;
@@ -50,6 +51,7 @@ final class Enrutador
         private DocumentoCompraControlador $documentoCompraControlador,
         private ClienteControlador $clienteControlador,
         private ProformaControlador $proformaControlador,
+        private FacturaControlador $facturaControlador,
         private Configuracion $configuracion,
         private Vista $vista,
         private Sesion $sesion
@@ -822,6 +824,43 @@ final class Enrutador
         }
         if ($metodo === 'GET' && $ruta === '/ventas/proformas/pdf') {
             $this->proformaControlador->pdf();
+            return;
+        }
+
+        if ($metodo === 'GET' && $ruta === '/ventas/facturas') {
+            $this->facturaControlador->listar();
+            return;
+        }
+        if ($metodo === 'GET' && $ruta === '/ventas/facturas/nuevo') {
+            $this->facturaControlador->nuevo();
+            return;
+        }
+        if ($metodo === 'GET' && $ruta === '/ventas/facturas/editar') {
+            $this->facturaControlador->editar();
+            return;
+        }
+        if ($metodo === 'POST' && $ruta === '/ventas/facturas/guardar') {
+            $this->facturaControlador->guardar();
+            return;
+        }
+        if ($metodo === 'POST' && $ruta === '/ventas/facturas/anular') {
+            $this->facturaControlador->anular();
+            return;
+        }
+        if ($metodo === 'GET' && $ruta === '/ventas/facturas/detalle') {
+            $this->facturaControlador->detalle();
+            return;
+        }
+        if ($metodo === 'GET' && $ruta === '/ventas/facturas/buscar-cliente') {
+            $this->facturaControlador->buscarCliente();
+            return;
+        }
+        if ($metodo === 'GET' && $ruta === '/ventas/facturas/buscar-clientes') {
+            $this->facturaControlador->buscarClientes();
+            return;
+        }
+        if ($metodo === 'GET' && $ruta === '/ventas/facturas/productos') {
+            $this->facturaControlador->productos();
             return;
         }
 
