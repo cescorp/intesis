@@ -1,0 +1,436 @@
+================================================================================
+INTESIS — GUÍA DE INSTALACIÓN PASO A PASO
+================================================================================
+Aplica para:
+  A) Windows 10 con XAMPP 8.x (instalación local)
+  B) VM en la nube (Ubuntu/Debian con Apache + PHP 8 + PostgreSQL)
+  C) Subcarpeta de un servidor existente
+
+Tiempo estimado: 20–40 minutos
+================================================================================
+
+
+════════════════════════════════════════════════════════════════════════════════
+OPCIÓN A — WINDOWS 10 CON XAMPP 8
+════════════════════════════════════════════════════════════════════════════════
+
+──────────────────────────────────────────────────────────────────────────────
+PASO 1 — INSTALAR XAMPP 8
+──────────────────────────────────────────────────────────────────────────────
+
+1.1  Descargar XAMPP 8.2+ desde: https://www.apachefriends.org/
+1.2  Instalar en C:\xampp  (ruta recomendada, sin espacios).
+1.3  Abrir XAMPP Control Panel y verificar que inicien sin error:
+       ✓ Apache
+       ✓ (PostgreSQL NO viene incluido — ver Paso 2)
+     Nota: MySQL/MariaDB NO se usa en este proyecto; puede dejarse apagado.
+
+
+──────────────────────────────────────────────────────────────────────────────
+PASO 2 — INSTALAR POSTGRESQL 17
+──────────────────────────────────────────────────────────────────────────────
+
+2.1  Descargar PostgreSQL 17 desde: https://www.postgresql.org/download/windows/
+2.2  Instalar con las opciones por defecto:
+       - Directorio: C:\Program Files\PostgreSQL\17
+       - Puerto: 5432  (dejar el default)
+       - Usuario: postgres
+       - Contraseña: elegir una y anotarla (se usará en .env)
+       - Locale: Spanish, Ecuador  (o el del servidor)
+2.3  Al terminar, NO es necesario instalar Stack Builder.
+2.4  Verificar que el servicio "postgresql-x64-17" esté corriendo:
+       Servicios de Windows (services.msc) → postgresql-x64-17 → Iniciado
+
+
+──────────────────────────────────────────────────────────────────────────────
+PASO 3 — HABILITAR LA EXTENSIÓN PDO_PGSQL EN PHP
+──────────────────────────────────────────────────────────────────────────────
+
+3.1  Abrir: C:\xampp\php\php.ini  (con Notepad o VS Code)
+3.2  Buscar estas líneas y quitar el punto y coma del inicio si lo tienen:
+
+       ;extension=pdo_pgsql   →   extension=pdo_pgsql
+       ;extension=pgsql       →   extension=pgsql
+       ;extension=mbstring    →   extension=mbstring   (para SRI XML)
+       ;extension=xml         →   extension=xml        (para SRI XML)
+       ;extension=gd          →   extension=gd         (para PDFs/imágenes)
+
+3.3  Guardar php.ini y reiniciar Apache desde XAMPP Control Panel.
+3.4  Verificar: abrir http://localhost/dashboard  → phpinfo → buscar "pgsql" (debe aparecer).
+
+
+──────────────────────────────────────────────────────────────────────────────
+PASO 4 — HABILITAR mod_rewrite EN APACHE
+──────────────────────────────────────────────────────────────────────────────
+
+4.1  Abrir: C:\xampp\apache\conf\httpd.conf
+4.2  Buscar la línea:
+       #LoadModule rewrite_module modules/mod_rewrite.so
+     Quitar el # del inicio:
+       LoadModule rewrite_module modules/mod_rewrite.so
+
+4.3  Buscar el bloque <Directory "C:/xampp/htdocs"> y asegurarse que diga:
+       AllowOverride All
+     (si dice "None" o "Options", cambiarlo a "All")
+
+4.4  Guardar httpd.conf y reiniciar Apache.
+
+
+──────────────────────────────────────────────────────────────────────────────
+PASO 5 — COPIAR EL PROYECTO
+──────────────────────────────────────────────────────────────────────────────
+
+OPCIÓN 5A — Desde repositorio Git:
+  5A.1  Instalar Git para Windows: https://git-scm.com/download/win
+  5A.2  Abrir CMD o PowerShell en C:\xampp\htdocs\
+  5A.3  Clonar el repositorio:
+          git clone https://REPOSITORIO/intesis.git intesis
+          (reemplazar la URL por la real del repositorio)
+
+OPCIÓN 5B — Desde archivo ZIP / copia directa:
+  5B.1  Copiar la carpeta del proyecto a: C:\xampp\htdocs\intesis\
+  5B.2  Verificar que existan estos archivos y carpetas en la raíz:
+          ✓ index.php
+          ✓ .env  (o .env.ejemplo para copiar)
+          ✓ .htaccess
+          ✓ composer.json
+          ✓ src/
+          ✓ publico/
+          ✓ migrations/
+          ✓ almacenamiento/
+          ✓ vendor/  (si no existe, ver Paso 6)
+
+  Nota: si el proyecto está en otra subcarpeta (ej: C:\xampp\htdocs\erp\intesis),
+  ajustar APP_URL y RewriteBase en .htaccess según esa ruta (ver Paso 7).
+
+
+──────────────────────────────────────────────────────────────────────────────
+PASO 6 — INSTALAR DEPENDENCIAS PHP (Composer)
+──────────────────────────────────────────────────────────────────────────────
+
+  El proyecto solo tiene una dependencia externa: dompdf/dompdf (generación de PDF).
+  Si la carpeta vendor/ ya viene incluida en el ZIP/repositorio, omitir este paso.
+
+6.1  Descargar Composer: https://getcomposer.org/Composer-Setup.exe
+     Instalar apuntando al PHP de XAMPP: C:\xampp\php\php.exe
+
+6.2  Abrir PowerShell en C:\xampp\htdocs\intesis\ y ejecutar:
+       composer install --no-dev
+
+6.3  Verificar que se haya creado la carpeta vendor/ con dompdf dentro.
+
+
+──────────────────────────────────────────────────────────────────────────────
+PASO 7 — CONFIGURAR EL ARCHIVO .env
+──────────────────────────────────────────────────────────────────────────────
+
+7.1  En la raíz del proyecto, copiar o renombrar .env.ejemplo a .env
+     (si ya existe un .env, editarlo directamente).
+
+7.2  Editar .env con los valores del nuevo servidor:
+
+       APP_NOMBRE=INTESIS
+       APP_URL=/intesis              ← cambiar si la carpeta tiene otro nombre
+                                       ej: /erp  si está en htdocs/erp/
+       APP_RAIZ=C:/xampp/htdocs/intesis   ← ruta absoluta real del proyecto
+       APP_AMBIENTE=produccion       ← cambiar de "desarrollo" a "produccion"
+       APP_DEBUG=false               ← poner false en producción
+
+       DB_HOST=127.0.0.1
+       DB_PORT=5432
+       DB_DATABASE=intesis
+       DB_USERNAME=postgres
+       DB_PASSWORD=LA_CONTRASEÑA_ELEGIDA_EN_PASO_2
+
+       RUTA_LOG_ERRORES=log_errores
+       RUTA_SESIONES=almacenamiento/sesiones
+
+7.3  Si APP_URL cambia (ej: de /intesis a /erp), también editar .htaccess:
+       RewriteBase /erp/    ← debe coincidir con APP_URL + barra al final
+
+
+──────────────────────────────────────────────────────────────────────────────
+PASO 8 — CREAR LA BASE DE DATOS Y EJECUTAR MIGRACIONES
+──────────────────────────────────────────────────────────────────────────────
+
+8.1  Abrir pgAdmin (instalado con PostgreSQL) o psql desde CMD:
+       "C:\Program Files\PostgreSQL\17\bin\psql.exe" -U postgres
+
+8.2  Crear la base de datos:
+       CREATE DATABASE intesis
+         WITH ENCODING='UTF8'
+         LC_COLLATE='es_EC.UTF-8'
+         LC_CTYPE='es_EC.UTF-8'
+         TEMPLATE=template0;
+
+     Si el locale es_EC.UTF-8 no está disponible en el sistema, usar:
+       LC_COLLATE='Spanish_Ecuador.1252'
+       LC_CTYPE='Spanish_Ecuador.1252'
+     O simplemente omitir LC_COLLATE y LC_CTYPE para usar el default del sistema.
+
+8.3  Salir de psql:  \q
+
+8.4  Ejecutar TODAS las migraciones en orden cronológico.
+     Desde PowerShell en la raíz del proyecto:
+
+       $env:PGPASSWORD = 'LA_CONTRASEÑA'
+       $psql = '"C:\Program Files\PostgreSQL\17\bin\psql.exe"'
+       Get-ChildItem migrations\*.sql | Sort-Object Name | ForEach-Object {
+           Write-Host "Ejecutando $($_.Name)..."
+           & "C:\Program Files\PostgreSQL\17\bin\psql.exe" -U postgres -d intesis -f $_.FullName
+       }
+
+     O ejecutar una a una manualmente:
+       & "C:\Program Files\PostgreSQL\17\bin\psql.exe" -U postgres -d intesis -f "migrations\20260601_2330_crear_sis_estado.sql"
+       & "C:\Program Files\PostgreSQL\17\bin\psql.exe" -U postgres -d intesis -f "migrations\20260602_0005_actualizar_clave_usuario_admin.sql"
+       ... (todas en orden ascendente por nombre)
+
+     IMPORTANTE: ejecutar en orden — los nombres tienen timestamp YYYYMMDD_HHMM
+     que garantiza la secuencia correcta.
+
+8.5  Verificar que no haya errores en la salida. Los INSERT 0 0 son normales
+     (significa que el registro ya existía = idempotente).
+
+
+──────────────────────────────────────────────────────────────────────────────
+PASO 9 — PERMISOS DE CARPETAS
+──────────────────────────────────────────────────────────────────────────────
+
+  Las siguientes carpetas deben tener permisos de escritura para Apache:
+
+    almacenamiento\sesiones\     ← sesiones PHP
+    almacenamiento\archivos\     ← imágenes de productos y logos
+    log_errores\                 ← logs de errores del sistema
+
+  En Windows con XAMPP esto generalmente ya funciona por defecto.
+  Si hay errores de permisos, clic derecho en la carpeta → Propiedades →
+  Seguridad → agregar usuario "Todos" con permiso de Escritura.
+
+
+──────────────────────────────────────────────────────────────────────────────
+PASO 10 — VERIFICAR LA INSTALACIÓN
+──────────────────────────────────────────────────────────────────────────────
+
+10.1  Asegurarse que Apache y PostgreSQL estén corriendo.
+10.2  Abrir el navegador: http://localhost/intesis
+10.3  Debe aparecer la pantalla de login de INTESIS.
+10.4  Credenciales iniciales del sistema:
+        Usuario: admin
+        Contraseña: 123456  (cambiar inmediatamente después del primer acceso)
+10.5  Si aparece página en blanco o error 500:
+       - Revisar C:\xampp\apache\logs\error.log
+       - Revisar la carpeta log_errores\ del proyecto
+       - Confirmar que pdo_pgsql esté habilitado en phpinfo()
+       - Confirmar que .env existe y los datos de BD son correctos
+
+
+════════════════════════════════════════════════════════════════════════════════
+OPCIÓN B — VM EN LA NUBE (Ubuntu 22.04 / Debian 12)
+════════════════════════════════════════════════════════════════════════════════
+
+──────────────────────────────────────────────────────────────────────────────
+PASO 1 — INSTALAR PAQUETES BASE
+──────────────────────────────────────────────────────────────────────────────
+
+  sudo apt update && sudo apt upgrade -y
+  sudo apt install -y apache2 \
+      php8.2 php8.2-pgsql php8.2-pdo-pgsql php8.2-mbstring \
+      php8.2-xml php8.2-gd php8.2-curl php8.2-zip \
+      postgresql postgresql-client \
+      git curl unzip
+
+
+──────────────────────────────────────────────────────────────────────────────
+PASO 2 — CONFIGURAR POSTGRESQL
+──────────────────────────────────────────────────────────────────────────────
+
+  sudo -u postgres psql
+
+  Dentro de psql:
+    ALTER USER postgres WITH PASSWORD 'LA_CONTRASEÑA_NUEVA';
+    CREATE DATABASE intesis
+      WITH ENCODING='UTF8'
+      LC_COLLATE='es_EC.UTF-8'
+      LC_CTYPE='es_EC.UTF-8'
+      TEMPLATE=template0;
+    \q
+
+  Si el locale es_EC.UTF-8 no está instalado en el sistema:
+    sudo locale-gen es_EC.UTF-8
+    sudo update-locale
+
+
+──────────────────────────────────────────────────────────────────────────────
+PASO 3 — HABILITAR mod_rewrite Y CONFIGURAR APACHE
+──────────────────────────────────────────────────────────────────────────────
+
+  sudo a2enmod rewrite
+  sudo systemctl restart apache2
+
+  Editar la config de Apache para permitir .htaccess:
+    sudo nano /etc/apache2/sites-available/000-default.conf
+
+  Dentro del bloque <VirtualHost *:80>, agregar o verificar:
+
+    DocumentRoot /var/www/html
+    <Directory /var/www/html>
+        AllowOverride All
+        Require all granted
+    </Directory>
+
+  Guardar y reiniciar:
+    sudo systemctl restart apache2
+
+
+──────────────────────────────────────────────────────────────────────────────
+PASO 4 — COPIAR EL PROYECTO
+──────────────────────────────────────────────────────────────────────────────
+
+OPCIÓN A — Desde repositorio Git:
+  cd /var/www/html
+  sudo git clone https://REPOSITORIO/intesis.git intesis
+  sudo chown -R www-data:www-data intesis/
+
+OPCIÓN B — Subir ZIP por SCP/SFTP:
+  # Desde tu máquina local:
+  scp intesis.zip usuario@IP_SERVIDOR:/tmp/
+  # En el servidor:
+  cd /var/www/html
+  sudo unzip /tmp/intesis.zip -d intesis
+  sudo chown -R www-data:www-data intesis/
+
+
+──────────────────────────────────────────────────────────────────────────────
+PASO 5 — INSTALAR COMPOSER Y DEPENDENCIAS
+──────────────────────────────────────────────────────────────────────────────
+
+  Si vendor/ no viene incluido:
+
+  curl -sS https://getcomposer.org/installer | php
+  sudo mv composer.phar /usr/local/bin/composer
+
+  cd /var/www/html/intesis
+  sudo -u www-data composer install --no-dev
+
+
+──────────────────────────────────────────────────────────────────────────────
+PASO 6 — CONFIGURAR .env
+──────────────────────────────────────────────────────────────────────────────
+
+  cd /var/www/html/intesis
+  sudo cp .env.ejemplo .env   # si existe el ejemplo
+  sudo nano .env
+
+  Valores a cambiar:
+
+    APP_URL=/intesis              # o /  si es el dominio raíz
+    APP_RAIZ=/var/www/html/intesis
+    APP_AMBIENTE=produccion
+    APP_DEBUG=false
+
+    DB_HOST=127.0.0.1
+    DB_PORT=5432
+    DB_DATABASE=intesis
+    DB_USERNAME=postgres
+    DB_PASSWORD=LA_CONTRASEÑA
+
+  Si el proyecto está en la raíz del dominio (ej: https://midominio.com/):
+    APP_URL=
+  Y en .htaccess cambiar:
+    RewriteBase /
+
+
+──────────────────────────────────────────────────────────────────────────────
+PASO 7 — PERMISOS DE CARPETAS
+──────────────────────────────────────────────────────────────────────────────
+
+  cd /var/www/html/intesis
+  sudo chown -R www-data:www-data almacenamiento/ log_errores/
+  sudo chmod -R 775 almacenamiento/ log_errores/
+
+
+──────────────────────────────────────────────────────────────────────────────
+PASO 8 — EJECUTAR MIGRACIONES
+──────────────────────────────────────────────────────────────────────────────
+
+  export PGPASSWORD='LA_CONTRASEÑA'
+  for f in /var/www/html/intesis/migrations/*.sql; do
+      echo "Ejecutando $f..."
+      psql -U postgres -d intesis -f "$f"
+  done
+
+
+──────────────────────────────────────────────────────────────────────────────
+PASO 9 — VERIFICAR LA INSTALACIÓN
+──────────────────────────────────────────────────────────────────────────────
+
+  Abrir en el navegador: http://IP_SERVIDOR/intesis
+  Credenciales: admin / 123456
+
+
+════════════════════════════════════════════════════════════════════════════════
+INSTALACIÓN EN SUBCARPETA CON NOMBRE DIFERENTE A "intesis"
+════════════════════════════════════════════════════════════════════════════════
+
+  Si el proyecto se copia a una carpeta con nombre diferente (ej: "erp" o "sistema"):
+
+  1. Renombrar la carpeta destino como se desee (ej: /htdocs/erp/).
+  2. En .env cambiar:
+       APP_URL=/erp
+       APP_RAIZ=C:/xampp/htdocs/erp    ← ruta real
+  3. En .htaccess cambiar:
+       RewriteBase /erp/
+  4. Ejecutar las migraciones igual (la BD no depende del nombre de carpeta).
+  5. Acceder por: http://localhost/erp
+
+
+════════════════════════════════════════════════════════════════════════════════
+REQUERIMIENTOS MÍNIMOS
+════════════════════════════════════════════════════════════════════════════════
+
+  PHP:         8.1 o superior  (recomendado 8.2+)
+  Extensiones: pdo, pdo_pgsql, pgsql, mbstring, xml, gd, json
+  PostgreSQL:  15 o superior  (probado en 17)
+  Apache:      2.4+  con mod_rewrite habilitado y AllowOverride All
+  Composer:    2.x  (solo para instalar dompdf si vendor/ no viene incluido)
+  Disco:       mínimo 200 MB libres (sin contar imágenes de productos)
+  RAM:         1 GB mínimo para la VM
+
+
+════════════════════════════════════════════════════════════════════════════════
+SOLUCIÓN DE PROBLEMAS FRECUENTES
+════════════════════════════════════════════════════════════════════════════════
+
+PROBLEMA: Página en blanco o error 500
+  → Habilitar display_errors temporalmente en php.ini: display_errors=On
+  → Revisar log_errores/ en la raíz del proyecto
+  → Revisar logs de Apache
+
+PROBLEMA: "could not connect to server" / error de conexión a BD
+  → Verificar que PostgreSQL esté corriendo (services.msc en Windows)
+  → Verificar DB_HOST, DB_PORT, DB_USERNAME, DB_PASSWORD en .env
+  → Confirmar que la extensión pdo_pgsql aparece en phpinfo()
+
+PROBLEMA: URLs devuelven 404 (rutas no funcionan)
+  → Confirmar que mod_rewrite está activo en Apache
+  → Confirmar que AllowOverride All está en el bloque <Directory> correcto
+  → Confirmar que RewriteBase en .htaccess coincide con APP_URL en .env
+
+PROBLEMA: Error "tabla no existe" / relación no encontrada
+  → Las migraciones no se ejecutaron todas o no en orden
+  → Volver al Paso 8 y ejecutar la migración faltante
+
+PROBLEMA: Imágenes o PDFs no se guardan / error de escritura
+  → La carpeta almacenamiento/ no tiene permisos de escritura
+  → En Windows: dar permiso al usuario del servicio Apache (SYSTEM o NETWORK SERVICE)
+  → En Linux: sudo chown -R www-data:www-data almacenamiento/
+
+PROBLEMA: Login falla con usuario admin
+  → La migración 20260602_0005_actualizar_clave_usuario_admin.sql no se ejecutó
+  → Ejecutar esa migración manualmente y reintentar
+
+PROBLEMA: Error "Tipo FACTURA_VENTA no configurado"
+  → La migración 20260615_0040_ventas_facturas.sql no se ejecutó
+  → Ejecutar esa migración y reintentar
+
+================================================================================
