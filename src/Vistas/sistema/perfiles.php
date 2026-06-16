@@ -119,6 +119,19 @@ $renderizarArbolPermisos = function (int $padreId, int $nivel) use (&$renderizar
                         </div>
                     <?php endif; ?>
 
+                    <?php if ($esSuperusuario): ?>
+                        <div class="panel-crud-filtros mb-3">
+                            <select id="filtroEmpresaPerfil" class="form-select form-select-sm w-auto">
+                                <option value="">Todas las empresas</option>
+                                <?php foreach ($empresas as $empresa): ?>
+                                    <option value="<?= htmlspecialchars($empresa['sis_empresa_nombre_comercial']) ?>">
+                                        <?= htmlspecialchars($empresa['sis_empresa_nombre_comercial']) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    <?php endif; ?>
+
                     <div class="table-responsive">
                         <table id="tablaPerfiles" class="table table-hover tabla-intesis align-middle w-100">
                             <thead>
@@ -288,4 +301,24 @@ $renderizarArbolPermisos = function (int $padreId, int $nivel) use (&$renderizar
     window.INTESIS_MENSAJES = <?= json_encode($mensajesSistema ?? [], JSON_UNESCAPED_UNICODE) ?>;
     window.INTESIS_PERMISOS_PERFIL = <?= json_encode($permisosPerfil ?? [], JSON_UNESCAPED_UNICODE) ?>;
 </script>
+<?php if ($esSuperusuario): ?>
+<script>
+(function () {
+    'use strict';
+
+    const filtro = document.getElementById('filtroEmpresaPerfil');
+    if (!filtro) return;
+
+    filtro.addEventListener('change', function () {
+        if (!window.jQuery || !jQuery.fn.DataTable) return;
+        // Columna 0 = Empresa; búsqueda exacta con regex para evitar coincidencias parciales
+        jQuery('#tablaPerfiles').DataTable().column(0).search(
+            this.value ? '^' + this.value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$' : '',
+            true,
+            false
+        ).draw();
+    });
+}());
+</script>
+<?php endif; ?>
 <?php require $configuracion->raiz() . '/src/Vistas/plantillas/pie.php'; ?>

@@ -49,6 +49,7 @@ final class PerfilControlador
             'menusPermisos' => $this->perfilModelo->listarMenusPermisos(),
             'permisosPerfil' => $this->obtenerPermisosPerfil($this->perfilModelo->listar((int) $usuario['empresa_id'], $verTodas)),
             'permisos' => $this->obtenerPermisos($usuario),
+            'esSuperusuario' => $verTodas,
             'mensaje' => $this->sesion->consumirMensaje(),
             'mensajesSistema' => $this->mensajeSistemaModelo->listarPorCodigos([
                 'CONFIRMAR_INACTIVAR_PERFIL',

@@ -107,6 +107,10 @@ $appUrl = rtrim($configuracion->obtener('APP_URL', ''), '/');
                                                     data-email="<?= htmlspecialchars($empresa['sis_empresa_email'] ?? '') ?>"
                                                     data-obligado="<?= $empresa['sis_empresa_obligado_contabilidad'] ? '1' : '0' ?>"
                                                     data-especial="<?= $empresa['sis_empresa_contribuyente_especial'] ? '1' : '0' ?>"
+                                                    data-ambiente="<?= htmlspecialchars($empresa['sis_empresa_ambiente_sri'] ?? '1') ?>"
+                                                    data-num-especial="<?= htmlspecialchars($empresa['sis_empresa_num_contribuyente_especial'] ?? '') ?>"
+                                                    data-cert-ruta="<?= htmlspecialchars($empresa['sis_empresa_certificado_ruta'] ?? '') ?>"
+                                                    data-cert-clave="<?= htmlspecialchars($empresa['sis_empresa_certificado_clave'] ?? '') ?>"
                                                 >
                                                     <i class="bi bi-pencil-square"></i>
                                                 </button>
@@ -152,7 +156,7 @@ $appUrl = rtrim($configuracion->obtener('APP_URL', ''), '/');
 
 <div class="modal fade modal-intesis" id="modalEmpresa" tabindex="-1" aria-labelledby="modalEmpresaTitulo" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-        <form class="modal-content" id="formularioEmpresa" method="post" action="<?= $appUrl ?>/sistema/empresas/crear">
+        <form class="modal-content" id="formularioEmpresa" method="post" enctype="multipart/form-data" action="<?= $appUrl ?>/sistema/empresas/crear">
             <input type="hidden" name="empresa_id" id="empresa_id">
             <div class="modal-header">
                 <div>
@@ -161,44 +165,110 @@ $appUrl = rtrim($configuracion->obtener('APP_URL', ''), '/');
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
-            <div class="modal-body">
-                <div class="row g-3">
-                    <div class="col-md-4">
-                        <label class="form-label" for="ruc">RUC</label>
-                        <input type="text" class="form-control" id="ruc" name="ruc" maxlength="13" required>
-                    </div>
-                    <div class="col-md-8">
-                        <label class="form-label" for="razon_social">Razon social</label>
-                        <input type="text" class="form-control" id="razon_social" name="razon_social" required>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label" for="nombre_comercial">Nombre comercial</label>
-                        <input type="text" class="form-control" id="nombre_comercial" name="nombre_comercial" required>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label" for="direccion">Direccion matriz</label>
-                        <input type="text" class="form-control" id="direccion" name="direccion" required>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label" for="telefono">Telefono</label>
-                        <input type="text" class="form-control" id="telefono" name="telefono">
-                    </div>
-                    <div class="col-md-5">
-                        <label class="form-label" for="email">Email</label>
-                        <input type="email" class="form-control" id="email" name="email">
-                    </div>
-                    <div class="col-md-3 d-flex align-items-end">
-                        <div class="form-check form-switch switch-intesis mb-2">
-                            <input class="form-check-input" type="checkbox" role="switch" id="contribuyente_especial" name="contribuyente_especial">
-                            <label class="form-check-label" for="contribuyente_especial">Contribuyente especial</label>
+            <div class="modal-body p-0">
+                <ul class="nav nav-tabs px-3 pt-3" id="tabsEmpresa" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="tab-general-btn" data-bs-toggle="tab" data-bs-target="#tabGeneral" type="button" role="tab">
+                            <i class="bi bi-building me-1"></i>Datos generales
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="tab-facturacion-btn" data-bs-toggle="tab" data-bs-target="#tabFacturacion" type="button" role="tab">
+                            <i class="bi bi-receipt me-1"></i>Facturación
+                        </button>
+                    </li>
+                </ul>
+                <div class="tab-content p-3" id="tabsEmpresaContent">
+
+                    <!-- TAB: Datos generales -->
+                    <div class="tab-pane fade show active" id="tabGeneral" role="tabpanel">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label" for="ruc">RUC</label>
+                                <input type="text" class="form-control" id="ruc" name="ruc" maxlength="13" required>
+                            </div>
+                            <div class="col-md-8">
+                                <label class="form-label" for="razon_social">Razon social</label>
+                                <input type="text" class="form-control" id="razon_social" name="razon_social" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="nombre_comercial">Nombre comercial</label>
+                                <input type="text" class="form-control" id="nombre_comercial" name="nombre_comercial" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="direccion">Direccion matriz</label>
+                                <input type="text" class="form-control" id="direccion" name="direccion" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label" for="telefono">Telefono</label>
+                                <input type="text" class="form-control" id="telefono" name="telefono">
+                            </div>
+                            <div class="col-md-5">
+                                <label class="form-label" for="email">Email</label>
+                                <input type="email" class="form-control" id="email" name="email">
+                            </div>
+                            <div class="col-md-3 d-flex align-items-end">
+                                <div class="form-check form-switch switch-intesis mb-2">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="contribuyente_especial" name="contribuyente_especial">
+                                    <label class="form-check-label" for="contribuyente_especial">Contribuyente especial</label>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="form-check form-switch switch-intesis">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="obligado_contabilidad" name="obligado_contabilidad">
+                                    <label class="form-check-label" for="obligado_contabilidad">Obligado a llevar contabilidad</label>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <div class="col-12">
-                        <div class="form-check form-switch switch-intesis">
-                            <input class="form-check-input" type="checkbox" role="switch" id="obligado_contabilidad" name="obligado_contabilidad">
-                            <label class="form-check-label" for="obligado_contabilidad">Obligado a llevar contabilidad</label>
+
+                    <!-- TAB: Facturación -->
+                    <div class="tab-pane fade" id="tabFacturacion" role="tabpanel">
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label class="form-label">Ambiente SRI</label>
+                                <div class="d-flex gap-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="ambiente_sri" id="ambiente_pruebas" value="1">
+                                        <label class="form-check-label" for="ambiente_pruebas">Pruebas (ambiente 1)</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="ambiente_sri" id="ambiente_produccion" value="2">
+                                        <label class="form-check-label" for="ambiente_produccion">Producción (ambiente 2)</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="num_contribuyente_especial">
+                                    Número de contribuyente especial
+                                    <small class="text-muted">(dejar vacío si no aplica)</small>
+                                </label>
+                                <input type="text" class="form-control" id="num_contribuyente_especial" name="num_contribuyente_especial" maxlength="20">
+                            </div>
+                            <div class="col-12">
+                                <hr class="my-1">
+                                <label class="form-label fw-semibold">Certificado digital</label>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="cert_archivo">Archivo .p12</label>
+                                <input type="file" class="form-control" id="cert_archivo" name="cert_archivo" accept=".p12">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="cert_nombre">Archivo actual</label>
+                                <input type="text" class="form-control desactivado" id="cert_nombre" readonly placeholder="Sin certificado">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label" for="certificado_clave">Clave del certificado</label>
+                                <div class="input-group">
+                                    <input type="password" class="form-control" id="certificado_clave" name="certificado_clave" autocomplete="new-password">
+                                    <button class="btn btn-outline-secondary btn-toggle-clave" type="button" tabindex="-1" title="Mostrar / ocultar clave">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
+
                 </div>
             </div>
             <div class="modal-footer">
@@ -222,5 +292,81 @@ $appUrl = rtrim($configuracion->obtener('APP_URL', ''), '/');
 <?php endif; ?>
 <script>
     window.INTESIS_MENSAJES = <?= json_encode($mensajesSistema ?? [], JSON_UNESCAPED_UNICODE) ?>;
+</script>
+<script>
+(function () {
+    'use strict';
+
+    const modal       = document.getElementById('modalEmpresa');
+    const form        = document.getElementById('formularioEmpresa');
+    const titulo      = document.getElementById('modalEmpresaTitulo');
+    const tabGeneralBtn = document.getElementById('tab-general-btn');
+
+    const appUrl = <?= json_encode($appUrl) ?>;
+
+    modal.addEventListener('show.bs.modal', function (e) {
+        const btn  = e.relatedTarget;
+        const modo = btn ? btn.dataset.modo : 'crear';
+
+        // Siempre volver a la pestaña general al abrir
+        bootstrap.Tab.getOrCreateInstance(tabGeneralBtn).show();
+
+        // Limpiar archivo seleccionado
+        document.getElementById('cert_archivo').value = '';
+
+        if (modo === 'crear') {
+            titulo.textContent = 'Nueva empresa';
+            form.action = appUrl + '/sistema/empresas/crear';
+            form.reset();
+            document.getElementById('empresa_id').value = '';
+            document.querySelector('input[name="ambiente_sri"][value="1"]').checked = true;
+            document.getElementById('cert_nombre').value = '';
+        } else {
+            titulo.textContent = 'Editar empresa';
+            form.action = appUrl + '/sistema/empresas/editar';
+
+            document.getElementById('empresa_id').value         = btn.dataset.id;
+            document.getElementById('ruc').value                = btn.dataset.ruc;
+            document.getElementById('razon_social').value       = btn.dataset.razon;
+            document.getElementById('nombre_comercial').value   = btn.dataset.comercial;
+            document.getElementById('direccion').value          = btn.dataset.direccion;
+            document.getElementById('telefono').value           = btn.dataset.telefono;
+            document.getElementById('email').value              = btn.dataset.email;
+            document.getElementById('obligado_contabilidad').checked  = btn.dataset.obligado === '1';
+            document.getElementById('contribuyente_especial').checked = btn.dataset.especial === '1';
+
+            // Pestaña Facturación
+            const ambiente = btn.dataset.ambiente || '1';
+            const radioAmbiente = document.querySelector('input[name="ambiente_sri"][value="' + ambiente + '"]');
+            if (radioAmbiente) radioAmbiente.checked = true;
+
+            document.getElementById('num_contribuyente_especial').value = btn.dataset.numEspecial || '';
+            document.getElementById('certificado_clave').value          = btn.dataset.certClave  || '';
+
+            // Mostrar nombre del archivo actual
+            const ruta = btn.dataset.certRuta || '';
+            document.getElementById('cert_nombre').value = ruta ? ruta.split('/').pop() : '';
+        }
+    });
+
+    // Actualizar nombre del archivo al seleccionar uno nuevo
+    document.getElementById('cert_archivo').addEventListener('change', function () {
+        const nombre = this.files.length > 0 ? this.files[0].name : '';
+        document.getElementById('cert_nombre').value = nombre;
+    });
+
+    // Toggle visibilidad de la clave del certificado
+    document.querySelector('.btn-toggle-clave').addEventListener('click', function () {
+        const input = document.getElementById('certificado_clave');
+        const icon  = this.querySelector('i');
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.classList.replace('bi-eye', 'bi-eye-slash');
+        } else {
+            input.type = 'password';
+            icon.classList.replace('bi-eye-slash', 'bi-eye');
+        }
+    });
+}());
 </script>
 <?php require $configuracion->raiz() . '/src/Vistas/plantillas/pie.php'; ?>

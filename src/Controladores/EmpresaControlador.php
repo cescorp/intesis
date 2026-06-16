@@ -73,7 +73,13 @@ final class EmpresaControlador
         try {
             $datos = $this->normalizarDatosFormulario();
             $this->validarDatos($datos);
-            $this->empresaModelo->crear($datos, (int) $usuario['id']);
+            $empresaId = $this->empresaModelo->crear($datos, (int) $usuario['id']);
+
+            $rutaCert = $this->manejarSubidaCertificado($empresaId);
+            if ($rutaCert !== null) {
+                $this->empresaModelo->actualizarCertificadoRuta($empresaId, $rutaCert, (int) $usuario['id']);
+            }
+
             $this->guardarMensajeCodigo('EMPRESA_CREADA');
         } catch (Throwable $excepcion) {
             $this->registrarErrorCrud('CREAR EMPRESA', $excepcion);
@@ -102,6 +108,10 @@ final class EmpresaControlador
 
             $datos = $this->normalizarDatosFormulario();
             $this->validarDatos($datos);
+
+            $rutaCert = $this->manejarSubidaCertificado($empresaId);
+            $datos['certificado_ruta'] = $rutaCert;
+
             $this->empresaModelo->actualizar($empresaId, $datos, (int) $usuario['id']);
             $this->guardarMensajeCodigo('EMPRESA_ACTUALIZADA');
         } catch (Throwable $excepcion) {
@@ -171,20 +181,60 @@ final class EmpresaControlador
 
     /**
      * ***************************************************************************
+     * * MUEVE EL .P12 SUBIDO A LA CARPETA DE FIRMAS Y RETORNA LA RUTA.
+     * ***************************************************************************
+     */
+    private function manejarSubidaCertificado(int $empresaId): ?string
+    {
+        $archivo = $_FILES['cert_archivo'] ?? null;
+        if ($archivo === null || ($archivo['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
+            return null;
+        }
+
+        if ($archivo['error'] !== UPLOAD_ERR_OK) {
+            throw new \RuntimeException('Error al subir el certificado digital.');
+        }
+
+        $extension = strtolower((string) pathinfo($archivo['name'], PATHINFO_EXTENSION));
+        if ($extension !== 'p12') {
+            throw new \InvalidArgumentException('El certificado debe ser un archivo .p12.');
+        }
+
+        $dirFirmas = $this->configuracion->raiz() . '/almacenamiento/archivos/firmas';
+        if (!is_dir($dirFirmas)) {
+            mkdir($dirFirmas, 0755, true);
+        }
+
+        $nombreDestino = $empresaId . '_empresa.p12';
+        $rutaDestino   = $dirFirmas . '/' . $nombreDestino;
+
+        if (!move_uploaded_file($archivo['tmp_name'], $rutaDestino)) {
+            throw new \RuntimeException('No se pudo guardar el certificado digital.');
+        }
+
+        return 'almacenamiento/archivos/firmas/' . $nombreDestino;
+    }
+
+    /**
+     * ***************************************************************************
      * * NORMALIZA CAMPOS DEL FORMULARIO DE EMPRESA PARA CREACION O EDICION.
      * ***************************************************************************
      */
     private function normalizarDatosFormulario(): array
     {
         return [
-            'ruc' => preg_replace('/\D+/', '', (string) ($_POST['ruc'] ?? '')),
-            'razon_social' => trim((string) ($_POST['razon_social'] ?? '')),
-            'nombre_comercial' => trim((string) ($_POST['nombre_comercial'] ?? '')),
-            'direccion' => trim((string) ($_POST['direccion'] ?? '')),
-            'telefono' => trim((string) ($_POST['telefono'] ?? '')),
-            'email' => trim((string) ($_POST['email'] ?? '')),
-            'obligado_contabilidad' => isset($_POST['obligado_contabilidad']),
-            'contribuyente_especial' => isset($_POST['contribuyente_especial']),
+            'ruc'                       => preg_replace('/\D+/', '', (string) ($_POST['ruc'] ?? '')),
+            'razon_social'              => trim((string) ($_POST['razon_social'] ?? '')),
+            'nombre_comercial'          => trim((string) ($_POST['nombre_comercial'] ?? '')),
+            'direccion'                 => trim((string) ($_POST['direccion'] ?? '')),
+            'telefono'                  => trim((string) ($_POST['telefono'] ?? '')),
+            'email'                     => trim((string) ($_POST['email'] ?? '')),
+            'obligado_contabilidad'     => isset($_POST['obligado_contabilidad']),
+            'contribuyente_especial'    => isset($_POST['contribuyente_especial']),
+            'ambiente_sri'              => ($_POST['ambiente_sri'] ?? '1') === '2' ? '2' : '1',
+            'num_contribuyente_especial' => trim((string) ($_POST['num_contribuyente_especial'] ?? '')),
+            'certificado_clave'         => trim((string) ($_POST['certificado_clave'] ?? '')),
+            'certificado_ruta'          => null,
         ];
     }
 
@@ -290,4 +340,5 @@ final class EmpresaControlador
         $mensaje = $this->mensajeSistemaModelo->obtener($codigo);
         $this->sesion->guardarMensaje($mensaje['icono'], $mensaje['titulo'], $mensaje['texto'], $mensaje['tiempo'], $mensaje['posicion']);
     }
+
 }

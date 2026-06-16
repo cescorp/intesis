@@ -32,6 +32,10 @@ final class EmpresaModelo
                 e.sis_empresa_email,
                 CASE WHEN e.sis_empresa_obligado_contabilidad THEN 1 ELSE 0 END AS sis_empresa_obligado_contabilidad,
                 CASE WHEN e.sis_empresa_contribuyente_especial THEN 1 ELSE 0 END AS sis_empresa_contribuyente_especial,
+                e.sis_empresa_ambiente_sri,
+                e.sis_empresa_certificado_ruta,
+                e.sis_empresa_certificado_clave,
+                e.sis_empresa_num_contribuyente_especial,
                 es.sis_estado_codigo,
                 es.sis_estado_nombre
             FROM sis_empresa e
@@ -76,7 +80,7 @@ final class EmpresaModelo
      * * CREA UNA EMPRESA ACTIVA CON PERFILES BASE Y PERMISOS INICIALES.
      * ***************************************************************************
      */
-    public function crear(array $datos, int $usuarioId): void
+    public function crear(array $datos, int $usuarioId): int
     {
         $pdo = $this->conexionBaseDatos->obtener();
         $sql = "
@@ -89,6 +93,9 @@ final class EmpresaModelo
                 sis_empresa_email,
                 sis_empresa_obligado_contabilidad,
                 sis_empresa_contribuyente_especial,
+                sis_empresa_ambiente_sri,
+                sis_empresa_num_contribuyente_especial,
+                sis_empresa_certificado_clave,
                 sis_estado_id,
                 usuario_crea
             )
@@ -101,6 +108,9 @@ final class EmpresaModelo
                 :email,
                 :obligado_contabilidad,
                 :contribuyente_especial,
+                :ambiente_sri,
+                :num_contribuyente_especial,
+                :certificado_clave,
                 :estado_id,
                 :usuario_crea
             )
@@ -118,6 +128,8 @@ final class EmpresaModelo
             $empresaId = (int) $sentencia->fetchColumn();
             $this->crearPerfilesBase($empresaId, $usuarioId);
             $pdo->commit();
+
+            return $empresaId;
         } catch (\Throwable $excepcion) {
             $pdo->rollBack();
             throw $excepcion;
@@ -133,24 +145,54 @@ final class EmpresaModelo
     {
         $sql = "
             UPDATE sis_empresa
-            SET sis_empresa_ruc = :ruc,
-                sis_empresa_razon_social = :razon_social,
-                sis_empresa_nombre_comercial = :nombre_comercial,
-                sis_empresa_direccion = :direccion,
-                sis_empresa_telefono = :telefono,
-                sis_empresa_email = :email,
-                sis_empresa_obligado_contabilidad = :obligado_contabilidad,
-                sis_empresa_contribuyente_especial = :contribuyente_especial,
-                usuario_modifica = :usuario_modifica,
-                fecha_modifica = now()
+            SET sis_empresa_ruc                        = :ruc,
+                sis_empresa_razon_social               = :razon_social,
+                sis_empresa_nombre_comercial           = :nombre_comercial,
+                sis_empresa_direccion                  = :direccion,
+                sis_empresa_telefono                   = :telefono,
+                sis_empresa_email                      = :email,
+                sis_empresa_obligado_contabilidad      = :obligado_contabilidad,
+                sis_empresa_contribuyente_especial     = :contribuyente_especial,
+                sis_empresa_ambiente_sri               = :ambiente_sri,
+                sis_empresa_num_contribuyente_especial = :num_contribuyente_especial,
+                sis_empresa_certificado_ruta           = COALESCE(:certificado_ruta, sis_empresa_certificado_ruta),
+                sis_empresa_certificado_clave          = CASE
+                                                            WHEN :certificado_clave_check = '' THEN sis_empresa_certificado_clave
+                                                            ELSE :certificado_clave
+                                                         END,
+                usuario_modifica                       = :usuario_modifica,
+                fecha_modifica                         = now()
             WHERE sis_empresa_id = :empresa_id
         ";
 
         $sentencia = $this->conexionBaseDatos->obtener()->prepare($sql);
         $this->vincularDatosEmpresa($sentencia, $datos);
+        $sentencia->bindValue(':certificado_ruta', $datos['certificado_ruta'] ?: null);
+        $sentencia->bindValue(':certificado_clave_check', $datos['certificado_clave'] ?? '');
         $sentencia->bindValue(':empresa_id', $empresaId, PDO::PARAM_INT);
         $sentencia->bindValue(':usuario_modifica', $usuarioId, PDO::PARAM_INT);
         $sentencia->execute();
+    }
+
+    /**
+     * ***************************************************************************
+     * * ACTUALIZA SOLO LA RUTA DEL CERTIFICADO DE UNA EMPRESA.
+     * ***************************************************************************
+     */
+    public function actualizarCertificadoRuta(int $empresaId, string $ruta, int $usuarioId): void
+    {
+        $sentencia = $this->conexionBaseDatos->obtener()->prepare("
+            UPDATE sis_empresa
+            SET sis_empresa_certificado_ruta = :ruta,
+                usuario_modifica = :usuario_modifica,
+                fecha_modifica = now()
+            WHERE sis_empresa_id = :empresa_id
+        ");
+        $sentencia->execute([
+            'ruta' => $ruta,
+            'usuario_modifica' => $usuarioId,
+            'empresa_id' => $empresaId,
+        ]);
     }
 
     /**
@@ -213,6 +255,9 @@ final class EmpresaModelo
         $sentencia->bindValue(':email', $datos['email']);
         $sentencia->bindValue(':obligado_contabilidad', (bool) $datos['obligado_contabilidad'], PDO::PARAM_BOOL);
         $sentencia->bindValue(':contribuyente_especial', (bool) $datos['contribuyente_especial'], PDO::PARAM_BOOL);
+        $sentencia->bindValue(':ambiente_sri', $datos['ambiente_sri'] ?: '1');
+        $sentencia->bindValue(':num_contribuyente_especial', $datos['num_contribuyente_especial'] ?: null);
+        $sentencia->bindValue(':certificado_clave', $datos['certificado_clave'] ?: null);
     }
 
     /**

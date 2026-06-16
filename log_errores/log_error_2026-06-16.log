@@ -167,3 +167,12 @@ Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_FACTURA
 Linea:   N/A
 ################################################
 
+################################################
+Fecha:   2026-06-16 14:39:07
+Archivo: C:\xampp\htdocs\intesis\src\Modelos\EmpresaModelo.php
+Detalle: EDITAR EMPRESA
+Error:   SQLSTATE[23505]: Unique violation: 7 ERROR:  llave duplicada viola restricción de unicidad «uq_sis_empresa_ruc»
+DETAIL:  Ya existe la llave (sis_empresa_ruc)=(1792009863001).
+Linea:   174
+################################################
+
