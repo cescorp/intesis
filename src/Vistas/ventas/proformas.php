@@ -160,7 +160,7 @@ $msgFacturar  = $msgs['CONFIRMAR_FACTURAR_PROFORMA'] ?? null;
             <div class="modal-body">
                 <p class="text-muted small mb-3">Ajuste las cantidades a facturar. Ingrese <strong>0</strong> para omitir una línea.</p>
                 <div class="table-responsive">
-                    <table class="table table-sm tabla-intesis align-middle" id="tablaLineasFacturar">
+                    <table class="table table-sm align-middle" id="tablaLineasFacturar">
                         <thead><tr>
                             <th>Código</th>
                             <th>Descripción</th>

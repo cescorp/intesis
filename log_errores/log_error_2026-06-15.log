@@ -102,3 +102,23 @@ Error:   Too few arguments to function Intesis\Controladores\ProformaControlador
 Linea:   22
 ################################################
 
+################################################
+Fecha:   2026-06-15 18:40:09
+Archivo: C:\xampp\htdocs\intesis\src\Modelos\ProformaModelo.php
+Detalle: GUARDAR PROFORMA
+Error:   SQLSTATE[42P01]: Undefined table: 7 ERROR:  no existe la relación «ven_forma_pago»
+LINE 2:             SELECT ven_forma_pago_id FROM ven_forma_pago
+                                                  ^
+Linea:   776
+################################################
+
+################################################
+Fecha:   2026-06-15 18:41:44
+Archivo: C:\xampp\htdocs\intesis\src\Modelos\ProformaModelo.php
+Detalle: GUARDAR PROFORMA
+Error:   SQLSTATE[42P01]: Undefined table: 7 ERROR:  no existe la relación «ven_forma_pago»
+LINE 2:             SELECT ven_forma_pago_id FROM ven_forma_pago
+                                                  ^
+Linea:   776
+################################################
+

@@ -120,7 +120,7 @@ final class ProformaModelo
                     ven_documento_subtotal_sin_impuestos,
                     ven_documento_impuesto_total,
                     ven_documento_valor_total,
-                    ven_documento_forma_pago,
+                    ven_forma_pago_id,
                     ven_documento_observacion, sis_estado_id, usuario_crea
                 ) VALUES (
                     :empresa_id, :cliente_id, :tipo_id,
@@ -130,7 +130,7 @@ final class ProformaModelo
                     :subtotal_sin_impuestos,
                     :impuesto_total,
                     :valor_total,
-                    :forma_pago,
+                    :forma_pago_id,
                     :observacion, :estado_id, :usuario_crea
                 ) RETURNING ven_documento_id
             ");
@@ -149,7 +149,7 @@ final class ProformaModelo
                 'subtotal_sin_impuestos' => $cabecera['subtotal'],
                 'impuesto_total'         => $cabecera['iva'],
                 'valor_total'            => $cabecera['total'],
-                'forma_pago'             => 'PROFORMA',
+                'forma_pago_id'          => (int) $cabecera['forma_pago_id'],
                 'observacion'            => $cabecera['observacion'] !== '' ? $cabecera['observacion'] : null,
                 'estado_id'              => $this->obtenerEstadoId('CREADA'),
                 'usuario_crea'           => $usuarioId,
@@ -200,6 +200,7 @@ final class ProformaModelo
                     ven_documento_iva           = :iva,
                     ven_documento_total         = :total,
                     ven_documento_observacion   = :observacion,
+                    ven_forma_pago_id           = :forma_pago_id,
                     usuario_modifica            = :usuario,
                     fecha_modifica              = now()
                 WHERE ven_documento_id = :id
@@ -211,6 +212,7 @@ final class ProformaModelo
                 'iva'           => $cabecera['iva'],
                 'total'         => $cabecera['total'],
                 'observacion'   => $cabecera['observacion'] !== '' ? $cabecera['observacion'] : null,
+                'forma_pago_id' => (int) $cabecera['forma_pago_id'],
                 'usuario'       => $usuarioId,
                 'id'            => $proformaId,
             ]);
@@ -384,7 +386,7 @@ final class ProformaModelo
                     ven_documento_subtotal_sin_impuestos,
                     ven_documento_impuesto_total,
                     ven_documento_valor_total,
-                    ven_documento_forma_pago,
+                    ven_forma_pago_id,
                     ven_documento_proforma_id,
                     sis_estado_id, usuario_crea
                 ) VALUES (
@@ -395,7 +397,7 @@ final class ProformaModelo
                     :subtotal_sin_impuestos,
                     :impuesto_total,
                     :valor_total,
-                    :forma_pago,
+                    :forma_pago_id,
                     :proforma_id,
                     :estado_id, :usuario_crea
                 ) RETURNING ven_documento_id
@@ -415,7 +417,7 @@ final class ProformaModelo
                 'subtotal_sin_impuestos' => round($subtotal, 4),
                 'impuesto_total'         => round($ivaTotal, 4),
                 'valor_total'            => $total,
-                'forma_pago'             => 'EFECTIVO',
+                'forma_pago_id'          => $proforma['ven_forma_pago_id'] ?? $this->obtenerFormaPagoId($empresaId, 'EFECTIVO'),
                 'proforma_id'            => $proformaId,
                 'estado_id'              => $this->obtenerEstadoId('CREADA'),
                 'usuario_crea'           => $usuarioId,
@@ -620,6 +622,18 @@ final class ProformaModelo
         return $sentencia->fetchAll();
     }
 
+    public function listarFormasPago(int $empresaId): array
+    {
+        $sentencia = $this->pdo()->prepare("
+            SELECT ven_forma_pago_id, ven_forma_pago_nombre
+            FROM ven_forma_pago
+            WHERE sis_empresa_id = :empresa_id AND ven_forma_pago_estado = 'A'
+            ORDER BY ven_forma_pago_nombre
+        ");
+        $sentencia->execute(['empresa_id' => $empresaId]);
+        return $sentencia->fetchAll();
+    }
+
     public function listarEmpresasActivas(bool $verTodas, int $empresaId): array
     {
         $filtro = $verTodas ? '' : 'AND e.sis_empresa_id = :empresa_id';
@@ -762,6 +776,23 @@ final class ProformaModelo
         ");
         $stmt->execute(['id' => $empresaId]);
         return $stmt->fetch() ?: [];
+    }
+
+    private function obtenerFormaPagoId(int $empresaId, string $nombre): int
+    {
+        $sentencia = $this->pdo()->prepare("
+            SELECT ven_forma_pago_id FROM ven_forma_pago
+            WHERE sis_empresa_id        = :empresa_id
+              AND ven_forma_pago_nombre = :nombre
+              AND ven_forma_pago_estado = 'A'
+            LIMIT 1
+        ");
+        $sentencia->execute(['empresa_id' => $empresaId, 'nombre' => $nombre]);
+        $id = (int) $sentencia->fetchColumn();
+        if ($id === 0) {
+            throw new RuntimeException("Forma de pago '{$nombre}' no configurada para la empresa. Ejecute la migración.");
+        }
+        return $id;
     }
 
     private function obtenerEstadoId(string $codigo): int
