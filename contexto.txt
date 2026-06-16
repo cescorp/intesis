@@ -1,240 +1,280 @@
 ================================================================================
-  INTESIS — CONTEXTO DEL PROYECTO PARA ASISTENTES DE IA
+INTESIS — CONTEXTO DEL PROYECTO PARA ASISTENTES DE IA
 ================================================================================
 Última actualización: 2026-06-15
+Leer este archivo antes de analizar código. Evita tener que escanear todo el
+proyecto para entender su propósito, estructura y estado actual.
+================================================================================
 
-Lee este archivo antes de explorar el código. Cubre el 90% de lo que necesitas
-saber sin escanear el proyecto completo.
 
-────────────────────────────────────────────────────────────────────────────────
-QUÉ ES
-────────────────────────────────────────────────────────────────────────────────
-Sistema ERP web para pequeñas empresas ecuatorianas (facturación electrónica SRI).
-Módulos activos: Inventario, Compras, Ventas (Proformas), Sistema (admin).
-Idioma del código: español (variables, métodos, rutas, columnas DB, todo).
+── DESCRIPCIÓN GENERAL ─────────────────────────────────────────────────────────
 
-────────────────────────────────────────────────────────────────────────────────
-STACK TÉCNICO
-────────────────────────────────────────────────────────────────────────────────
-Backend  : PHP 8.x · MVC puro · Namespace raíz: Intesis\
-Base de datos: PostgreSQL 14+ via PDO
-Frontend : AdminLTE 4 · Bootstrap 5 · Bootstrap Icons · SweetAlert2
-Servidor : Apache (XAMPP local en C:/xampp/htdocs/intesis)
-URL base : /intesis  (configurable en .env → APP_URL)
+INTESIS es un sistema de gestión empresarial (ERP lite) desarrollado en PHP 8
+con MVC propio (sin framework). Corre sobre XAMPP en Windows con PostgreSQL 17.
+Gestiona inventario, compras y ventas para múltiples empresas desde una sola
+instalación (multi-empresa por sis_empresa_id).
 
-────────────────────────────────────────────────────────────────────────────────
-ESTRUCTURA DE DIRECTORIOS
-────────────────────────────────────────────────────────────────────────────────
-/
-├── .env                          ← configuración (APP_URL, DB_*, rutas)
-├── index.php                     ← único punto de entrada HTTP
-├── reglas.txt                    ← reglas para IAs (leer siempre)
-├── contexto.txt                  ← este archivo
-├── src/
-│   ├── Nucleo/
-│   │   ├── Aplicacion.php        ← bootstrap, instancia controladores
-│   │   ├── Enrutador.php         ← TODAS las rutas registradas aquí (if/else)
-│   │   ├── ConexionBaseDatos.php ← singleton PDO
-│   │   ├── Configuracion.php     ← lee .env
-│   │   ├── ControladorComun.php  ← base de todos los controladores
-│   │   ├── Sesion.php            ← manejo de sesión PHP
-│   │   ├── Vista.php             ← renderizado de vistas PHP
-│   │   └── RegistroErrores.php   ← logging de errores
-│   ├── Controladores/            ← un archivo por módulo/recurso
-│   ├── Modelos/                  ← un archivo por entidad, SQL con PDO
-│   ├── Vistas/
-│   │   ├── plantillas/           ← encabezado.php, pie.php, menu_lateral.php
-│   │   ├── autenticacion/        ← login
-│   │   ├── panel/                ← dashboard
-│   │   ├── sistema/              ← empresas, usuarios, perfiles, menús, config
-│   │   ├── inventario/           ← productos, bodegas, stock, kardex, marcas
-│   │   ├── compras/              ← documentos compra, proveedores
-│   │   ├── ventas/               ← proformas, clientes
-│   │   └── errores/              ← 404, 403, 500
-│   └── Servicios/
-│       ├── AutenticacionServicio.php
-│       ├── GeneradorPdf.php
-│       ├── SriXmlServicio.php
-│       └── ValidadorIdentificacion.php
-├── Facturacion_Electronica/      ← librería SRI: firma XML, SOAP, clave acceso
-├── almacenamiento/
-│   ├── sesiones/                 ← archivos de sesión PHP
-│   └── archivos/stock/           ← CSVs de importación de stock
-├── log_errores/                  ← logs diarios (log_error_YYYY-MM-DD.log)
-└── herramientas/                 ← scripts PHP de verificación/diagnóstico
+Entorno local:
+  URL:      http://localhost/intesis
+  BD:       PostgreSQL 17, base de datos "intesis"
+  Ruta:     C:/xampp/htdocs/intesis
+  .env:     APP_URL=/intesis, DB_HOST=127.0.0.1, DB_PORT=5432
 
-────────────────────────────────────────────────────────────────────────────────
-ENRUTAMIENTO
-────────────────────────────────────────────────────────────────────────────────
-Todas las rutas están en src/Nucleo/Enrutador.php con este patrón:
-  if ($metodo === 'GET' && $ruta === '/ventas/proformas') { ... }
 
-RUTAS PRINCIPALES (resumen):
-  GET  /login                              → login
-  POST /login, /login/empresa, /salir      → autenticación
-  GET  /dashboard                          → panel
+── ESTRUCTURA DE ARCHIVOS ───────────────────────────────────────────────────────
 
-  SISTEMA
-  GET/POST  /sistema/empresas/**           → EmpresaControlador
-  GET/POST  /sistema/usuarios/**           → UsuarioControlador
-  GET/POST  /sistema/perfiles/**           → PerfilControlador
-  GET/POST  /sistema/menus/**              → MenuControlador
-  GET/POST  /sistema/configuracion/**      → ConfiguracionControlador
+/index.php                  Punto de entrada único. Carga todos los require_once
+                            y llama a Aplicacion::iniciar()->ejecutar().
+/src/Nucleo/
+  Aplicacion.php            Instancia todos los modelos y controladores, los pasa
+                            al Enrutador vía constructor (DI manual).
+  Enrutador.php             Mapea rutas (método + URL) a métodos de controladores.
+                            Rutas hardcodeadas con if/return, sin regex.
+  ControladorComun.php      Trait con: exigirSesion, exigirPermiso, responderJson,
+                            redirigir, esSuperusuario, registrarErrorCrud.
+  ConexionBaseDatos.php     Singleton PDO pgsql. Se accede via ->obtener().
+  Vista.php                 Renderiza vistas PHP incluyendo plantillas.
+  Sesion.php                Gestión de sesión PHP nativa.
+  Configuracion.php         Lee .env, expone obtener('CLAVE', 'default').
+  RegistroErrores.php       Escribe excepciones en /log_errores/.
 
-  INVENTARIO
-  GET/POST  /inventario/productos/**       → ProductoControlador
-  GET/POST  /inventario/productos/archivos/** → ArchivoProductoControlador
-  GET/POST  /inventario/bodegas/**         → BodegaControlador
-  GET/POST  /inventario/stock/**           → StockControlador
-  GET       /inventario/kardex             → KardexControlador
+/src/Controladores/         Un archivo por controlador. final class + use ControladorComun.
+/src/Modelos/               Un archivo por modelo. final class. Solo SQL via PDO.
+/src/Vistas/                Carpetas por módulo: autenticacion, sistema, inventario,
+                            compras, ventas, panel, plantillas, errores.
+/src/Vistas/plantillas/     encabezado.php, menu_lateral.php, pie.php
+                            (incluidos con require desde cada vista).
 
-  COMPRAS
-  GET/POST  /compras/proveedores/**        → ProveedorControlador
-  GET/POST  /compras/codigos-proveedor/**  → CodigoProveedorControlador
-  GET/POST  /compras/documentos/**         → DocumentoCompraControlador
-    (incluye: nuevo, editar, buscar-proveedor, productos, subir-xml,
-     procesar-txt, asignar-codigo, guardar-sri, pdf, xml, registrar, anular)
+/migrations/                Archivos .sql idempotentes. Nombrados YYYYMMDD_HHMM_desc.sql
+/publico/                   CSS, JS, imágenes públicas.
+  /publico/js/sistema.js    JS global: DataTables en .tabla-intesis, SweetAlert,
+                            validaciones RUC/cédula Ecuador.
+/almacenamiento/sesiones/   Archivos de sesión PHP.
+/log_errores/               Logs de excepciones.
 
-  VENTAS
-  GET/POST  /ventas/clientes/**            → ClienteControlador
-  GET/POST  /ventas/proformas/**           → ProformaControlador
-    (incluye: nuevo, editar, guardar, anular, facturar, detalle,
-     buscar-cliente, buscar-clientes, productos, verificar-aprobacion)
 
-────────────────────────────────────────────────────────────────────────────────
-BASE DE DATOS — TABLAS PRINCIPALES
-────────────────────────────────────────────────────────────────────────────────
-Prefijos por módulo:
-  sis_   → sistema transversal
-  inv_   → inventario
-  com_   → compras
-  ven_   → ventas
+── BASE DE DATOS: TABLAS PRINCIPALES ───────────────────────────────────────────
 
-Tablas clave:
-  sis_empresa              empresa (multi-empresa, columna sis_empresa_id en todo)
-  sis_usuario              usuarios del sistema
-  sis_perfil               perfiles de acceso
-  sis_menu                 ítems de menú y permisos (ruta = clave de permiso)
-  sis_estado               catálogo de estados (activo/inactivo/anulado/etc.)
-  sis_tipo_documento       facturas, proformas, notas crédito, etc.
-  sis_iva                  tasas IVA (id, porcentaje)
-  sis_archivos             archivos adjuntos genérico
-    - sis_archivos_tabla   = nombre de tabla padre ('INV_PRODUCTO', etc.)
-    - sis_archivos_id_padre= FK al registro padre
-    - sis_archivos_principal = TRUE para imagen principal
+SISTEMA
+  sis_empresa           Multi-empresa. Toda tabla de negocio tiene sis_empresa_id.
+  sis_usuarios          Usuarios del sistema.
+  sis_usuario_empresa   Relación usuario-empresa-perfil.
+  sis_perfil            Perfiles de acceso (ej: SUPERUSUARIO).
+  sis_menu              Menús (tipo M) y acciones/botones (tipo B) con URL.
+  sis_perfil_permisos   Qué acciones puede hacer cada perfil por empresa.
+  sis_estado            Catálogo de estados por módulo+entidad+código.
+                        (sis_estado_modulo, sis_estado_entidad, sis_estado_codigo)
+  sis_tipo_documento    Tipos de doc por módulo (FACTURA_VENTA, NOTA_VENTA, PROFORMA…).
+  sis_secuencias        Numeración automática por empresa+tipo+establecimiento+punto.
+  sis_iva               Tabla de porcentajes de IVA por empresa.
+  sis_mensaje_sistema   Textos de alertas configurables para el frontend.
 
-  inv_producto             productos del inventario
-  inv_bodega               bodegas físicas
-  inv_kardex               movimientos de stock
-  inv_marca, inv_categoria catálogos
+INVENTARIO
+  inv_bodega            Bodegas por empresa.
+  inv_bodega_usuarios   Asignación usuario-bodega (una predeterminada).
+  inv_categoria         Categorías de productos.
+  inv_marca             Marcas de productos.
+  inv_producto          Productos/artículos.
+  inv_stock             Stock disponible por empresa+bodega+producto.
+  inv_kardex            Movimientos de inventario (ENTRADA, SALIDA, VENTA, AJUSTE_IN…).
+  inv_movimiento        Cabecera de movimientos internos.
+  inv_movimiento_det    Detalle de movimientos internos.
+  sis_archivos          Imágenes/archivos de productos.
 
-  com_documento            cabecera de documentos de compra
-  com_documento_detalle    líneas de compra
-  com_proveedor            proveedores
+COMPRAS
+  com_proveedor         Proveedores.
+  com_codigo_proveedor  Códigos del proveedor para cada producto.
+  com_documento         Documentos de compra (facturas de proveedor, XML SRI).
+  com_documento_det     Detalle de documentos de compra.
 
-  ven_documento            cabecera proformas/ventas (misma tabla para ambos tipos)
-  ven_documento_detalle    líneas de venta/proforma
-  ven_cliente              clientes
+VENTAS
+  ven_cliente           Clientes. Tipos: R=RUC, C=Cédula, P=Pasaporte, O=Consumidor Final.
+  ven_lista_precio      Listas de precios por empresa.
+  ven_lista_precio_det  PVP por producto en cada lista.
+  ven_documento         Cabecera de documentos de venta (facturas, proformas, notas).
+                        Campos clave:
+                          sis_tipo_documento_id  → tipo (FACTURA_VENTA, NOTA_VENTA, PROFORMA)
+                          sis_estado_id          → estado (CREADA, ANULADA, AUTORIZADA, ERROR)
+                          ven_documento_proforma_id → si viene de proforma
+                          ven_forma_pago_id      → forma de pago
+                          ven_documento_numero   → número generado por sis_secuencias
+  ven_documento_detalle Líneas del documento (producto, cantidad, precio, IVA…).
+  ven_forma_pago        Catálogo de formas de pago por empresa.
+                        ven_forma_pago_calculadora CHAR(1) S/N → muestra calculadora de cambio.
+  ven_cxc               Cuentas por cobrar generadas por facturas a crédito.
 
-────────────────────────────────────────────────────────────────────────────────
-PATRONES REPETIDOS EN EL CÓDIGO
-────────────────────────────────────────────────────────────────────────────────
-1. CONTROLADOR típico:
-   - Verifica sesión activa (ControladorComun::requireSesion())
-   - Verifica permiso (ControladorComun::requirePermiso('/ruta/del/modulo'))
-   - Llama al modelo → obtiene datos
-   - Renderiza vista (Vista::renderizar('modulo/archivo', $vars))
-   - Para AJAX: devuelve json_encode(['ok'=>true,'data'=>...])
+Estados de VEN_DOCUMENTO (módulo VENTAS, entidad VEN_DOCUMENTO):
+  CREADA, ANULADA, AUTORIZADA, ERROR
 
-2. MODELO típico:
-   - Recibe ConexionBaseDatos en constructor
-   - Métodos devuelven arrays o lanzan excepciones
-   - SQL siempre con PDO preparado: $stmt = $this->db->prepare(...); $stmt->execute([...])
-   - Filtro multi-empresa: WHERE d.sis_empresa_id = :empresa_id
+Tipos de documento módulo VENTAS:
+  PROFORMA       → cotizaciones, no descuenta stock
+  FACTURA_VENTA  → factura electrónica SRI, descuenta stock
+  NOTA_VENTA     → nota de venta interna, descuenta stock, NO va al SRI
 
-3. VISTA típica:
-   - require encabezado.php al inicio, pie.php al final
-   - Variables disponibles: $usuario, $configuracion, $appUrl, $appNombre
-   - JS dentro de IIFE: (function(){ ... }()); al final del archivo
-   - Modales Bootstrap con data-bs-dismiss, bootstrap.Modal.getOrCreateInstance()
-   - CSRF: campo oculto <input type="hidden" name="csrf_token" value="...">
 
-4. BÚSQUEDA CON MODAL:
-   - Campo de texto → keyup/Enter → fetch GET /modulo/buscar-xxx?q=...
-   - Resultados en tabla dentro del modal
-   - Click en fila → carga datos en el formulario
-   - Patrón ya implementado en: compras/documento_form.php (proveedor, producto)
-     y ventas/proforma_form.php (cliente, producto)
+── MÓDULOS Y CONTROLADORES ─────────────────────────────────────────────────────
 
-5. FORMULARIO DE DETALLE (tabla de líneas):
-   - Función crearFila(datos, num) → inserta <tr> con inputs
-   - Event delegation en tbody para input/change/click
-   - calcularFila(tr) → recalcula total de línea
-   - calcularTotales() → subtotal + IVA + total
-   - Datos se serializan como JSON antes del submit
+Módulo          Controlador                 Rutas base
+─────────────── ─────────────────────────── ──────────────────────────────
+Autenticación   AutenticacionControlador    /login, /salir
+Panel           PanelControlador            /dashboard
+Sistema
+  Empresas      EmpresaControlador          /sistema/empresas
+  Usuarios      UsuarioControlador          /sistema/usuarios
+  Perfiles      PerfilControlador           /sistema/perfiles
+  Menús         MenuControlador             /sistema/menus
+  Config.       ConfiguracionControlador    /sistema/configuracion
+Inventario
+  Bodegas       BodegaControlador           /inventario/bodegas
+  Categorías    CategoriaControlador        /inventario/categorias
+  Marcas        MarcaControlador            /inventario/marcas
+  Productos     ProductoControlador         /inventario/productos
+  Archivos      ArchivoProductoControlador  /inventario/productos/archivos
+  Stock         StockControlador            /inventario/stock
+  Kardex        KardexControlador           /inventario/kardex
+  Movimientos   MovimientoInternoControlador /inventario/movimientos
+Compras
+  Proveedores   ProveedorControlador        /compras/proveedores
+  Cod.Prov.     CodigoProveedorControlador  /compras/codigos-proveedor
+  Doc.Compra    DocumentoCompraControlador  /compras/documentos
+Ventas
+  Clientes      ClienteControlador          /ventas/clientes
+  Proformas     ProformaControlador         /ventas/proformas
+  Facturas      FacturaControlador          /ventas/facturas
 
-────────────────────────────────────────────────────────────────────────────────
-MÓDULO VENTAS — PROFORMAS (estado actual: junio 2026)
-────────────────────────────────────────────────────────────────────────────────
-Archivos principales:
-  src/Controladores/ProformaControlador.php
-  src/Modelos/ProformaModelo.php
-  src/Vistas/ventas/proforma_form.php   ← formulario nuevo/editar (complejo)
-  src/Vistas/ventas/proformas.php       ← listado
 
-Funcionalidades implementadas en proforma_form.php:
-  - Búsqueda de cliente por RUC con modal
-  - Tabla de detalle dinámica: agregar/quitar líneas
-  - Campo código de producto: Enter → búsqueda directa (si resultado único, carga
-    directo; si múltiples, abre modal de selección)
-  - Campo código bloqueado (con icono candado) cuando producto está cargado
-  - Galería de imágenes de producto: modal con grid + lightbox
-  - Columnas detalle: # · Código(15%) · Descripción · Cant(10%) · Precio(10%) ·
-    Desc%(10%) · IVA · Total(10%) · [eliminar] · [ocultas: producto_id, pvp_ref]
-  - Campo fecha bloqueado (fecha actual o fecha del documento en edición)
-  - Diseño responsive mobile: filas de detalle se convierten en tarjetas
+── PATRONES DE CÓDIGO ESTABLECIDOS ────────────────────────────────────────────
 
-────────────────────────────────────────────────────────────────────────────────
-MÓDULO COMPRAS (referencia de patrones — más maduro)
-────────────────────────────────────────────────────────────────────────────────
-  src/Vistas/compras/documento_form.php ← referencia visual y de patrones JS
-  Usa el mismo stack: formulario-compacto, table-sm, modales Bootstrap, IIFE JS.
-  Sirve como plantilla para nuevos módulos.
+CONTROLADOR (estructura estándar):
+  - Constructor recibe: Vista, Sesion, Modelo, MenuModelo, MensajeSistemaModelo,
+    Configuracion, RegistroErrores (+ extras si los necesita).
+  - Métodos de vista (GET): listar(), nuevo(), editar()
+  - Métodos de acción (POST/JSON): guardar(), anular()
+  - Métodos JSON de apoyo: detalle(), buscarCliente(), productos(), etc.
+  - Helpers privados: normalizarCabecera(), validarCabecera(), normalizarLineas(),
+    validarLineas(), obtenerPermisos()
 
-────────────────────────────────────────────────────────────────────────────────
-VARIABLES DE ENTORNO (.env)
-────────────────────────────────────────────────────────────────────────────────
-APP_NOMBRE=INTESIS
-APP_URL=/intesis
-APP_RAIZ=C:/xampp/htdocs/intesis
-APP_AMBIENTE=desarrollo
-APP_DEBUG=true
-DB_HOST=127.0.0.1
-DB_PORT=5432
-DB_DATABASE=intesis
-DB_USERNAME=postgres
-DB_PASSWORD=(no mostrar)
-RUTA_LOG_ERRORES=log_errores
-RUTA_SESIONES=almacenamiento/sesiones
+MODELO (estructura estándar):
+  - Constructor recibe: ConexionBaseDatos (+ SecuenciaModelo si genera números).
+  - Métodos públicos: listar(), buscar(), crear(), actualizar(), anular()
+  - Lookups públicos: listarFormasPago(), listarEmpresasActivas(), listarIva()
+  - Helpers privados: bloquearDocumento(), obtenerBodegaId(), obtenerTipoDocumentoId(),
+    obtenerEstadoId(), validarStock(), insertarLineasYDescontarStock(),
+    descontarStock(), revertirStockYKardex(), generarCxcSiAplica(), pdo()
 
-────────────────────────────────────────────────────────────────────────────────
-ENDPOINTS API INTERNOS (JSON) — usados por el frontend vía fetch()
-────────────────────────────────────────────────────────────────────────────────
-GET  /ventas/proformas/buscar-clientes?q=    → búsqueda de clientes
-GET  /ventas/proformas/productos?q=          → búsqueda de productos
-GET  /ventas/proformas/detalle?id=           → detalle de una proforma
-GET  /inventario/productos/archivos/listar?producto_id=  → imágenes de producto
-GET  /inventario/productos/archivos/ver?archivo_id=      → binario de imagen
-GET  /compras/documentos/buscar-proveedores?q=           → búsqueda proveedores
-GET  /compras/documentos/productos?q=                    → búsqueda productos
-Todos devuelven: { "ok": true|false, "data": { ... } }
+VISTA (estructura estándar):
+  - Inicio: $claseCuerpo, require encabezado.php, leer $appUrl y $appNombre del .env.
+  - Estructura HTML: navbar, sidebar (menu_lateral.php), main → card cabecera →
+    card detalle → totales.
+  - Fin: require pie.php, bloque <script> con IIFE.
+  - Modales al final del body antes del script.
+  - JS con fetch() para guardar; SweetAlert2 para confirmaciones.
 
-────────────────────────────────────────────────────────────────────────────────
-LO QUE NO ESTÁ EN ESTE ARCHIVO
-────────────────────────────────────────────────────────────────────────────────
-- Lógica exacta de cada método de modelo/controlador → leer el archivo específico
-- SQL completo de tablas → inspeccionar src/Modelos/ del módulo correspondiente
-- Permisos granulares → src/Nucleo/Enrutador.php y sis_menu en BD
-- Facturación electrónica SRI → Facturacion_Electronica/ (librería aparte)
+FORMULARIOS (patrón cabecera + detalle):
+  - Card cabecera: título + botones [Cancelar][Guardar] en el card-header.
+  - Card detalle: título + botón [Agregar línea] en card-header.
+    Tabla con columnas: #, Código, Descripción, Stock, Cant., Precio, Desc%, IVA, Total, Eliminar.
+  - Totales: tabla pequeña alineada a la derecha.
+  - Modal confirmación (si aplica): muestra Total, y si forma_pago tiene
+    calculadora='S' muestra Valor recibido + Cambio en una sola fila.
 
+RESPUESTA JSON estándar:
+  { "ok": true|false, "codigo": "OK|ERROR_...", "mensaje": "...", "data": {} }
+
+
+── FLUJO DE UN DOCUMENTO DE VENTA (FACTURA / NOTA DE VENTA) ───────────────────
+
+1. Usuario llena formulario (cliente, forma de pago, tipo doc, líneas).
+2. Clic en Guardar → si forma_pago.calculadora='S' muestra modal con calculadora.
+3. Clic en Facturar → fetch POST /ventas/facturas/guardar con payload JSON.
+4. FacturaControlador::guardar() normaliza y valida datos.
+5. FacturaModelo::crear():
+   a. Inicia transacción.
+   b. Obtiene número de secuencia (SecuenciaModelo).
+   c. Valida stock (throw si insuficiente).
+   d. INSERT ven_documento con sis_tipo_documento_id según tipo (FACTURA_VENTA o NOTA_VENTA).
+   e. INSERT ven_documento_detalle por cada línea.
+   f. Descuenta inv_stock + INSERT inv_kardex tipo='VENTA'.
+   g. Si forma de pago es Crédito → INSERT ven_cxc (cuenta por cobrar).
+   h. Commit.
+6. Responde JSON {ok:true} → frontend redirige a /ventas/facturas.
+
+Al ANULAR:
+  - Solo si estado = CREADA.
+  - Revierte stock (incrementa inv_stock + kardex tipo='AJUSTE_IN').
+  - Cambia estado a ANULADA.
+  - Cancela ven_cxc si existía (estado='A').
+
+
+── ESTADO ACTUAL DEL DESARROLLO (basado en desarrollo.txt) ────────────────────
+
+✓ COMPLETADO
+  1. Sistema
+     1.1 Empresas CRUD
+     1.2 Usuarios CRUD
+     1.3 Perfiles / Roles CRUD
+     1.4 Menús y botones CRUD
+     1.5 Permisos por perfil CRUD
+     1.6 Estados del sistema CRUD
+     1.7 Tipos de documento CRUD
+     1.8 Secuencias CRUD
+
+  2. Inventario
+     2.1 Categorías CRUD
+     2.2 Marcas CRUD
+     2.3 Bodegas CRUD
+     2.4 Productos CRUD
+     2.5 Stock inicial (formulario + importación CSV masiva)
+     2.6 Kardex consulta + PDF
+     2.7 Movimientos internos CRUD (ajuste +/-, transferencia entre bodegas)
+     2.8 Permisos de bodega por usuario CRUD
+
+  3. Compras
+     3.1 Proveedores CRUD
+     3.2 Documento de compra CRUD (cabecera)
+     3.3 Detalle de compra CRUD + Códigos de proveedor CRUD
+
+  4. Ventas
+     4.1 Clientes CRUD
+     4.2 Documentos de venta CRUD — Proformas (con PDF) + Facturas / Notas de Venta
+     4.3 Detalle de venta CRUD
+     4.4 Validación de stock antes de facturar
+     4.5 Descuento de stock al facturar
+     4.6 Kardex de venta (tipo VENTA / reversión AJUSTE_IN)
+     4.7 CXC básico — generación automática en ventas a crédito
+
+⚠ PENDIENTE — COMPRAS (incompleto)
+  3.4 Actualización de stock al aprobar una compra (aún no implementado)
+  3.5 Actualización de costo último y costo promedio al aprobar compra
+  3.6 Kardex de compra (entrada por documento de compra)
+  3.7 Cuentas por pagar (CxP) — marcado como "proceso futuro"
+
+⚠ PENDIENTE — VENTAS
+  - Autorización SRI: firma electrónica, envío XML, clave de acceso
+    (NOTA_VENTA queda en estado CREADA permanentemente; FACTURA_VENTA pendiente SRI)
+  - Módulo CXC completo: cobros, abonos, estado de cuenta
+  - Módulo CRUD Formas de Pago
+  - Notas de crédito
+
+✗ NO INICIADO
+  5. Contabilidad
+     5.1 Períodos contables CRUD
+     5.2 Plan de cuentas CRUD
+     5.3 Plantillas de integración CRUD
+     5.4 Asientos contables CRUD
+     5.5 Validación y aprobación de asientos
+     5.6 Generación automática de asientos desde compra/venta
+     5.7 Conciliación bancaria
+
+  6. Reportes
+     6.1 Catálogo de reportes CRUD
+     6.2 Componentes y configuración por usuario
+     6.3 Reporte de ventas, compras, inventario, contable
+
+  7. Dashboard
+     7.1 Resumen ventas (día / mes / año)
+     7.2 Resumen compras
+     7.3 Resumen inventario (bajo mínimo, stock valorizado)
+     7.4 Resumen contable (CxC, CxP, saldos)
+     7.5 Alertas del sistema
 ================================================================================

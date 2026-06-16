@@ -1,82 +1,135 @@
 ================================================================================
-  INTESIS — REGLAS PARA ASISTENTES DE IA (Claude, Codex, Copilot, Cursor, etc.)
+INTESIS — REGLAS PARA ASISTENTES DE IA (Claude, Codex, Copilot, Cursor, etc.)
 ================================================================================
 Última actualización: 2026-06-15
+Usar este archivo como guía obligatoria antes de generar o modificar cualquier
+código. Estas reglas reflejan las decisiones técnicas ya tomadas en el proyecto.
+================================================================================
 
-Estas reglas DEBEN seguirse al sugerir o generar código para este proyecto.
-Léelas antes de modificar cualquier archivo.
 
-────────────────────────────────────────────────────────────────────────────────
-1. SEGURIDAD — OBLIGATORIO
-────────────────────────────────────────────────────────────────────────────────
-- NUNCA construir SQL concatenando variables del usuario. Siempre PDO con
-  bindParam / bindValue o parámetros nombrados (:param).
-- Passwords con hash Argon2id (password_hash + PASSWORD_ARGON2ID).
-  Nunca guardar ni mostrar contraseñas en texto plano.
-- Toda acción POST/PUT/PATCH/DELETE DEBE validar token CSRF.
-- Validar permisos en el backend antes de ejecutar cualquier acción.
-  No confiar solo en ocultar botones del frontend.
-- Configuración sensible va en .env, nunca hardcodeada.
-- Proteger rutas: verificar sesión activa en cada controlador.
-- Regenerar sesión (session_regenerate_id) después del login.
-- Logout: destruir sesión y token CSRF.
-- Sin XSS: escapar siempre con htmlspecialchars() al renderizar datos
-  del usuario en HTML.
+── PHP ─────────────────────────────────────────────────────────────────────────
 
-────────────────────────────────────────────────────────────────────────────────
-2. NOMENCLATURA DE BASE DE DATOS
-────────────────────────────────────────────────────────────────────────────────
-- Prefijos de tablas según módulo:
-    sis_   → sistema (empresas, usuarios, perfiles, menús, IVA, estados, archivos)
-    inv_   → inventario (productos, bodegas, marcas, categorías, kardex)
-    com_   → compras (documentos, proveedores, detalles)
-    ven_   → ventas (documentos/proformas, clientes, detalles)
-- NUNCA añadir sufijos de origen al nombre de columnas (_sri, _interno, _prov)
-  sin confirmación explícita del usuario.
-- Al agregar una columna a un modelo, avisar explícitamente si hay SQL
-  pendiente de ejecutar en la base de datos.
+1.  declare(strict_types=1) en TODOS los archivos PHP sin excepción.
+2.  Namespace base: Intesis\  (ej: Intesis\Controladores\, Intesis\Modelos\)
+3.  Los controladores son clases final que usan el trait ControladorComun.
+4.  Los modelos son clases final. Acceden a PDO via $this->conexionBaseDatos->obtener()
+    o un helper privado pdo(): \PDO.
+5.  NO usar Eloquent, Doctrine ni ningún ORM. Solo PDO con prepare/execute.
+6.  NO usar autoloader de Composer para clases propias; se cargan con require_once
+    en index.php en el orden: Nucleo → Modelos → Controladores.
+7.  Toda escritura en BD va dentro de transacción: beginTransaction / commit /
+    rollBack en el bloque try/catch del modelo.
+8.  Validaciones de negocio se lanzan con throw new \InvalidArgumentException().
+    Errores de BD o lógica inesperada con throw new \RuntimeException().
+9.  Los controladores capturan Throwable y llaman a responderJson() o redirigir().
+10. NUNCA poner lógica SQL en controladores. Todo SQL va en modelos.
+11. Las migraciones son archivos .sql en /migrations/, con nombre
+    YYYYMMDD_HHMM_descripcion.sql. Deben ser idempotentes (IF NOT EXISTS /
+    WHERE NOT EXISTS). Nunca modificar una migración ya ejecutada; crear una nueva.
+12. AVISAR explícitamente cuando haya SQL pendiente de ejecutar en la BD.
 
-────────────────────────────────────────────────────────────────────────────────
-3. ARQUITECTURA Y PATRONES
-────────────────────────────────────────────────────────────────────────────────
-- MVC puro. Namespace raíz: Intesis\
-  Capas: Nucleo/ · Controladores/ · Modelos/ · Vistas/ · Servicios/
-- El enrutador (src/Nucleo/Enrutador.php) es el único punto de entrada de rutas.
-  Todas las rutas se registran ahí con if ($metodo === 'X' && $ruta === '/...').
-- Los modelos usan ConexionBaseDatos (PDO). No usar mysqli ni globals.
-- Los controladores heredan de ControladorComun. No lógica de negocio en vistas.
-- Las vistas son PHP puro (sin frameworks de plantillas). Usar htmlspecialchars().
 
-────────────────────────────────────────────────────────────────────────────────
-4. FRONTEND
-────────────────────────────────────────────────────────────────────────────────
-- Stack: AdminLTE 4 + Bootstrap 5 + Bootstrap Icons + SweetAlert2.
-- Clases de estilo compartido: formulario-compacto, form-control-sm, table-sm.
-- JavaScript: usar patrón IIFE → (function(){ ... }());
-  Las funciones dentro del IIFE NO son accesibles desde atributos onclick inline.
-  Usar event delegation sobre elementos padres estáticos para eventos dinámicos.
-- Para modales de búsqueda: abrir/cerrar con bootstrap.Modal.getOrCreateInstance().
-- Nunca usar jQuery (no está incluido).
-- CSRF token: incluir en cada formulario POST como campo oculto.
+── BASE DE DATOS (PostgreSQL) ───────────────────────────────────────────────────
 
-────────────────────────────────────────────────────────────────────────────────
-5. CALIDAD DE CÓDIGO
-────────────────────────────────────────────────────────────────────────────────
-- PHP 8.x con declare(strict_types=1) en todos los archivos.
-- No agregar funcionalidades que no fueron pedidas.
-- No agregar manejo de errores para escenarios imposibles.
-- Comentarios solo cuando el "por qué" no es obvio.
-- No crear archivos de documentación (.md) salvo que se pida explícitamente.
-- Preferir editar archivos existentes sobre crear nuevos.
+13. Motor: PostgreSQL 17. Driver: PDO con DSN pgsql.
+14. Prefijos de columna = prefijo de la tabla.
+    Ejemplo: tabla ven_cliente → columnas ven_cliente_id, ven_cliente_nombre, etc.
+    NUNCA añadir sufijos de origen (_sri, _interno, _prov) sin confirmación.
+15. Estados de entidades se gestionan via tabla sis_estado:
+    (sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre).
+    No usar columnas booleanas de estado cuando ya existe sis_estado_id.
+16. Secuencias de documentos: tabla sis_secuencias vinculada a sis_tipo_documento.
+    Usar SecuenciaModelo::obtenerSiguiente($pdo, $empresaId, $tipoCodigo, $modulo).
+17. Tipos de documento registrados en sis_tipo_documento con código y módulo.
+    Módulo VENTAS: FACTURA_VENTA, NOTA_VENTA, PROFORMA, NOTA_CREDITO, etc.
+18. El campo sis_empresa_id está en TODAS las tablas de negocio (multi-empresa).
+19. Auditoría mínima obligatoria: usuario_crea, fecha_crea en INSERT;
+    usuario_modifica, fecha_modifica en UPDATE.
+20. Nunca DELETE físico en tablas de negocio. Usar estado ELIMINADO o campo _estado=0.
+21. IDs de estado: nunca hardcodear el número; siempre buscar por código con SELECT.
 
-────────────────────────────────────────────────────────────────────────────────
-6. BASE DE DATOS
-────────────────────────────────────────────────────────────────────────────────
-- Motor: PostgreSQL 14+. Conexión via PDO (src/Nucleo/ConexionBaseDatos.php).
-- Multi-empresa: casi todas las tablas tienen columna sis_empresa_id.
-  Filtrar siempre por empresa activa del usuario en sesión.
-- Tabla de archivos: sis_archivos (imágenes de productos, etc.)
-  sis_archivos_tabla identifica la entidad padre (ej: 'INV_PRODUCTO').
-  sis_archivos_principal=TRUE marca la imagen principal.
 
+── ARQUITECTURA MVC ─────────────────────────────────────────────────────────────
+
+22. Flujo de una petición:
+    index.php → Aplicacion::iniciar() → Enrutador::despachar()
+              → Controlador::metodo() → Modelo → Vista
+
+23. Para agregar un módulo nuevo se deben tocar EXACTAMENTE estos 4 archivos:
+    a) index.php         — require_once del Modelo y del Controlador
+    b) Aplicacion.php    — use, instancia del modelo, instancia del controlador,
+                           pasar al constructor de Enrutador
+    c) Enrutador.php     — use, propiedad privada, rutas GET/POST
+    d) Vista(s)          — archivos en src/Vistas/<modulo>/
+
+24. Las rutas siguen el patrón /<modulo>/<entidad>/<accion>.
+    Vistas GET:             /ventas/facturas, /ventas/facturas/nuevo, /ventas/facturas/editar
+    Acciones POST (JSON):   /ventas/facturas/guardar, /ventas/facturas/anular
+    Endpoints apoyo (JSON): /ventas/facturas/detalle, /ventas/facturas/buscar-cliente
+
+25. responderJson(bool $ok, string $codigo, string $mensaje, array $data = [])
+    es el único mecanismo para respuestas JSON. Termina con exit internamente.
+
+26. Las vistas reciben variables por array asociativo desde el controlador.
+    NO usar variables globales en vistas.
+
+
+── FRONTEND ─────────────────────────────────────────────────────────────────────
+
+27. CSS framework: Bootstrap 5 + AdminLTE 4. Clases personalizadas: btn-intesis,
+    btn-secundario, tabla-intesis, modal-intesis, breadcrumb-navbar, etc.
+28. Tablas con DataTables: SOLO las que tienen clase tabla-intesis se inicializan
+    automáticamente (sistema.js línea 95). Las tablas dentro de modales NO deben
+    tener esa clase o se romperá el layout.
+29. Alertas y confirmaciones: SweetAlert2 (Swal). Color corporativo: #1f6f68.
+30. Iconos: Bootstrap Icons (bi bi-*).
+31. Las peticiones AJAX desde las vistas usan fetch() nativo con JSON.
+    Respuesta esperada: { ok: bool, codigo: string, mensaje: string, data: {} }
+32. Los botones de navegación (Nuevo, Cancelar) deben ser <button type="button">
+    con onclick="window.location.href=..." en lugar de etiqueta <a>.
+33. Los formularios de creación/edición no usan <form> con submit; el guardado
+    se hace via fetch() POST con Content-Type: application/json.
+34. El JS de las vistas es vanilla (sin jQuery) envuelto en IIFE (function(){})().
+    Se declara 'use strict'; al inicio del bloque.
+35. Helper const q = (sel) => document.querySelector(sel) se usa en todas las vistas.
+
+
+── PERMISOS Y SEGURIDAD ────────────────────────────────────────────────────────
+
+36. Cada acción del controlador llama primero a exigirSesion() o exigirSesionJson().
+37. Luego llama a exigirPermiso('/ruta/accion') o exigirPermisoJson().
+38. Los permisos se registran en sis_menu (tipo 'B' = botón/acción) y se asignan
+    en sis_perfil_permisos. El superusuario tiene todos los permisos.
+39. Cada módulo nuevo debe insertar en la migración:
+    - Menú padre (tipo 'M') con su URL
+    - Acciones (tipo 'B'): ver, crear, editar, anular (según aplique)
+    - Permisos para el perfil superusuario vía sis_perfil_permisos
+
+
+── CONVENCIONES DE NOMBRADO ────────────────────────────────────────────────────
+
+40. Clases PHP:     PascalCase con sufijo del tipo (FacturaModelo, FacturaControlador).
+41. Métodos:        camelCase (listar, buscar, crear, actualizar, anular).
+42. Variables PHP:  camelCase ($empresaId, $formaPagoId).
+43. Columnas BD:    snake_case con prefijo de tabla (ven_documento_fecha_emision).
+44. Códigos:        MAYUSCULAS_CON_GUION_BAJO (CREADA, FACTURA_VENTA, VEN_DOCUMENTO).
+45. Archivos vista: snake_case (factura_form.php, proforma_form.php).
+
+
+── MÓDULOS EXISTENTES ──────────────────────────────────────────────────────────
+
+Sistema:    Empresas, Usuarios, Perfiles, Menús, Configuración
+Inventario: Bodegas, Categorías, Marcas, Productos, Stock, Kardex, Movimientos internos
+Compras:    Proveedores, Códigos proveedor, Documentos de compra (importación XML SRI)
+Ventas:     Clientes, Proformas, Facturas/Notas de Venta
+
+
+── LO QUE NO SE HACE ───────────────────────────────────────────────────────────
+
+- No crear módulo CRUD de Formas de Pago aún; solo existe la tabla catálogo.
+- No desarrollar autorización SRI masiva aún (pendiente).
+- No usar migraciones de frameworks (Phinx, Laravel migrations, etc.).
+- No instalar paquetes npm ni bundlers; el JS es vanilla en /publico/js/.
+- No crear archivos README.md, CHANGELOG ni documentación en Markdown
+  a menos que el usuario lo pida explícitamente.
 ================================================================================
