@@ -159,12 +159,13 @@ $tituloSeccion = $tituloSeccion ?? 'Configuracion';
                                 <?php foreach ($secuencias as $secuencia): ?>
                                     <tr class="fila-secuencia-fuente" data-tipo="<?= (int) $secuencia['sis_tipo_documento_id'] ?>">
                                         <td><?= htmlspecialchars($secuencia['sis_empresa_nombre_comercial'] ?: $secuencia['sis_empresa_razon_social']) ?></td>
+                                        <td><?= htmlspecialchars($secuencia['inv_bodega_nombre'] ?? '—') ?></td>
                                         <td><?= htmlspecialchars($secuencia['sis_secuencias_establecimiento']) ?>-<?= htmlspecialchars($secuencia['sis_secuencias_punto_emision']) ?></td>
                                         <td><?= str_pad((string) $secuencia['sis_secuencias_actual'], 9, '0', STR_PAD_LEFT) ?></td>
                                         <td><span class="badge estado-badge <?= $secuencia['sis_estado_codigo'] === 'ACTIVO' ? 'estado-activo' : 'estado-inactivo' ?>"><?= htmlspecialchars($secuencia['sis_estado_nombre']) ?></span></td>
                                         <td class="text-end acciones-tabla">
                                             <?php if ($permisos['secuencia_editar']): ?>
-                                                <button type="button" class="btn btn-accion btn-editar-secuencia" title="Editar secuencia" data-bs-toggle="modal" data-bs-target="#modalSecuencia" data-modo="editar" data-id="<?= (int) $secuencia['sis_secuencias_id'] ?>" data-tipo="<?= (int) $secuencia['sis_tipo_documento_id'] ?>" data-empresa="<?= (int) $secuencia['sis_empresa_id'] ?>" data-establecimiento="<?= htmlspecialchars($secuencia['sis_secuencias_establecimiento']) ?>" data-punto="<?= htmlspecialchars($secuencia['sis_secuencias_punto_emision']) ?>" data-desde="<?= (int) $secuencia['sis_secuencias_desde'] ?>" data-actual="<?= (int) $secuencia['sis_secuencias_actual'] ?>" data-hasta="<?= (int) $secuencia['sis_secuencias_hasta'] ?>" data-observacion="<?= htmlspecialchars($secuencia['sis_secuencias_observacion'] ?? '') ?>"><i class="bi bi-pencil-square"></i></button>
+                                                <button type="button" class="btn btn-accion btn-editar-secuencia" title="Editar secuencia" data-bs-toggle="modal" data-bs-target="#modalSecuencia" data-modo="editar" data-id="<?= (int) $secuencia['sis_secuencias_id'] ?>" data-tipo="<?= (int) $secuencia['sis_tipo_documento_id'] ?>" data-empresa="<?= (int) $secuencia['sis_empresa_id'] ?>" data-bodega="<?= (int) ($secuencia['inv_bodega_id'] ?? 0) ?>" data-establecimiento="<?= htmlspecialchars($secuencia['sis_secuencias_establecimiento']) ?>" data-punto="<?= htmlspecialchars($secuencia['sis_secuencias_punto_emision']) ?>" data-desde="<?= (int) $secuencia['sis_secuencias_desde'] ?>" data-actual="<?= (int) $secuencia['sis_secuencias_actual'] ?>" data-hasta="<?= (int) $secuencia['sis_secuencias_hasta'] ?>" data-observacion="<?= htmlspecialchars($secuencia['sis_secuencias_observacion'] ?? '') ?>"><i class="bi bi-pencil-square"></i></button>
                                             <?php endif; ?>
                                             <?php if ($secuencia['sis_estado_codigo'] === 'ACTIVO' && $permisos['secuencia_inactivar']): ?>
                                                 <form action="<?= $appUrl ?>/sistema/configuracion/secuencias/inactivar" method="post" class="d-inline formulario-confirmar" data-codigo-mensaje="CONFIRMAR_INACTIVAR_SECUENCIA"><input type="hidden" name="secuencia_id" value="<?= (int) $secuencia['sis_secuencias_id'] ?>"><button type="submit" class="btn btn-accion btn-inactivar" title="Inactivar secuencia"><i class="bi bi-toggle-off"></i></button></form>
@@ -257,8 +258,8 @@ $tituloSeccion = $tituloSeccion ?? 'Configuracion';
                 <?php endif; ?>
                 <div class="table-responsive">
                     <table class="table table-hover tabla-intesis-dinamica align-middle w-100">
-                        <thead><tr><th>Empresa</th><th>Punto</th><th>Actual</th><th>Estado</th><th class="text-end">Acciones</th></tr></thead>
-                        <tbody id="tablaSecuenciasTipo"><tr><td colspan="5" class="text-center text-muted">Seleccione un tipo de documento.</td></tr></tbody>
+                        <thead><tr><th>Empresa</th><th>Bodega</th><th>Punto</th><th>Actual</th><th>Estado</th><th class="text-end">Acciones</th></tr></thead>
+                        <tbody id="tablaSecuenciasTipo"><tr><td colspan="6" class="text-center text-muted">Seleccione un tipo de documento.</td></tr></tbody>
                     </table>
                 </div>
             </div>
@@ -278,12 +279,21 @@ $tituloSeccion = $tituloSeccion ?? 'Configuracion';
                 <div class="row g-2">
                     <?php if ($esSuperusuario): ?>
                         <div class="col-md-6"><label class="form-label" for="secuencia_empresa_id">Empresa</label><select class="form-control form-control-sm" id="secuencia_empresa_id" name="empresa_id" required><option value="">Seleccione</option><?php foreach ($empresasSecuencia as $empresa): ?><option value="<?= (int) $empresa['sis_empresa_id'] ?>"><?= htmlspecialchars($empresa['sis_empresa_nombre_comercial'] ?: $empresa['sis_empresa_razon_social']) ?></option><?php endforeach; ?></select></div>
+                        <div class="col-md-6" id="contenedor_secuencia_bodega"><label class="form-label" for="secuencia_bodega_id">Bodega</label><select class="form-control form-control-sm" id="secuencia_bodega_id" name="bodega_id"><option value="">Sin bodega</option></select></div>
+                    <?php else: ?>
+                        <div class="col-12" id="contenedor_secuencia_bodega"><label class="form-label" for="secuencia_bodega_id">Bodega</label><select class="form-control form-control-sm" id="secuencia_bodega_id" name="bodega_id"><option value="">Sin bodega</option><?php foreach ($bodegasPorEmpresa[$empresaActivaId] ?? [] as $bodega): ?><option value="<?= (int) $bodega['inv_bodega_id'] ?>" <?= $bodega['inv_bodega_es_principal'] ? 'data-principal="1"' : '' ?>><?= htmlspecialchars($bodega['inv_bodega_codigo'] . ' - ' . $bodega['inv_bodega_nombre']) ?></option><?php endforeach; ?></select></div>
                     <?php endif; ?>
                     <div class="col-12">
                         <div class="alert alert-info py-2 px-3 mb-0 small">
                             <i class="bi bi-info-circle me-1"></i>
                             <strong>Prefijo del numero:</strong> el numero de documento se genera como <code>PREFIJO-<span id="preview_est">001</span>-<span id="preview_pto">001</span>-000000001</code>.
                             Para movimientos internos use <strong>001-001</strong> si no tiene multiples sedes o puntos de emision.
+                        </div>
+                    </div>
+                    <div class="col-12 d-none" id="alerta_bodega_sin_est">
+                        <div class="alert alert-warning py-2 px-3 mb-0 small">
+                            <i class="bi bi-exclamation-triangle me-1"></i>
+                            Esta bodega no tiene establecimiento/punto configurados. Los valores que ingreses aqui se guardaran tambien en la bodega.
                         </div>
                     </div>
                     <div class="<?= $esSuperusuario ? 'col-md-3' : 'col-md-4' ?>">
@@ -296,9 +306,9 @@ $tituloSeccion = $tituloSeccion ?? 'Configuracion';
                         <input type="text" class="form-control form-control-sm" id="secuencia_punto_emision" name="punto_emision" maxlength="3" inputmode="numeric" placeholder="001" required>
                         <div class="form-text">Punto o terminal dentro del local (ej. 001)</div>
                     </div>
-                    <div class="col-md-4"><label class="form-label" for="secuencia_desde">Numero inicial</label><input type="number" class="form-control form-control-sm" id="secuencia_desde" name="desde" min="1" max="999999999" value="1" required><div class="form-text">Primer numero valido</div></div>
-                    <div class="col-md-4"><label class="form-label" for="secuencia_actual">Numero actual</label><input type="number" class="form-control form-control-sm" id="secuencia_actual" name="actual" min="1" max="999999999" value="1" required><div class="form-text">Siguiente a emitir</div></div>
-                    <div class="col-md-4"><label class="form-label" for="secuencia_hasta">Numero final</label><input type="number" class="form-control form-control-sm" id="secuencia_hasta" name="hasta" min="1" max="999999999" value="999999999" required><div class="form-text">Ultimo numero permitido</div></div>
+                    <div class="col-md-3"><label class="form-label" for="secuencia_desde">Numero inicial</label><input type="number" class="form-control form-control-sm" id="secuencia_desde" name="desde" min="1" max="999999999" value="1" required><div class="form-text">Primer numero valido</div></div>
+                    <div class="col-md-3"><label class="form-label" for="secuencia_actual">Numero actual</label><input type="number" class="form-control form-control-sm" id="secuencia_actual" name="actual" min="1" max="999999999" value="1" required><div class="form-text">Siguiente a emitir</div></div>
+                    <div class="col-md-3"><label class="form-label" for="secuencia_hasta">Numero final</label><input type="number" class="form-control form-control-sm" id="secuencia_hasta" name="hasta" min="1" max="999999999" value="999999999" required><div class="form-text">Ultimo numero permitido</div></div>
                     <div class="col-12"><label class="form-label" for="secuencia_observacion">Nota interna</label><textarea class="form-control form-control-sm" id="secuencia_observacion" name="observacion" rows="2" placeholder="Descripcion opcional de esta secuencia..."></textarea></div>
                 </div>
             </div>
@@ -311,6 +321,14 @@ $tituloSeccion = $tituloSeccion ?? 'Configuracion';
 <script>
 window.INTESIS_MENSAJES = <?= json_encode($mensajesSistema ?? [], JSON_UNESCAPED_UNICODE) ?>;
 window.INTESIS_TIPO_SELECCIONADO = '';
+window.INTESIS_BODEGAS_POR_EMPRESA = <?= json_encode($bodegasPorEmpresa ?? [], JSON_UNESCAPED_UNICODE) ?>;
+window.INTESIS_TIPOS_DOCUMENTO_INVENTARIO = <?= json_encode(
+    array_column(
+        array_filter($tiposDocumento ?? [], fn($t) => !empty($t['sis_tipo_documento_afecta_inventario'])),
+        null, 'sis_tipo_documento_id'
+    ),
+    JSON_UNESCAPED_UNICODE
+) ?>;
 /* Preview en vivo del prefijo al escribir establecimiento/punto_emision */
 (function () {
     function actualizarPreview() {

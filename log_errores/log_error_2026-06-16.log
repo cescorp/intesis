@@ -1,0 +1,169 @@
+################################################
+Fecha:   2026-06-16 00:12:27
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-16 00:15:19
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_FACTURA
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-16 00:18:36
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_FACTURA
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-16 00:18:55
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_FACTURA
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-16 00:19:24
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_FACTURA
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-16 00:20:57
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_FACTURA
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-16 00:21:05
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_FACTURA
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-16 00:21:25
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_FACTURA
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-16 00:21:42
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_FACTURA
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-16 00:21:43
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_FACTURA
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-16 00:21:44
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_FACTURA
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-16 01:08:57
+Archivo: C:\xampp\htdocs\intesis\src\Modelos\EmpresaModelo.php
+Detalle: EDITAR EMPRESA
+Error:   SQLSTATE[23505]: Unique violation: 7 ERROR:  llave duplicada viola restricción de unicidad «uq_sis_empresa_ruc»
+DETAIL:  Ya existe la llave (sis_empresa_ruc)=(1792009863001).
+Linea:   153
+################################################
+
+################################################
+Fecha:   2026-06-16 01:10:17
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_FACTURA
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-16 01:10:44
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_FACTURA
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-16 01:10:44
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_FACTURA
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-16 01:10:45
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_FACTURA
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-16 01:10:45
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_FACTURA
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-16 01:15:33
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_FACTURA
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-16 01:15:33
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_FACTURA
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-16 01:16:14
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_FACTURA
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-16 14:14:45
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_FACTURA
+Linea:   N/A
+################################################
+

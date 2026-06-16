@@ -881,6 +881,10 @@
                 document.getElementById('bodega_direccion').value = boton.dataset.direccion || '';
                 document.getElementById('bodega_principal').checked = boton.dataset.principal === '1';
                 document.getElementById('bodega_virtual').checked = boton.dataset.virtual === '1';
+                const inpEst = document.getElementById('bodega_establecimiento');
+                const inpPto = document.getElementById('bodega_punto_emision');
+                if (inpEst) inpEst.value = boton.dataset.establecimiento || '';
+                if (inpPto) inpPto.value = boton.dataset.punto || '';
                 document.getElementById('bodega_negativos').checked = boton.dataset.negativos === '1';
                 document.getElementById('bodega_autoaprobado').checked = boton.dataset.autoaprobado === '1';
             }
@@ -1693,25 +1697,93 @@
             document.getElementById(id)?.addEventListener('blur', (evento) => normalizarTresDigitos(evento.target));
         });
 
+        const aplicarEstPtoDesdeBodega = (bodegaId) => {
+            const bodegas = Object.values(window.INTESIS_BODEGAS_POR_EMPRESA || {}).flat();
+            const bodega = bodegas.find(b => String(b.inv_bodega_id) === String(bodegaId));
+            const inpEst = document.getElementById('secuencia_establecimiento');
+            const inpPto = document.getElementById('secuencia_punto_emision');
+            const alerta = document.getElementById('alerta_bodega_sin_est');
+            if (!inpEst || !inpPto) return;
+            if (bodega && bodega.inv_bodega_establecimiento) {
+                inpEst.value = bodega.inv_bodega_establecimiento;
+                inpPto.value = bodega.inv_bodega_punto_emision || '';
+                inpEst.readOnly = true;
+                inpPto.readOnly = true;
+                inpEst.classList.add('bg-body-secondary');
+                inpPto.classList.add('bg-body-secondary');
+                if (alerta) alerta.classList.add('d-none');
+            } else {
+                inpEst.readOnly = false;
+                inpPto.readOnly = false;
+                inpEst.classList.remove('bg-body-secondary');
+                inpPto.classList.remove('bg-body-secondary');
+                if (alerta) alerta.classList.toggle('d-none', !bodegaId);
+            }
+        };
+
+        const cargarBodegasSecuencia = (empresaId, bodegaSeleccionada) => {
+            const sel = document.getElementById('secuencia_bodega_id');
+            if (!sel) return;
+            const bodegas = (window.INTESIS_BODEGAS_POR_EMPRESA || {})[empresaId] || [];
+            sel.innerHTML = '<option value="">Sin bodega</option>';
+            bodegas.forEach(b => {
+                const opt = document.createElement('option');
+                opt.value = b.inv_bodega_id;
+                opt.textContent = `${b.inv_bodega_codigo} - ${b.inv_bodega_nombre}${b.inv_bodega_es_principal ? ' ★' : ''}`;
+                if (b.inv_bodega_es_principal) opt.dataset.principal = '1';
+                sel.appendChild(opt);
+            });
+            if (bodegaSeleccionada && bodegaSeleccionada > 0) {
+                sel.value = bodegaSeleccionada;
+            } else {
+                const principal = sel.querySelector('option[data-principal]');
+                if (principal) sel.value = principal.value;
+            }
+            aplicarEstPtoDesdeBodega(sel.value);
+        };
+
+        document.getElementById('secuencia_bodega_id')?.addEventListener('change', (e) => {
+            aplicarEstPtoDesdeBodega(e.target.value);
+        });
+
+        const actualizarBodegaRequerida = (tipoId) => {
+            const contenedor = document.getElementById('contenedor_secuencia_bodega');
+            const sel = document.getElementById('secuencia_bodega_id');
+            if (!contenedor || !sel) return;
+            const tipos = window.INTESIS_TIPOS_DOCUMENTO_INVENTARIO || {};
+            const afectaInventario = tipos.hasOwnProperty(tipoId);
+            sel.required = afectaInventario;
+            contenedor.querySelector('label')?.classList.toggle('text-danger', afectaInventario);
+        };
+
+        document.getElementById('secuencia_empresa_id')?.addEventListener('change', (e) => {
+            cargarBodegasSecuencia(e.target.value, null);
+        });
+
         modalSecuencia.addEventListener('show.bs.modal', (evento) => {
             const boton = evento.relatedTarget;
             const modo = boton?.dataset.modo || 'crear';
             const formulario = document.getElementById('formularioSecuencia');
             formulario.reset();
             document.getElementById('secuencia_id').value = '';
-            document.getElementById('secuencia_tipo_documento_id').value = boton?.dataset.tipo || window.INTESIS_TIPO_SELECCIONADO || '';
+            const tipoId = boton?.dataset.tipo || window.INTESIS_TIPO_SELECCIONADO || '';
+            document.getElementById('secuencia_tipo_documento_id').value = tipoId;
             document.getElementById('secuencia_desde').value = '1';
             document.getElementById('secuencia_actual').value = '1';
             document.getElementById('secuencia_hasta').value = '999999999';
             document.getElementById('modalSecuenciaTitulo').textContent = modo === 'editar' ? 'Editar secuencia' : 'Nueva secuencia';
             formulario.action = `${window.location.origin}${document.body.dataset.baseUrl || ''}/sistema/configuracion/secuencias/${modo === 'editar' ? 'editar' : 'crear'}`;
 
+            const empresaSelect = document.getElementById('secuencia_empresa_id');
+            const empresaOculta = document.getElementById('secuencia_empresa_oculta');
+            let empresaId = empresaSelect?.value || empresaOculta?.value || '';
+
             if (modo === 'editar') {
                 document.getElementById('secuencia_id').value = boton.dataset.id || '';
                 document.getElementById('secuencia_tipo_documento_id').value = boton.dataset.tipo || '';
-                const empresa = document.getElementById('secuencia_empresa_id');
-                if (empresa) {
-                    empresa.value = boton.dataset.empresa || '';
+                if (empresaSelect) {
+                    empresaSelect.value = boton.dataset.empresa || '';
+                    empresaId = boton.dataset.empresa || '';
                 }
                 document.getElementById('secuencia_establecimiento').value = boton.dataset.establecimiento || '';
                 document.getElementById('secuencia_punto_emision').value = boton.dataset.punto || '';
@@ -1719,7 +1791,11 @@
                 document.getElementById('secuencia_actual').value = boton.dataset.actual || '1';
                 document.getElementById('secuencia_hasta').value = boton.dataset.hasta || '999999999';
                 document.getElementById('secuencia_observacion').value = boton.dataset.observacion || '';
+                cargarBodegasSecuencia(empresaId, boton.dataset.bodega || null);
+            } else {
+                cargarBodegasSecuencia(empresaId, null);
             }
+            actualizarBodegaRequerida(tipoId);
         });
     }
 
@@ -1993,9 +2069,16 @@
         const modal = document.getElementById('modalPdfKardex');
         const visor = document.getElementById('visorPdfKardex');
         if (!modal || !visor) return;
-        const parametros = new URLSearchParams({ empresa_id: empresaId, documento_tipo: documentoTipo, documento_id: documentoId });
+        const base = `${window.location.origin}${document.body.dataset.baseUrl || ''}`;
+        let src;
+        if (documentoTipo === 'FACTURA_VENTA' || documentoTipo === 'NOTA_VENTA') {
+            src = `${base}/ventas/facturas/pdf?id=${documentoId}`;
+        } else {
+            const parametros = new URLSearchParams({ empresa_id: empresaId, documento_tipo: documentoTipo, documento_id: documentoId });
+            src = `${base}/inventario/kardex/documento?${parametros.toString()}`;
+        }
         document.getElementById('modalPdfKardexTitulo').textContent = `Documento ${documentoNumero || ''}`.trim();
-        visor.src = `${window.location.origin}${document.body.dataset.baseUrl || ''}/inventario/kardex/documento?${parametros.toString()}`;
+        visor.src = src;
         bootstrap.Modal.getOrCreateInstance(modal).show();
     };
 

@@ -863,6 +863,14 @@ final class Enrutador
             $this->facturaControlador->productos();
             return;
         }
+        if ($metodo === 'GET' && $ruta === '/ventas/facturas/pdf') {
+            $this->facturaControlador->pdf();
+            return;
+        }
+        if ($metodo === 'POST' && $ruta === '/ventas/facturas/enviar-sri') {
+            $this->facturaControlador->enviarSri();
+            return;
+        }
 
         http_response_code(404);
         $this->vista->renderizar('errores/error404', [

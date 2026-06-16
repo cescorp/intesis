@@ -82,6 +82,7 @@ final class BodegaModelo
                     inv_bodega_descripcion, inv_bodega_direccion,
                     inv_bodega_es_principal, inv_bodega_virtual,
                     inv_bodega_negativos, inv_bodega_autoaprobado,
+                    inv_bodega_establecimiento, inv_bodega_punto_emision,
                     sis_estado_id, usuario_crea
                 )
                 VALUES (
@@ -89,6 +90,7 @@ final class BodegaModelo
                     :descripcion, :direccion,
                     :principal, :virtual,
                     :negativos, :autoaprobado,
+                    :establecimiento, :punto_emision,
                     :estado_id, :usuario_crea
                 )
             ");
@@ -127,6 +129,8 @@ final class BodegaModelo
                     inv_bodega_virtual = :virtual,
                     inv_bodega_negativos = :negativos,
                     inv_bodega_autoaprobado = :autoaprobado,
+                    inv_bodega_establecimiento = :establecimiento,
+                    inv_bodega_punto_emision = :punto_emision,
                     usuario_modifica = :usuario_modifica,
                     fecha_modifica = now()
                 WHERE inv_bodega_id = :bodega_id
@@ -579,5 +583,56 @@ final class BodegaModelo
         $sentencia->bindValue(':virtual', (bool) $datos['virtual'], PDO::PARAM_BOOL);
         $sentencia->bindValue(':negativos', (bool) $datos['negativos'], PDO::PARAM_BOOL);
         $sentencia->bindValue(':autoaprobado', (bool) $datos['autoaprobado'], PDO::PARAM_BOOL);
+        $est = isset($datos['establecimiento']) && $datos['establecimiento'] !== '' ? $datos['establecimiento'] : null;
+        $pto = isset($datos['punto_emision']) && $datos['punto_emision'] !== '' ? $datos['punto_emision'] : null;
+        $sentencia->bindValue(':establecimiento', $est);
+        $sentencia->bindValue(':punto_emision', $pto);
+    }
+
+    public function actualizarEstPto(int $bodegaId, string $est, string $pto): void
+    {
+        $this->conexionBaseDatos->obtener()->prepare("
+            UPDATE inv_bodega
+            SET inv_bodega_establecimiento = :est,
+                inv_bodega_punto_emision   = :pto,
+                fecha_modifica = now()
+            WHERE inv_bodega_id = :bodega_id
+              AND (inv_bodega_establecimiento IS NULL OR inv_bodega_establecimiento = '')
+        ")->execute(['est' => $est, 'pto' => $pto, 'bodega_id' => $bodegaId]);
+    }
+
+    /**
+     * ***************************************************************************
+     * * LISTA BODEGAS ACTIVAS POR EMPRESA PARA EL SELECTOR DE SECUENCIAS.
+     * * Retorna array indexado por empresa_id para uso en JS.
+     * ***************************************************************************
+     */
+    public function listarPorEmpresaParaSecuencia(?int $empresaFiltro = null): array
+    {
+        $filtro = $empresaFiltro !== null ? 'AND b.sis_empresa_id = :empresa_id' : '';
+        $sentencia = $this->conexionBaseDatos->obtener()->prepare("
+            SELECT
+                b.inv_bodega_id,
+                b.sis_empresa_id,
+                b.inv_bodega_codigo,
+                b.inv_bodega_nombre,
+                b.inv_bodega_es_principal,
+                b.inv_bodega_establecimiento,
+                b.inv_bodega_punto_emision
+            FROM inv_bodega b
+            INNER JOIN sis_estado es ON es.sis_estado_id = b.sis_estado_id
+            WHERE es.sis_estado_codigo = 'ACTIVO'
+            {$filtro}
+            ORDER BY b.sis_empresa_id, b.inv_bodega_es_principal DESC, b.inv_bodega_codigo
+        ");
+        $sentencia->execute($empresaFiltro !== null ? ['empresa_id' => (int) $empresaFiltro] : []);
+        $rows = $sentencia->fetchAll(PDO::FETCH_ASSOC);
+
+        $resultado = [];
+        foreach ($rows as $row) {
+            $resultado[(int) $row['sis_empresa_id']][] = $row;
+        }
+
+        return $resultado;
     }
 }

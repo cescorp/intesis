@@ -133,6 +133,163 @@ final class GeneradorPdf
 </html>';
     }
 
+    public function generarFacturaAutorizada(array $doc, array $lineas, array $empresa): string
+    {
+        if (!function_exists('gpdf_barcode_code128_svg')) {
+            require_once __DIR__ . '/PdfSri/Barcode128.php';
+        }
+
+        $filas = '';
+        $num   = 0;
+        foreach ($lineas as $l) {
+            $num++;
+            $cant   = (float) ($l['ven_documento_detalle_cantidad']      ?? 0);
+            $precio = (float) ($l['ven_documento_detalle_precio_unitario'] ?? 0);
+            $dto    = (float) ($l['ven_documento_detalle_descuento']      ?? 0);
+            $base   = (float) ($l['ven_documento_detalle_precio_total_sin_impuestos'] ?? 0);
+            $iva    = (float) ($l['ven_documento_detalle_impuesto_total'] ?? 0);
+            $total  = $base + $iva;
+            $filas .= '<tr>'
+                . '<td class="text-center small-text">' . $num . '</td>'
+                . '<td class="mono">' . $this->escapar((string) ($l['codigo_interno'] ?? $l['ven_documento_detalle_codigo'] ?? '')) . '</td>'
+                . '<td>' . $this->escapar((string) ($l['producto_nombre'] ?? $l['ven_documento_detalle_descripcion'] ?? '')) . '</td>'
+                . '<td class="numero">' . number_format($cant, 2, '.', '') . '</td>'
+                . '<td class="numero">$' . number_format($precio, 4, '.', '') . '</td>'
+                . '<td class="numero">' . number_format($dto, 2, '.', '') . '%</td>'
+                . '<td class="numero">$' . number_format($iva, 2, '.', '') . '</td>'
+                . '<td class="numero fw-bold">$' . number_format($total, 2, '.', '') . '</td>'
+                . '</tr>';
+        }
+        if ($filas === '') {
+            $filas = '<tr><td colspan="8" class="sin-registros">Sin líneas registradas.</td></tr>';
+        }
+
+        $subtotal   = (float) ($doc['ven_documento_subtotal_sin_impuestos'] ?? $doc['ven_documento_subtotal'] ?? 0);
+        $descuento  = (float) ($doc['ven_documento_descuento_total']         ?? $doc['ven_documento_descuento'] ?? 0);
+        $ivaTotal   = (float) ($doc['ven_documento_impuesto_total']          ?? $doc['ven_documento_iva']      ?? 0);
+        $total      = (float) ($doc['ven_documento_valor_total']             ?? $doc['ven_documento_total']    ?? 0);
+        $formaPago  = $this->escapar((string) ($doc['ven_forma_pago_nombre'] ?? ''));
+        $claveAcceso = (string) ($doc['ven_documento_clave_acceso']     ?? '');
+        $autorizacion= $this->escapar((string) ($doc['ven_documento_autorizacion_sri'] ?? ''));
+        $fechaAuth   = $this->escapar(substr((string) ($doc['ven_documento_fecha_autorizacion'] ?? ''), 0, 19));
+        $ambiente    = $this->escapar((string) ($doc['ven_documento_ambiente_sri'] ?? ''));
+
+        $nombreEmpresa = $this->escapar((string) ($empresa['sis_empresa_nombre_comercial'] ?: ($empresa['sis_empresa_razon_social'] ?? '')));
+        $rucEmpresa    = $this->escapar((string) ($empresa['sis_empresa_ruc']       ?? ''));
+        $dirEmpresa    = $this->escapar((string) ($empresa['sis_empresa_direccion'] ?? ''));
+        $telEmpresa    = $this->escapar((string) ($empresa['sis_empresa_telefono']  ?? ''));
+        $cliente       = $this->escapar((string) ($doc['ven_cliente_razon_social']    ?? ''));
+        $rucCli        = $this->escapar((string) ($doc['ven_cliente_identificacion']  ?? ''));
+        $numero        = $this->escapar((string) ($doc['ven_documento_numero']        ?? ''));
+        $fecha         = $this->escapar(substr((string) ($doc['ven_documento_fecha_emision'] ?? ''), 0, 10));
+        $obs           = $this->escapar((string) ($doc['ven_documento_observacion']   ?? ''));
+
+        $barcodeSvg = $claveAcceso !== '' ? gpdf_barcode_code128_svg($claveAcceso, 480, 40) : '';
+
+        return '<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<style>
+    @page { margin: 24px 30px 32px 30px; }
+    body { font-family: Arial, sans-serif; color: #1a1a1a; font-size: 9.5px; }
+    .cabecera { display: table; width: 100%; border-bottom: 2px solid #1a1a1a; padding-bottom: 10px; margin-bottom: 10px; }
+    .cab-izq { display: table-cell; width: 55%; vertical-align: top; }
+    .cab-der { display: table-cell; width: 45%; vertical-align: top; text-align: right; }
+    h1 { margin: 0 0 2px 0; font-size: 14px; }
+    h2 { margin: 0 0 3px 0; font-size: 12px; letter-spacing: 1px; }
+    .dato { margin: 1px 0; }
+    .etiqueta { font-weight: bold; }
+    .numero-doc { font-size: 12px; font-weight: bold; }
+    .bloque-cliente { border: 1px solid #ccc; padding: 6px 8px; margin-bottom: 8px; }
+    .bloque-sri { border: 1px solid #999; background: #f5f5f5; padding: 6px 8px; margin-bottom: 8px; font-size: 9px; }
+    .bloque-barcode { text-align: center; margin: 6px 0; }
+    .clave-texto { font-family: "Courier New", monospace; font-size: 8px; word-break: break-all; text-align: center; color: #444; }
+    .tabla-detalle { width: 100%; border-collapse: collapse; font-size: 9px; }
+    .tabla-detalle thead th { background: #1a1a1a; color: #fff; padding: 5px 4px; text-align: left; }
+    .tabla-detalle tbody td { padding: 4px 4px; border-bottom: 1px solid #e0e0e0; vertical-align: top; }
+    .tabla-detalle tbody tr:nth-child(even) td { background: #f9f9f9; }
+    .numero { text-align: right; white-space: nowrap; }
+    .mono { font-family: "Courier New", monospace; font-size: 8.5px; }
+    .small-text { font-size: 8.5px; }
+    .text-center { text-align: center; }
+    .sin-registros { text-align: center; color: #666; padding: 10px; }
+    .fw-bold { font-weight: bold; }
+    .totales-wrap { display: table; width: 100%; margin-top: 8px; }
+    .totales-forma-pago { display: table-cell; width: 50%; vertical-align: top; font-size: 9px; }
+    .totales-tabla { display: table-cell; width: 50%; vertical-align: top; }
+    table.tots { width: 100%; border-collapse: collapse; }
+    table.tots td { padding: 3px 6px; border-bottom: 1px dotted #ccc; }
+    .tot-final td { font-weight: bold; font-size: 11px; border-top: 2px solid #1a1a1a; border-bottom: none; }
+    .autorizado-badge { display: inline-block; background: #1a6b1a; color: #fff; padding: 2px 8px; border-radius: 3px; font-size: 9px; font-weight: bold; margin-bottom: 4px; }
+</style>
+</head>
+<body>
+
+<div class="cabecera">
+    <div class="cab-izq">
+        <h1>' . $nombreEmpresa . '</h1>
+        <div class="dato"><span class="etiqueta">RUC:</span> ' . $rucEmpresa . '</div>
+        <div class="dato">' . $dirEmpresa . '</div>
+        <div class="dato"><span class="etiqueta">Tel:</span> ' . $telEmpresa . '</div>
+    </div>
+    <div class="cab-der">
+        <h2>FACTURA</h2>
+        <div class="numero-doc">' . $numero . '</div>
+        <div class="dato"><span class="etiqueta">Fecha:</span> ' . $fecha . '</div>
+        <div class="dato"><span class="etiqueta">Ambiente:</span> ' . $ambiente . '</div>
+    </div>
+</div>
+
+<div class="bloque-sri">
+    <div><span class="autorizado-badge">AUTORIZADO</span></div>
+    <div><span class="etiqueta">N° Autorización:</span> ' . $autorizacion . '</div>
+    ' . ($fechaAuth ? '<div><span class="etiqueta">Fecha autorización:</span> ' . $fechaAuth . '</div>' : '') . '
+    ' . ($barcodeSvg ? '
+    <div class="bloque-barcode">' . $barcodeSvg . '</div>
+    <div class="clave-texto">' . $this->escapar($claveAcceso) . '</div>' : '') . '
+</div>
+
+<div class="bloque-cliente">
+    <span class="etiqueta">Cliente:</span> ' . $cliente . '
+    &nbsp;&nbsp;<span class="etiqueta">RUC/ID:</span> ' . $rucCli . '
+</div>
+
+<table class="tabla-detalle">
+    <thead>
+        <tr>
+            <th class="text-center" style="width:20px">#</th>
+            <th style="width:75px">Codigo</th>
+            <th>Descripcion</th>
+            <th class="numero" style="width:45px">Cant.</th>
+            <th class="numero" style="width:65px">Precio</th>
+            <th class="numero" style="width:38px">Desc.</th>
+            <th class="numero" style="width:52px">IVA</th>
+            <th class="numero" style="width:60px">Total</th>
+        </tr>
+    </thead>
+    <tbody>' . $filas . '</tbody>
+</table>
+
+<div class="totales-wrap">
+    <div class="totales-forma-pago">
+        ' . ($formaPago ? '<div><span class="etiqueta">Forma de pago:</span> ' . $formaPago . '</div>' : '') . '
+        ' . ($obs ? '<div style="margin-top:6px"><span class="etiqueta">Obs:</span> ' . $obs . '</div>' : '') . '
+    </div>
+    <div class="totales-tabla">
+        <table class="tots">
+            <tr><td>Subtotal sin impuestos</td><td class="numero">$' . number_format($subtotal, 2, '.', ',') . '</td></tr>
+            <tr><td>Descuento</td><td class="numero">$' . number_format($descuento, 2, '.', ',') . '</td></tr>
+            <tr><td>IVA</td><td class="numero">$' . number_format($ivaTotal, 2, '.', ',') . '</td></tr>
+            <tr class="tot-final"><td>TOTAL</td><td class="numero">$' . number_format($total, 2, '.', ',') . '</td></tr>
+        </table>
+    </div>
+</div>
+
+</body>
+</html>';
+    }
+
     public function generarProforma(array $proforma, array $lineas, array $empresa): string
     {
         return $this->generarDesdeHtml($this->crearHtmlProforma($proforma, $lineas, $empresa));

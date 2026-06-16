@@ -108,7 +108,8 @@ final class ProformaModelo
         $pdo = $this->pdo();
         $pdo->beginTransaction();
         try {
-            $numero = $this->secuenciaModelo->obtenerSiguiente($pdo, (int) $cabecera['empresa_id'], 'PROFORMA', 'VENTAS');
+            $bodegaId = $this->obtenerBodegaId((int) $cabecera['empresa_id'], $usuarioId);
+            $numero = $this->secuenciaModelo->obtenerSiguiente($pdo, (int) $cabecera['empresa_id'], 'PROFORMA', 'VENTAS', $bodegaId);
 
             $sentencia = $pdo->prepare("
                 INSERT INTO ven_documento (
@@ -139,7 +140,7 @@ final class ProformaModelo
                 'cliente_id'             => $cabecera['cliente_id'],
                 'tipo_id'                => $this->obtenerTipoDocumentoId('PROFORMA'),
                 'usuarios_id'            => $usuarioId,
-                'bodega_id'              => $this->obtenerBodegaId((int) $cabecera['empresa_id'], $usuarioId),
+                'bodega_id'              => $bodegaId,
                 'numero'                 => $numero,
                 'fecha_emision'          => $cabecera['fecha_emision'] !== '' ? $cabecera['fecha_emision'] : date('Y-m-d'),
                 'subtotal'               => $cabecera['subtotal'],
@@ -372,8 +373,9 @@ final class ProformaModelo
             }
             $total = round($subtotal + $ivaTotal, 4);
 
-            // Número de factura
-            $numero = $this->secuenciaModelo->obtenerSiguiente($pdo, $empresaId, 'FACTURA_VENTA', 'VENTAS');
+            // Número de factura — usa la bodega ya asignada en la proforma
+            $bodegaId = (int) ($proforma['inv_bodega_id'] ?? $this->obtenerBodegaId($empresaId, $usuarioId));
+            $numero = $this->secuenciaModelo->obtenerSiguiente($pdo, $empresaId, 'FACTURA_VENTA', 'VENTAS', $bodegaId);
 
             // Insertar cabecera de factura
             $stmtFact = $pdo->prepare("
@@ -407,7 +409,7 @@ final class ProformaModelo
                 'cliente_id'             => $proforma['ven_cliente_id'],
                 'tipo_id'                => $this->obtenerTipoDocumentoId('FACTURA_VENTA'),
                 'usuarios_id'            => $usuarioId,
-                'bodega_id'              => $this->obtenerBodegaId($empresaId, $usuarioId),
+                'bodega_id'              => $bodegaId,
                 'numero'                 => $numero,
                 'fecha_emision'          => date('Y-m-d'),
                 'subtotal'               => round($subtotal, 4),

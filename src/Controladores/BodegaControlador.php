@@ -312,6 +312,8 @@ final class BodegaControlador
             'virtual' => !empty($_POST['virtual']),
             'negativos' => !empty($_POST['negativos']),
             'autoaprobado' => !empty($_POST['autoaprobado']),
+            'establecimiento' => str_pad(preg_replace('/\D+/', '', (string) ($_POST['establecimiento'] ?? '')), 3, '0', STR_PAD_LEFT),
+            'punto_emision' => str_pad(preg_replace('/\D+/', '', (string) ($_POST['punto_emision'] ?? '')), 3, '0', STR_PAD_LEFT),
         ];
     }
 

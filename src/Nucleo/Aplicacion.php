@@ -51,7 +51,14 @@ use Intesis\Modelos\UsuarioEmpresaModelo;
 use Intesis\Modelos\UsuarioModelo;
 use Intesis\Modelos\SriImportacionModelo;
 use Intesis\Servicios\AutenticacionServicio;
+use Intesis\Servicios\FacturacionElectronicaServicio;
 use Intesis\Servicios\GeneradorPdf;
+use Intesis\Servicios\SriClaveAccesoServicio;
+use Intesis\Servicios\SriEmailServicio;
+use Intesis\Servicios\SriFirmadorServicio;
+use Intesis\Servicios\SriSoapServicio;
+use Intesis\Servicios\SriUtilidadesServicio;
+use Intesis\Servicios\SriXmlFacturaServicio;
 use Intesis\Servicios\SriXmlServicio;
 
 final class Aplicacion
@@ -104,6 +111,22 @@ final class Aplicacion
         $sriImportacionModelo = new SriImportacionModelo($conexion->obtener());
         $autenticacionServicio = new AutenticacionServicio($usuarioModelo, $registroErrores);
         $generadorPdf = new GeneradorPdf();
+        $sriUtil      = new SriUtilidadesServicio();
+        $facturacionElectronicaServicio = new FacturacionElectronicaServicio(
+            $configuracion,
+            $sriUtil,
+            new SriClaveAccesoServicio($sriUtil),
+            new SriXmlFacturaServicio($sriUtil),
+            new SriFirmadorServicio(),
+            new SriSoapServicio(),
+            new SriEmailServicio(
+                $configuracion->obtener('MAIL_HOST', 'smtp.gmail.com') ?? 'smtp.gmail.com',
+                (int) ($configuracion->obtener('MAIL_PORT', '587') ?? 587),
+                $configuracion->obtener('MAIL_USER', '') ?? '',
+                $configuracion->obtener('MAIL_PASS', '') ?? '',
+                $configuracion->obtener('MAIL_FROM_NAME', 'INTESIS') ?? 'INTESIS'
+            )
+        );
 
         $this->enrutador = new Enrutador(
             new AutenticacionControlador($vista, $sesion, $autenticacionServicio, $configuracion),
@@ -112,7 +135,7 @@ final class Aplicacion
             new UsuarioControlador($vista, $sesion, $usuarioEmpresaModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
             new PerfilControlador($vista, $sesion, $perfilModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
             new MenuControlador($vista, $sesion, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
-            new ConfiguracionControlador($vista, $sesion, $estadoModelo, $mensajeSistemaModelo, $tipoDocumentoModelo, $secuenciaModelo, $menuModelo, $configuracion, $registroErrores),
+            new ConfiguracionControlador($vista, $sesion, $estadoModelo, $mensajeSistemaModelo, $tipoDocumentoModelo, $secuenciaModelo, $menuModelo, $configuracion, $registroErrores, $bodegaModelo),
             new BodegaControlador($vista, $sesion, $bodegaModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
             new ArchivoProductoControlador($sesion, $productoModelo, $archivoProductoModelo, $menuModelo, $configuracion, $registroErrores),
             new CategoriaControlador($vista, $sesion, $categoriaModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
@@ -126,7 +149,7 @@ final class Aplicacion
             new DocumentoCompraControlador($vista, $sesion, $documentoCompraModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores, $sriXmlServicio, $sriImportacionModelo),
             new ClienteControlador($vista, $sesion, $clienteModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
             new ProformaControlador($vista, $sesion, $proformaModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores, $generadorPdf),
-            new FacturaControlador($vista, $sesion, $facturaModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
+            new FacturaControlador($vista, $sesion, $facturaModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores, $generadorPdf, $facturacionElectronicaServicio),
             $configuracion,
             $vista,
             $sesion

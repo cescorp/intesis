@@ -385,15 +385,178 @@ INSTALACIÓN EN SUBCARPETA CON NOMBRE DIFERENTE A "intesis"
 
 
 ════════════════════════════════════════════════════════════════════════════════
+FACTURACIÓN ELECTRÓNICA SRI — REQUISITOS ADICIONALES
+════════════════════════════════════════════════════════════════════════════════
+
+Para emitir facturas electrónicas al SRI se necesita Java + el firmador sri2.jar
+además de un certificado digital .p12 vigente.
+
+──────────────────────────────────────────────────────────────────────────────
+FE-1 — INSTALAR JAVA (JRE 8 o superior)
+──────────────────────────────────────────────────────────────────────────────
+
+  El firmador de XML usa un archivo .jar que requiere Java instalado en el servidor.
+
+  FE-1.1  Descargar Java (gratis):
+            https://www.java.com/es/download/  (JRE 8+, recomendado JDK 21 LTS)
+            O directamente el instalador de Windows x64:
+            https://adoptium.net/temurin/releases/?version=21
+
+  FE-1.2  Instalar con las opciones por defecto.
+            Marcar la opción "Add to PATH" si aparece (o hacerlo manualmente).
+
+  FE-1.3  Verificar desde CMD o PowerShell:
+            java -version
+          Debe mostrar algo como:
+            java version "21.0.x" ...
+          Si dice "'java' no se reconoce", agregar Java al PATH:
+            Panel de control → Sistema → Variables de entorno
+            En "Variables del sistema" buscar "Path" → Editar → Nuevo
+            Agregar: C:\Program Files\Eclipse Adoptium\jdk-21...\bin
+                 (o donde se instaló, buscar la carpeta que contiene java.exe)
+
+  FE-1.4  Reiniciar Apache (y CMD/PowerShell) después de modificar el PATH.
+
+
+──────────────────────────────────────────────────────────────────────────────
+FE-2 — OBTENER EL FIRMADOR sri2.jar
+──────────────────────────────────────────────────────────────────────────────
+
+  El archivo sri2.jar firma el XML con el certificado .p12 usando el estándar
+  XAdES-BES requerido por el SRI Ecuador. No hay un único repositorio oficial
+  público — se obtiene por una de estas vías:
+
+  OPCIÓN A — Desde el Portal de Comprobantes Electrónicos del SRI (recomendada):
+    1. Ingresar a: https://srienlinea.sri.gob.ec
+    2. Servicios en Línea → Facturación Electrónica
+    3. Descargar el "Kit de Facturación Electrónica" o "Herramientas de Firma"
+       El paquete incluye el .jar firmador oficial.
+    Nota: requiere RUC y clave del SRI para acceder.
+
+  OPCIÓN B — Desde el ambiente de certificación del SRI:
+    1. Ingresar a: https://celcer.sri.gob.ec
+    2. Buscar en la sección de descarga de herramientas para desarrolladores.
+
+  OPCIÓN C — Proveedores autorizados de facturación electrónica:
+    Si adquiriste un servicio de facturación electrónica (Datil, Facturero,
+    SysCont, etc.), ellos proveen el .jar como parte de su integración.
+    Consultar con tu proveedor actual.
+
+  OPCIÓN D — Si ya tienes un .jar que funcionaba en otro proyecto INTESIS:
+    Cualquier .jar que acepte los argumentos en este orden:
+      java -jar sri2.jar <ruta_p12> <clave_p12> <xml_entrada> <dir_salida/> <nombre_salida.xml>
+    es compatible con la integración de INTESIS. Copiar el .jar existente.
+
+  FE-2.1  Una vez descargado el .jar, copiarlo a:
+            C:\xampp\htdocs\intesis\tools\java\dist\sri2.jar
+          (crear las carpetas si no existen)
+
+  FE-2.2  Verificar que funciona (prueba rápida desde CMD):
+            java -jar "C:\xampp\htdocs\intesis\tools\java\dist\sri2.jar"
+          Si imprime ayuda o uso de parámetros = correcto.
+          Si dice "Error: Unable to access jarfile" = ruta incorrecta.
+          Si dice "'java' no reconocido" = Java no está en PATH (volver a FE-1.3).
+
+
+──────────────────────────────────────────────────────────────────────────────
+FE-3 — HABILITAR EXTENSIONES PHP PARA FACTURACIÓN ELECTRÓNICA
+──────────────────────────────────────────────────────────────────────────────
+
+  Abrir C:\xampp\php\php.ini y verificar/habilitar (quitar el ; del inicio):
+
+    extension=soap        ← para enviar al SOAP del SRI
+    extension=openssl     ← para manejo de certificados
+    extension=dom         ← para generar y parsear XML
+    extension=curl        ← para conexiones HTTPS al SRI
+    extension=fileinfo    ← para validar archivos subidos (.p12)
+
+  Ajustes recomendados para evitar timeouts al comunicarse con el SRI:
+
+    max_execution_time = 120    (cambiarlo de 30 a 120)
+    memory_limit = 256M
+    upload_max_filesize = 10M
+    post_max_size = 20M
+
+  Guardar php.ini y reiniciar Apache.
+
+  LINUX (Ubuntu/Debian):
+    sudo apt install php8.2-soap php8.2-curl php8.2-xml
+    sudo systemctl restart apache2
+
+
+──────────────────────────────────────────────────────────────────────────────
+FE-4 — CERTIFICADO DIGITAL .p12
+──────────────────────────────────────────────────────────────────────────────
+
+  El certificado lo emite el BCE (Banco Central del Ecuador) u otras entidades
+  certificadoras autorizadas por el ARCOTEL/SRI:
+    https://www.eci.bce.ec/   ← BCE (recomendado para empresa)
+    https://www.securitydata.net.ec/
+    https://www.anfac.com.ec/
+
+  FE-4.1  El certificado de PRUEBAS lo genera el propio SRI desde su portal:
+            https://celcer.sri.gob.ec/
+            → Servicios en Línea → Facturación Electrónica → Certificado de Pruebas
+
+  FE-4.2  Una vez obtenido el .p12, colocarlo en:
+            C:\xampp\htdocs\intesis\almacenamiento\sri\certificados\
+          El sistema gestiona el nombre y lo asocia por empresa.
+
+  FE-4.3  NUNCA subir el .p12 a repositorios Git. La carpeta
+            almacenamiento/sri/certificados/  ya está en .gitignore.
+
+  FE-4.4  El sistema INTESIS almacena la ruta del .p12 y su clave (cifrada)
+          en la configuración de empresa. No es necesario subirlo cada vez.
+
+
+──────────────────────────────────────────────────────────────────────────────
+FE-5 — ESTRUCTURA DE ARCHIVOS QUE CREA EL SISTEMA
+──────────────────────────────────────────────────────────────────────────────
+
+  El sistema crea automáticamente estos directorios al procesar la primera factura:
+
+    almacenamiento/sri/
+      certificados/          ← archivos .p12 por empresa (NO en Git)
+      xml/generados/         ← XML sin firmar  (clave_acceso.xml)
+      xml/firmados/          ← XML firmado con .p12
+      xml/autorizados/       ← XML devuelto por el SRI con sello de autorización
+
+    tools/java/dist/
+      sri2.jar               ← el firmador (colocar manualmente, ver FE-2)
+
+  Permisos necesarios en Linux:
+    sudo chown -R www-data:www-data almacenamiento/sri/
+    sudo chmod -R 775 almacenamiento/sri/
+
+
+──────────────────────────────────────────────────────────────────────────────
+FE-6 — URLS DEL SERVICIO SOAP DEL SRI
+──────────────────────────────────────────────────────────────────────────────
+
+  PRUEBAS (ambiente 1):
+    Recepción:    https://celcer.sri.gob.ec/comprobantes-electronicos-ws/RecepcionComprobantesOffline?wsdl
+    Autorización: https://celcer.sri.gob.ec/comprobantes-electronicos-ws/AutorizacionComprobantesOffline?wsdl
+
+  PRODUCCIÓN (ambiente 2):
+    Recepción:    https://cel.sri.gob.ec/comprobantes-electronicos-ws/RecepcionComprobantesOffline?wsdl
+    Autorización: https://cel.sri.gob.ec/comprobantes-electronicos-ws/AutorizacionComprobantesOffline?wsdl
+
+  Nota: el ambiente se configura por empresa en Sistema → Empresas.
+  Usar PRUEBAS hasta tener todo validado. El SRI no cobra en pruebas.
+
+
+════════════════════════════════════════════════════════════════════════════════
 REQUERIMIENTOS MÍNIMOS
 ════════════════════════════════════════════════════════════════════════════════
 
   PHP:         8.1 o superior  (recomendado 8.2+)
-  Extensiones: pdo, pdo_pgsql, pgsql, mbstring, xml, gd, json
+  Extensiones: pdo, pdo_pgsql, pgsql, mbstring, xml, gd, json,
+               soap, openssl, curl, fileinfo  ← adicionales para FE
   PostgreSQL:  15 o superior  (probado en 17)
   Apache:      2.4+  con mod_rewrite habilitado y AllowOverride All
   Composer:    2.x  (solo para instalar dompdf si vendor/ no viene incluido)
-  Disco:       mínimo 200 MB libres (sin contar imágenes de productos)
+  Java:        JRE 8 o superior  ← requerido para firmar XML con sri2.jar
+  Disco:       mínimo 500 MB libres (incluye XMLs de facturas)
   RAM:         1 GB mínimo para la VM
 
 

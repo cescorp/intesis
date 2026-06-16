@@ -94,6 +94,29 @@ $msgAnular    = $msgs['CONFIRMAR_ANULAR_FACTURA'] ?? null;
                                 title="Ver detalle">
                                 <i class="bi bi-eye"></i>
                             </button>
+                            <a href="<?= $appUrl ?>/ventas/facturas/pdf?id=<?= $fac['ven_documento_id'] ?>"
+                               class="btn btn-sm btn-outline-secondary" title="PDF" target="_blank">
+                                <i class="bi bi-file-earmark-pdf"></i>
+                            </a>
+                            <?php if (($fac['sis_tipo_documento_codigo'] ?? $fac['tipo_nombre'] ?? '') !== 'NOTA_VENTA'): ?>
+                                <?php if ($estadoCod === 'CREADA'): ?>
+                                <button type="button"
+                                    class="btn btn-sm btn-outline-primary btn-enviar-sri"
+                                    data-id="<?= $fac['ven_documento_id'] ?>"
+                                    data-numero="<?= htmlspecialchars($fac['ven_documento_numero']) ?>"
+                                    title="Enviar al SRI">
+                                    <i class="bi bi-send"></i>
+                                </button>
+                                <?php elseif ($estadoCod === 'ERROR'): ?>
+                                <button type="button"
+                                    class="btn btn-sm btn-outline-warning btn-enviar-sri"
+                                    data-id="<?= $fac['ven_documento_id'] ?>"
+                                    data-numero="<?= htmlspecialchars($fac['ven_documento_numero']) ?>"
+                                    title="Reenviar al SRI">
+                                    <i class="bi bi-arrow-repeat"></i>
+                                </button>
+                                <?php endif; ?>
+                            <?php endif; ?>
                             <?php if ($permisos['editar'] && $estadoCod === 'CREADA'): ?>
                             <a href="<?= $appUrl ?>/ventas/facturas/editar?id=<?= $fac['ven_documento_id'] ?>"
                                class="btn btn-sm btn-outline-secondary" title="Editar">
@@ -104,7 +127,7 @@ $msgAnular    = $msgs['CONFIRMAR_ANULAR_FACTURA'] ?? null;
                             <button type="button"
                                 class="btn btn-sm btn-outline-danger btn-anular-factura"
                                 data-id="<?= $fac['ven_documento_id'] ?>"
-                                data-numero="<?= htmlspecialchars($fac['ven_documento_numero']) ?>"
+                                data-numero="<?= htmlspecialchars($fac['ven_documento_nombre'] ?? $fac['ven_documento_numero']) ?>"
                                 title="Anular">
                                 <i class="bi bi-x-circle"></i>
                             </button>
@@ -219,6 +242,45 @@ $msgAnular    = $msgs['CONFIRMAR_ANULAR_FACTURA'] ?? null;
             document.getElementById('cuerpoVerFactura').innerHTML = html;
         } catch {
             document.getElementById('cuerpoVerFactura').innerHTML = '<p class="text-danger">Error al cargar detalle.</p>';
+        }
+    });
+
+    // ── Enviar / Reenviar al SRI ─────────────────────────────────────────────
+    document.addEventListener('click', async (e) => {
+        const btn = e.target.closest('.btn-enviar-sri');
+        if (!btn) return;
+        const id     = parseInt(btn.dataset.id);
+        const numero = btn.dataset.numero;
+        const esReenvio = btn.classList.contains('btn-outline-warning');
+
+        const result = await Swal.fire({
+            title:             esReenvio ? 'Reenviar al SRI' : 'Enviar al SRI',
+            text:              (esReenvio ? 'Reintentar envío de la factura ' : 'Enviar la factura ') + numero + ' al SRI Ecuador.',
+            icon:              'question',
+            showCancelButton:  true,
+            confirmButtonText: esReenvio ? 'Sí, reenviar' : 'Sí, enviar',
+            cancelButtonText:  'Cancelar',
+            confirmButtonColor:'#1f6f68',
+        });
+        if (!result.isConfirmed) return;
+
+        Swal.fire({ title: 'Procesando...', text: 'Firmando y enviando al SRI. Por favor espere.', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+        try {
+            const resp = await fetch(appUrl + '/ventas/facturas/enviar-sri', {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ factura_id: id }),
+            });
+            const data = await resp.json();
+            if (data.ok) {
+                Swal.fire({ title: '¡Autorizada!', text: data.mensaje, icon: 'success' })
+                    .then(() => location.reload());
+            } else {
+                Swal.fire({ title: 'Error SRI', text: data.mensaje, icon: 'error' });
+            }
+        } catch {
+            Swal.fire({ title: 'Error', text: 'Error de conexión.', icon: 'error' });
         }
     });
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Intesis\Controladores;
 
+use Intesis\Modelos\BodegaModelo;
 use Intesis\Modelos\EstadoModelo;
 use Intesis\Modelos\MenuModelo;
 use Intesis\Modelos\MensajeSistemaModelo;
@@ -28,7 +29,8 @@ final class ConfiguracionControlador
         private SecuenciaModelo $secuenciaModelo,
         private MenuModelo $menuModelo,
         private Configuracion $configuracion,
-        private RegistroErrores $registroErrores
+        private RegistroErrores $registroErrores,
+        private BodegaModelo $bodegaModelo
     ) {
     }
 
@@ -123,6 +125,7 @@ final class ConfiguracionControlador
             'tiposDocumento' => $this->tipoDocumentoModelo->listar(),
             'secuencias' => $this->secuenciaModelo->listar($empresaFiltro),
             'empresasSecuencia' => $this->secuenciaModelo->listarEmpresasActivas($empresaFiltro),
+            'bodegasPorEmpresa' => $this->bodegaModelo->listarPorEmpresaParaSecuencia($empresaFiltro),
             'esSuperusuario' => $esSuperusuario,
         ]);
     }
@@ -147,6 +150,7 @@ final class ConfiguracionControlador
             'tiposDocumento' => [],
             'secuencias' => [],
             'empresasSecuencia' => [],
+            'bodegasPorEmpresa' => [],
             'esSuperusuario' => $this->esSuperusuario($usuario),
             'permisos' => $this->obtenerPermisos($usuario),
             'mensaje' => $this->sesion->consumirMensaje(),
@@ -449,6 +453,11 @@ final class ConfiguracionControlador
             $editar
                 ? $this->secuenciaModelo->actualizar((int) $secuencia['sis_secuencias_id'], $datos, (int) $usuario['id'])
                 : $this->secuenciaModelo->crear($datos, (int) $usuario['id']);
+            /* Si la bodega no tenía est/pto configurados, los guardamos ahora */
+            if (!empty($datos['bodega_id']) && $datos['bodega_id'] > 0
+                && !empty($datos['establecimiento']) && !empty($datos['punto_emision'])) {
+                $this->bodegaModelo->actualizarEstPto((int) $datos['bodega_id'], $datos['establecimiento'], $datos['punto_emision']);
+            }
             $this->sesion->guardarMensaje('success', $editar ? 'Secuencia actualizada' : 'Secuencia creada', 'Los cambios fueron guardados correctamente.');
         } catch (Throwable $excepcion) {
             $this->registrarErrorCrud($editar ? 'EDITAR SECUENCIA' : 'CREAR SECUENCIA', $excepcion);
@@ -618,6 +627,7 @@ final class ConfiguracionControlador
         return [
             'empresa_id' => $empresaId,
             'tipo_documento_id' => (int) ($_POST['tipo_documento_id'] ?? 0),
+            'bodega_id' => (int) ($_POST['bodega_id'] ?? 0),
             'establecimiento' => str_pad(preg_replace('/\D+/', '', (string) ($_POST['establecimiento'] ?? '')), 3, '0', STR_PAD_LEFT),
             'punto_emision' => str_pad(preg_replace('/\D+/', '', (string) ($_POST['punto_emision'] ?? '')), 3, '0', STR_PAD_LEFT),
             'desde' => (int) ($_POST['desde'] ?? 1),

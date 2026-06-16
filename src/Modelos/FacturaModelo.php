@@ -69,22 +69,59 @@ final class FacturaModelo
                    c.ven_cliente_tipo_identificacion,
                    c.ven_cliente_telefono,
                    c.ven_cliente_email,
+                   c.ven_cliente_direccion,
                    td.sis_tipo_documento_codigo AS tipo_codigo,
                    es.sis_estado_codigo,
                    es.sis_estado_nombre,
                    fp.ven_forma_pago_nombre,
-                   fp.ven_forma_pago_calculadora
+                   fp.ven_forma_pago_calculadora,
+                   fp.ven_forma_pago_codigo_sri,
+                   COALESCE(b.inv_bodega_establecimiento, '001') AS inv_bodega_establecimiento,
+                   COALESCE(b.inv_bodega_punto_emision,   '001') AS inv_bodega_punto_emision
             FROM ven_documento d
             INNER JOIN ven_cliente c         ON c.ven_cliente_id         = d.ven_cliente_id
             INNER JOIN sis_tipo_documento td ON td.sis_tipo_documento_id = d.sis_tipo_documento_id
             INNER JOIN sis_estado es         ON es.sis_estado_id         = d.sis_estado_id
             LEFT  JOIN ven_forma_pago fp     ON fp.ven_forma_pago_id     = d.ven_forma_pago_id
+            LEFT  JOIN inv_bodega b          ON b.inv_bodega_id          = d.inv_bodega_id
             WHERE d.ven_documento_id = :id
               AND d.sis_empresa_id   = :empresa_id
             LIMIT 1
         ");
         $sentencia->execute(['id' => $facturaId, 'empresa_id' => $empresaId]);
         return $sentencia->fetch() ?: null;
+    }
+
+    public function actualizarEstadoSri(int $facturaId, array $resultado, int $usuarioId): void
+    {
+        $estadoCodigo = $resultado['estado'] === 'AUTORIZADA' ? 'AUTORIZADA' : 'ERROR';
+        $estadoId     = $this->obtenerEstadoId($estadoCodigo);
+
+        $this->pdo()->prepare("
+            UPDATE ven_documento SET
+                sis_estado_id                    = :estado_id,
+                ven_documento_clave_acceso        = :clave,
+                ven_documento_autorizacion_sri    = :autorizacion,
+                ven_documento_fecha_autorizacion  = :fecha_auth,
+                ven_documento_xml_autorizado      = :xml,
+                ven_documento_respuesta_sri       = :respuesta,
+                ven_documento_ambiente_sri        = :ambiente,
+                ven_documento_codigo_numerico     = :codigo_numerico,
+                usuario_modifica                  = :usuario,
+                fecha_modifica                    = now()
+            WHERE ven_documento_id = :id
+        ")->execute([
+            'estado_id'       => $estadoId,
+            'clave'           => $resultado['clave_acceso']       ?? null,
+            'autorizacion'    => $resultado['autorizacion']        ?: null,
+            'fecha_auth'      => $resultado['fecha_autorizacion']  ?: null,
+            'xml'             => $resultado['xml_autorizado']      ?: null,
+            'respuesta'       => $resultado['respuesta_sri']       ?? null,
+            'ambiente'        => $resultado['ambiente']            ?? null,
+            'codigo_numerico' => $resultado['codigo_numerico']     ?? null,
+            'usuario'         => $usuarioId,
+            'id'              => $facturaId,
+        ]);
     }
 
     public function listarDetalle(int $facturaId): array
@@ -119,7 +156,8 @@ final class FacturaModelo
         try {
             $empresaId = (int) $cabecera['empresa_id'];
             $tipoCodigo = $cabecera['tipo_doc'] === 'NOTA_VENTA' ? 'NOTA_VENTA' : 'FACTURA_VENTA';
-            $numero    = $this->secuenciaModelo->obtenerSiguiente($pdo, $empresaId, $tipoCodigo, 'VENTAS');
+            $bodegaId  = $this->obtenerBodegaId($pdo, $empresaId, $usuarioId);
+            $numero    = $this->secuenciaModelo->obtenerSiguiente($pdo, $empresaId, $tipoCodigo, 'VENTAS', $bodegaId);
 
             $this->validarStock($pdo, $empresaId, $lineas);
 
@@ -150,7 +188,7 @@ final class FacturaModelo
                 'cliente_id'             => $cabecera['cliente_id'],
                 'tipo_id'                => $this->obtenerTipoDocumentoId($tipoCodigo),
                 'usuarios_id'            => $usuarioId,
-                'bodega_id'              => $this->obtenerBodegaId($pdo, $empresaId, $usuarioId),
+                'bodega_id'              => $bodegaId,
                 'numero'                 => $numero,
                 'fecha_emision'          => $cabecera['fecha_emision'] !== '' ? $cabecera['fecha_emision'] : date('Y-m-d'),
                 'subtotal'               => $cabecera['subtotal'],
@@ -167,7 +205,6 @@ final class FacturaModelo
             ]);
             $facturaId = (int) $stmt->fetchColumn();
 
-            $bodegaId = $this->obtenerBodegaId($pdo, $empresaId, $usuarioId);
             $this->insertarLineasYDescontarStock($pdo, $facturaId, $empresaId, $bodegaId, $numero, $lineas, $usuarioId);
 
             $this->generarCxcSiAplica($pdo, $facturaId, $empresaId, (int) $cabecera['cliente_id'], $cabecera['forma_pago_id'], $cabecera['total'], $usuarioId);
@@ -418,7 +455,11 @@ final class FacturaModelo
         $stmt = $this->pdo()->prepare("
             SELECT sis_empresa_ruc, sis_empresa_razon_social,
                    sis_empresa_nombre_comercial, sis_empresa_direccion,
-                   sis_empresa_telefono, sis_empresa_email
+                   sis_empresa_telefono, sis_empresa_email,
+                   sis_empresa_ambiente_sri,
+                   sis_empresa_certificado_ruta,
+                   sis_empresa_certificado_clave,
+                   sis_empresa_num_contribuyente_especial
             FROM sis_empresa WHERE sis_empresa_id = :id LIMIT 1
         ");
         $stmt->execute(['id' => $empresaId]);
