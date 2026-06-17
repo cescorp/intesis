@@ -216,6 +216,7 @@ $appUrl = rtrim($configuracion->obtener('APP_URL', ''), '/');
 
 <script>
 window.INTESIS_BODEGAS_MOVIMIENTO = <?= json_encode($bodegas, JSON_UNESCAPED_UNICODE) ?>;
+window.INTESIS_BODEGAS_DESTINO = <?= json_encode($bodegasDestino, JSON_UNESCAPED_UNICODE) ?>;
 window.INTESIS_MOVIMIENTO_PERMISOS = <?= json_encode($permisos, JSON_UNESCAPED_UNICODE) ?>;
 window.INTESIS_APP_URL = <?= json_encode($appUrl, JSON_UNESCAPED_UNICODE) ?>;
 </script>

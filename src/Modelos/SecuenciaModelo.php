@@ -247,7 +247,6 @@ final class SecuenciaModelo
             $sentencia->execute(['empresa_id' => $empresaId, 'tipo_codigo' => $tipoCodigo, 'modulo' => $modulo]);
             $secuencia = $sentencia->fetch(\PDO::FETCH_ASSOC);
         }
-        $secuencia = $sentencia->fetch(\PDO::FETCH_ASSOC);
 
         if (!$secuencia) {
             throw new \RuntimeException(

@@ -2098,9 +2098,11 @@
     let lineaProductoMovimientoActiva = null;
     let terminoPendienteBusquedaMovimiento = null;
     const bodegasMovimiento = window.INTESIS_BODEGAS_MOVIMIENTO || [];
+    const bodegasDestino    = window.INTESIS_BODEGAS_DESTINO    || [];
     const permisosMovimiento = window.INTESIS_MOVIMIENTO_PERMISOS || {};
 
     const opcionesBodegaMovimiento = (seleccionado = '') => bodegasMovimiento.map((bodega) => `<option value="${bodega.inv_bodega_id}" ${String(seleccionado) === String(bodega.inv_bodega_id) ? 'selected' : ''}>${escaparHtml(bodega.inv_bodega_codigo)} - ${escaparHtml(bodega.inv_bodega_nombre)}</option>`).join('');
+    const opcionesBodegaDestino    = (seleccionado = '') => bodegasDestino.map((bodega)    => `<option value="${bodega.inv_bodega_id}" ${String(seleccionado) === String(bodega.inv_bodega_id) ? 'selected' : ''}>${escaparHtml(bodega.inv_bodega_codigo)} - ${escaparHtml(bodega.inv_bodega_nombre)}</option>`).join('');
 
     const accionesMovimiento = (tipo) => {
         if (tipo === 'AJUSTE') {
@@ -2160,7 +2162,7 @@
             <td><select class="form-control form-control-sm mov-linea-accion" ${tipo === 'TRANSFERENCIA' ? 'disabled' : ''}>${accionesMovimiento(tipo)}</select></td>
             <td><select class="form-control form-control-sm mov-linea-origen"><option value="">Origen</option>${opcionesBodegaMovimiento()}</select></td>
             <td class="text-center mov-linea-stock-origen text-muted">—</td>
-            <td><select class="form-control form-control-sm mov-linea-destino"><option value="">Destino</option>${opcionesBodegaMovimiento()}</select></td>
+            <td><select class="form-control form-control-sm mov-linea-destino"><option value="">Destino</option>${tipo === 'TRANSFERENCIA' ? opcionesBodegaDestino() : opcionesBodegaMovimiento()}</select></td>
             <td class="text-center"><input type="number" min="1" step="1" class="form-control form-control-sm text-center mov-linea-cantidad" value="1"></td>
             <td class="text-end mov-linea-total">0.00</td>
             <td><button type="button" class="btn btn-accion btn-eliminar-linea-movimiento"><i class="bi bi-trash3"></i></button></td>

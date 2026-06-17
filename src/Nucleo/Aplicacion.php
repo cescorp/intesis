@@ -24,6 +24,7 @@ use Intesis\Controladores\DocumentoCompraControlador;
 use Intesis\Controladores\ClienteControlador;
 use Intesis\Controladores\ProformaControlador;
 use Intesis\Controladores\FacturaControlador;
+use Intesis\Controladores\LicenciaControlador;
 use Intesis\Controladores\UsuarioControlador;
 use Intesis\Modelos\EmpresaModelo;
 use Intesis\Modelos\ArchivoProductoModelo;
@@ -46,6 +47,7 @@ use Intesis\Modelos\DocumentoCompraModelo;
 use Intesis\Modelos\ClienteModelo;
 use Intesis\Modelos\ProformaModelo;
 use Intesis\Modelos\FacturaModelo;
+use Intesis\Modelos\LicenciaModelo;
 use Intesis\Modelos\TipoDocumentoModelo;
 use Intesis\Modelos\UsuarioEmpresaModelo;
 use Intesis\Modelos\UsuarioModelo;
@@ -128,6 +130,8 @@ final class Aplicacion
             )
         );
 
+        $licenciaModelo = new LicenciaModelo($conexion);
+
         $this->enrutador = new Enrutador(
             new AutenticacionControlador($vista, $sesion, $autenticacionServicio, $configuracion),
             new PanelControlador($vista, $sesion, $moduloModelo, $menuModelo, $configuracion),
@@ -150,6 +154,7 @@ final class Aplicacion
             new ClienteControlador($vista, $sesion, $clienteModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
             new ProformaControlador($vista, $sesion, $proformaModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores, $generadorPdf),
             new FacturaControlador($vista, $sesion, $facturaModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores, $generadorPdf, $facturacionElectronicaServicio),
+            new LicenciaControlador($vista, $sesion, $licenciaModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
             $configuracion,
             $vista,
             $sesion

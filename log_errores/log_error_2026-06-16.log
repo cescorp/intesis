@@ -176,3 +176,443 @@ DETAIL:  Ya existe la llave (sis_empresa_ruc)=(1792009863001).
 Linea:   174
 ################################################
 
+################################################
+Fecha:   2026-06-16 17:44:37
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_INACTIVAR_PROVEEDOR
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-16 17:44:41
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_INACTIVAR_PROVEEDOR
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-16 17:44:42
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-16 21:47:20
+Archivo: C:\xampp\htdocs\intesis\src\Modelos\SecuenciaModelo.php
+Detalle: CREAR MOVIMIENTO INTERNO
+Error:   No hay una secuencia activa para el tipo de documento AJUSTE. Configure una en Sistema → Configuracion → Tipos documento.
+Linea:   253
+################################################
+
+################################################
+Fecha:   2026-06-16 21:48:34
+Archivo: C:\xampp\htdocs\intesis\src\Modelos\SecuenciaModelo.php
+Detalle: CREAR MOVIMIENTO INTERNO
+Error:   No hay una secuencia activa para el tipo de documento AJUSTE. Configure una en Sistema → Configuracion → Tipos documento.
+Linea:   253
+################################################
+
+################################################
+Fecha:   2026-06-16 21:49:32
+Archivo: C:\xampp\htdocs\intesis\src\Modelos\SecuenciaModelo.php
+Detalle: CREAR MOVIMIENTO INTERNO
+Error:   No hay una secuencia activa para el tipo de documento AJUSTE. Configure una en Sistema → Configuracion → Tipos documento.
+Linea:   253
+################################################
+
+################################################
+Fecha:   2026-06-16 21:51:21
+Archivo: C:\xampp\htdocs\intesis\src\Modelos\SecuenciaModelo.php
+Detalle: CREAR MOVIMIENTO INTERNO
+Error:   No hay una secuencia activa para el tipo de documento AJUSTE. Configure una en Sistema → Configuracion → Tipos documento.
+Linea:   253
+################################################
+
+################################################
+Fecha:   2026-06-16 21:51:52
+Archivo: C:\xampp\htdocs\intesis\src\Modelos\SecuenciaModelo.php
+Detalle: CREAR MOVIMIENTO INTERNO
+Error:   No hay una secuencia activa para el tipo de documento AJUSTE. Configure una en Sistema → Configuracion → Tipos documento.
+Linea:   253
+################################################
+
+################################################
+Fecha:   2026-06-16 21:53:09
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_INACTIVAR_PROVEEDOR
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-16 21:53:34
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-16 21:59:46
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-16 22:01:34
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-16 22:01:39
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-16 22:01:40
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-16 22:01:41
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-16 22:01:51
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-16 22:03:26
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-16 22:04:40
+Archivo: C:\xampp\htdocs\intesis\src\Controladores\KardexControlador.php
+Detalle: PDF KARDEX
+Error:   Documento no valido para PDF.
+Linea:   101
+################################################
+
+################################################
+Fecha:   2026-06-16 22:06:41
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_DOCUMENTO
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-16 22:06:51
+Archivo: C:\xampp\htdocs\intesis\src\Servicios\SriXmlServicio.php
+Detalle: ERROR PHP NIVEL 2
+Error:   file_get_contents(): Peer certificate CN=`srienlinea.sri.gob.ec' did not match expected CN=`181.113.227.222'
+Linea:   338
+################################################
+
+################################################
+Fecha:   2026-06-16 22:06:51
+Archivo: C:\xampp\htdocs\intesis\src\Servicios\SriXmlServicio.php
+Detalle: ERROR PHP NIVEL 2
+Error:   file_get_contents(): Failed to enable crypto
+Linea:   338
+################################################
+
+################################################
+Fecha:   2026-06-16 22:06:51
+Archivo: C:\xampp\htdocs\intesis\src\Servicios\SriXmlServicio.php
+Detalle: ERROR PHP NIVEL 2
+Error:   file_get_contents(https://cel.sri.gob.ec/comprobantes-electronicos-ws/AutorizacionComprobantesOffline?wsdl): Failed to open stream: operation failed
+Linea:   338
+################################################
+
+################################################
+Fecha:   2026-06-16 22:06:51
+Archivo: C:\xampp\htdocs\intesis\src\Servicios\SriXmlServicio.php
+Detalle: ERROR PHP NIVEL 2
+Error:   file_get_contents(): Peer certificate CN=`srienlinea.sri.gob.ec' did not match expected CN=`181.113.227.222'
+Linea:   338
+################################################
+
+################################################
+Fecha:   2026-06-16 22:06:51
+Archivo: C:\xampp\htdocs\intesis\src\Servicios\SriXmlServicio.php
+Detalle: ERROR PHP NIVEL 2
+Error:   file_get_contents(): Failed to enable crypto
+Linea:   338
+################################################
+
+################################################
+Fecha:   2026-06-16 22:06:51
+Archivo: C:\xampp\htdocs\intesis\src\Servicios\SriXmlServicio.php
+Detalle: ERROR PHP NIVEL 2
+Error:   file_get_contents(https://cel.sri.gob.ec/comprobantes-electronicos-ws/AutorizacionComprobantesOffline?wsdl): Failed to open stream: operation failed
+Linea:   338
+################################################
+
+################################################
+Fecha:   2026-06-16 22:07:14
+Archivo: C:\xampp\htdocs\intesis\src\Servicios\SriXmlServicio.php
+Detalle: ERROR PHP NIVEL 2
+Error:   file_get_contents(): Peer certificate CN=`srienlinea.sri.gob.ec' did not match expected CN=`181.113.227.222'
+Linea:   338
+################################################
+
+################################################
+Fecha:   2026-06-16 22:07:14
+Archivo: C:\xampp\htdocs\intesis\src\Servicios\SriXmlServicio.php
+Detalle: ERROR PHP NIVEL 2
+Error:   file_get_contents(): Failed to enable crypto
+Linea:   338
+################################################
+
+################################################
+Fecha:   2026-06-16 22:07:14
+Archivo: C:\xampp\htdocs\intesis\src\Servicios\SriXmlServicio.php
+Detalle: ERROR PHP NIVEL 2
+Error:   file_get_contents(https://cel.sri.gob.ec/comprobantes-electronicos-ws/AutorizacionComprobantesOffline?wsdl): Failed to open stream: operation failed
+Linea:   338
+################################################
+
+################################################
+Fecha:   2026-06-16 22:07:14
+Archivo: C:\xampp\htdocs\intesis\src\Servicios\SriXmlServicio.php
+Detalle: ERROR PHP NIVEL 2
+Error:   file_get_contents(): Peer certificate CN=`srienlinea.sri.gob.ec' did not match expected CN=`181.113.227.222'
+Linea:   338
+################################################
+
+################################################
+Fecha:   2026-06-16 22:07:14
+Archivo: C:\xampp\htdocs\intesis\src\Servicios\SriXmlServicio.php
+Detalle: ERROR PHP NIVEL 2
+Error:   file_get_contents(): Failed to enable crypto
+Linea:   338
+################################################
+
+################################################
+Fecha:   2026-06-16 22:07:14
+Archivo: C:\xampp\htdocs\intesis\src\Servicios\SriXmlServicio.php
+Detalle: ERROR PHP NIVEL 2
+Error:   file_get_contents(https://cel.sri.gob.ec/comprobantes-electronicos-ws/AutorizacionComprobantesOffline?wsdl): Failed to open stream: operation failed
+Linea:   338
+################################################
+
+################################################
+Fecha:   2026-06-16 22:07:29
+Archivo: C:\xampp\htdocs\intesis\src\Servicios\SriXmlServicio.php
+Detalle: ERROR PHP NIVEL 2
+Error:   file_get_contents(): Peer certificate CN=`srienlinea.sri.gob.ec' did not match expected CN=`181.113.227.222'
+Linea:   338
+################################################
+
+################################################
+Fecha:   2026-06-16 22:07:29
+Archivo: C:\xampp\htdocs\intesis\src\Servicios\SriXmlServicio.php
+Detalle: ERROR PHP NIVEL 2
+Error:   file_get_contents(): Failed to enable crypto
+Linea:   338
+################################################
+
+################################################
+Fecha:   2026-06-16 22:07:29
+Archivo: C:\xampp\htdocs\intesis\src\Servicios\SriXmlServicio.php
+Detalle: ERROR PHP NIVEL 2
+Error:   file_get_contents(https://cel.sri.gob.ec/comprobantes-electronicos-ws/AutorizacionComprobantesOffline?wsdl): Failed to open stream: operation failed
+Linea:   338
+################################################
+
+################################################
+Fecha:   2026-06-16 22:07:30
+Archivo: C:\xampp\htdocs\intesis\src\Servicios\SriXmlServicio.php
+Detalle: ERROR PHP NIVEL 2
+Error:   file_get_contents(): Peer certificate CN=`srienlinea.sri.gob.ec' did not match expected CN=`181.113.227.222'
+Linea:   338
+################################################
+
+################################################
+Fecha:   2026-06-16 22:07:30
+Archivo: C:\xampp\htdocs\intesis\src\Servicios\SriXmlServicio.php
+Detalle: ERROR PHP NIVEL 2
+Error:   file_get_contents(): Failed to enable crypto
+Linea:   338
+################################################
+
+################################################
+Fecha:   2026-06-16 22:07:30
+Archivo: C:\xampp\htdocs\intesis\src\Servicios\SriXmlServicio.php
+Detalle: ERROR PHP NIVEL 2
+Error:   file_get_contents(https://cel.sri.gob.ec/comprobantes-electronicos-ws/AutorizacionComprobantesOffline?wsdl): Failed to open stream: operation failed
+Linea:   338
+################################################
+
+################################################
+Fecha:   2026-06-16 22:07:47
+Archivo: C:\xampp\htdocs\intesis\src\Servicios\SriXmlServicio.php
+Detalle: ERROR PHP NIVEL 2
+Error:   file_get_contents(): Peer certificate CN=`srienlinea.sri.gob.ec' did not match expected CN=`181.113.227.222'
+Linea:   338
+################################################
+
+################################################
+Fecha:   2026-06-16 22:07:47
+Archivo: C:\xampp\htdocs\intesis\src\Servicios\SriXmlServicio.php
+Detalle: ERROR PHP NIVEL 2
+Error:   file_get_contents(): Failed to enable crypto
+Linea:   338
+################################################
+
+################################################
+Fecha:   2026-06-16 22:07:47
+Archivo: C:\xampp\htdocs\intesis\src\Servicios\SriXmlServicio.php
+Detalle: ERROR PHP NIVEL 2
+Error:   file_get_contents(https://cel.sri.gob.ec/comprobantes-electronicos-ws/AutorizacionComprobantesOffline?wsdl): Failed to open stream: operation failed
+Linea:   338
+################################################
+
+################################################
+Fecha:   2026-06-16 22:07:47
+Archivo: C:\xampp\htdocs\intesis\src\Servicios\SriXmlServicio.php
+Detalle: ERROR PHP NIVEL 2
+Error:   file_get_contents(): Peer certificate CN=`srienlinea.sri.gob.ec' did not match expected CN=`181.113.227.222'
+Linea:   338
+################################################
+
+################################################
+Fecha:   2026-06-16 22:07:47
+Archivo: C:\xampp\htdocs\intesis\src\Servicios\SriXmlServicio.php
+Detalle: ERROR PHP NIVEL 2
+Error:   file_get_contents(): Failed to enable crypto
+Linea:   338
+################################################
+
+################################################
+Fecha:   2026-06-16 22:07:47
+Archivo: C:\xampp\htdocs\intesis\src\Servicios\SriXmlServicio.php
+Detalle: ERROR PHP NIVEL 2
+Error:   file_get_contents(https://cel.sri.gob.ec/comprobantes-electronicos-ws/AutorizacionComprobantesOffline?wsdl): Failed to open stream: operation failed
+Linea:   338
+################################################
+
+################################################
+Fecha:   2026-06-16 22:07:47
+Archivo: C:\xampp\htdocs\intesis\src\Servicios\SriXmlServicio.php
+Detalle: ERROR PHP NIVEL 2
+Error:   file_get_contents(): Peer certificate CN=`srienlinea.sri.gob.ec' did not match expected CN=`181.113.227.222'
+Linea:   338
+################################################
+
+################################################
+Fecha:   2026-06-16 22:07:47
+Archivo: C:\xampp\htdocs\intesis\src\Servicios\SriXmlServicio.php
+Detalle: ERROR PHP NIVEL 2
+Error:   file_get_contents(): Failed to enable crypto
+Linea:   338
+################################################
+
+################################################
+Fecha:   2026-06-16 22:07:47
+Archivo: C:\xampp\htdocs\intesis\src\Servicios\SriXmlServicio.php
+Detalle: ERROR PHP NIVEL 2
+Error:   file_get_contents(https://cel.sri.gob.ec/comprobantes-electronicos-ws/AutorizacionComprobantesOffline?wsdl): Failed to open stream: operation failed
+Linea:   338
+################################################
+
+################################################
+Fecha:   2026-06-16 22:07:48
+Archivo: C:\xampp\htdocs\intesis\src\Servicios\SriXmlServicio.php
+Detalle: ERROR PHP NIVEL 2
+Error:   file_get_contents(): Peer certificate CN=`srienlinea.sri.gob.ec' did not match expected CN=`181.113.227.222'
+Linea:   338
+################################################
+
+################################################
+Fecha:   2026-06-16 22:07:48
+Archivo: C:\xampp\htdocs\intesis\src\Servicios\SriXmlServicio.php
+Detalle: ERROR PHP NIVEL 2
+Error:   file_get_contents(): Failed to enable crypto
+Linea:   338
+################################################
+
+################################################
+Fecha:   2026-06-16 22:07:48
+Archivo: C:\xampp\htdocs\intesis\src\Servicios\SriXmlServicio.php
+Detalle: ERROR PHP NIVEL 2
+Error:   file_get_contents(https://cel.sri.gob.ec/comprobantes-electronicos-ws/AutorizacionComprobantesOffline?wsdl): Failed to open stream: operation failed
+Linea:   338
+################################################
+
+################################################
+Fecha:   2026-06-16 22:07:49
+Archivo: C:\xampp\htdocs\intesis\src\Servicios\SriXmlServicio.php
+Detalle: ERROR PHP NIVEL 2
+Error:   file_get_contents(): Peer certificate CN=`srienlinea.sri.gob.ec' did not match expected CN=`181.113.227.222'
+Linea:   338
+################################################
+
+################################################
+Fecha:   2026-06-16 22:07:49
+Archivo: C:\xampp\htdocs\intesis\src\Servicios\SriXmlServicio.php
+Detalle: ERROR PHP NIVEL 2
+Error:   file_get_contents(): Failed to enable crypto
+Linea:   338
+################################################
+
+################################################
+Fecha:   2026-06-16 22:07:49
+Archivo: C:\xampp\htdocs\intesis\src\Servicios\SriXmlServicio.php
+Detalle: ERROR PHP NIVEL 2
+Error:   file_get_contents(https://cel.sri.gob.ec/comprobantes-electronicos-ws/AutorizacionComprobantesOffline?wsdl): Failed to open stream: operation failed
+Linea:   338
+################################################
+
+################################################
+Fecha:   2026-06-16 22:10:58
+Archivo: C:\xampp\htdocs\intesis\src\Controladores\ProformaControlador.php
+Detalle: GUARDAR PROFORMA
+Error:   Seleccione una forma de pago.
+Linea:   369
+################################################
+
+################################################
+Fecha:   2026-06-16 22:13:54
+Archivo: N/A
+Detalle: AVISO
+Error:   MENSAJE NO CONFIGURADO: CONFIRMAR_ANULAR_FACTURA
+Linea:   N/A
+################################################
+
+################################################
+Fecha:   2026-06-16 22:21:01
+Archivo: C:\xampp\htdocs\intesis\src\Modelos\SecuenciaModelo.php
+Detalle: CREAR MOVIMIENTO INTERNO
+Error:   No hay una secuencia activa para el tipo de documento TRANSFERENCIA. Configure una en Sistema → Configuracion → Tipos documento.
+Linea:   252
+################################################
+

@@ -152,6 +152,25 @@ final class MovimientoInternoModelo
 
     /**
      * ***************************************************************************
+     * * LISTA TODAS LAS BODEGAS ACTIVAS DE LA EMPRESA (SIN FILTRO DE USUARIO).
+     * ***************************************************************************
+     */
+    public function listarTodasBodegasActivas(int $empresaId): array
+    {
+        $sentencia = $this->conexionBaseDatos->obtener()->prepare("
+            SELECT b.*
+            FROM inv_bodega b
+            INNER JOIN sis_estado es ON es.sis_estado_id = b.sis_estado_id
+            WHERE b.sis_empresa_id = :empresa_id
+              AND es.sis_estado_codigo = 'ACTIVO'
+            ORDER BY b.inv_bodega_codigo
+        ");
+        $sentencia->execute(['empresa_id' => $empresaId]);
+        return $sentencia->fetchAll();
+    }
+
+    /**
+     * ***************************************************************************
      * * BUSCA PRODUCTOS PARA MODAL DE SELECCION. FILTRA SALDOS POR BODEGA.
      * * SI bodegaId > 0, SOLO MUESTRA SALDO DE ESA BODEGA Y NO DE TODA LA EMPRESA.
      * ***************************************************************************

@@ -73,6 +73,8 @@ require_once __DIR__ . '/src/Controladores/DocumentoCompraControlador.php';
 require_once __DIR__ . '/src/Controladores/ClienteControlador.php';
 require_once __DIR__ . '/src/Controladores/ProformaControlador.php';
 require_once __DIR__ . '/src/Controladores/FacturaControlador.php';
+require_once __DIR__ . '/src/Modelos/LicenciaModelo.php';
+require_once __DIR__ . '/src/Controladores/LicenciaControlador.php';
 
 use Intesis\Nucleo\Aplicacion;
 

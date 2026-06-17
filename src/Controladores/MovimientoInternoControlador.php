@@ -48,6 +48,7 @@ final class MovimientoInternoControlador
             'movimientos' => $this->movimientoInternoModelo->listar($empresaId),
             'transferenciasPendientes' => $this->movimientoInternoModelo->listarTransferenciasPendientes($empresaId, (int) $usuario['id'], $superusuario),
             'bodegas' => $this->movimientoInternoModelo->listarBodegasPermitidas($empresaId, (int) $usuario['id'], $superusuario),
+            'bodegasDestino' => $this->movimientoInternoModelo->listarTodasBodegasActivas($empresaId),
             'permisos' => $this->obtenerPermisos($usuario),
             'mensaje' => $this->sesion->consumirMensaje(),
             'mensajesSistema' => $this->mensajeSistemaModelo->listarPorCodigos(['USUARIO_DATOS_OBLIGATORIOS']),
@@ -253,7 +254,7 @@ final class MovimientoInternoControlador
             if ($origen > 0 && !in_array($origen, $idsPermitidos, true)) {
                 throw new \InvalidArgumentException('No tiene permiso para usar la bodega origen.');
             }
-            if ($destino > 0 && !in_array($destino, $idsPermitidos, true)) {
+            if ($destino > 0 && $tipo !== 'TRANSFERENCIA' && !in_array($destino, $idsPermitidos, true)) {
                 throw new \InvalidArgumentException('No tiene permiso para usar la bodega destino.');
             }
             if ($tipo === 'AJUSTE') {

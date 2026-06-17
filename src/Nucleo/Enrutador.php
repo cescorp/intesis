@@ -24,6 +24,7 @@ use Intesis\Controladores\DocumentoCompraControlador;
 use Intesis\Controladores\ClienteControlador;
 use Intesis\Controladores\ProformaControlador;
 use Intesis\Controladores\FacturaControlador;
+use Intesis\Controladores\LicenciaControlador;
 use Intesis\Controladores\UsuarioControlador;
 use Intesis\Nucleo\Sesion;
 use Intesis\Nucleo\Vista;
@@ -52,6 +53,7 @@ final class Enrutador
         private ClienteControlador $clienteControlador,
         private ProformaControlador $proformaControlador,
         private FacturaControlador $facturaControlador,
+        private LicenciaControlador $licenciaControlador,
         private Configuracion $configuracion,
         private Vista $vista,
         private Sesion $sesion
@@ -320,6 +322,21 @@ final class Enrutador
 
         if ($metodo === 'POST' && $ruta === '/sistema/configuracion/secuencias/inactivar') {
             $this->configuracionControlador->inactivarSecuencia();
+            return;
+        }
+
+        if ($metodo === 'GET' && $ruta === '/sistema/configuracion/licencia') {
+            $this->licenciaControlador->listar();
+            return;
+        }
+
+        if ($metodo === 'POST' && $ruta === '/sistema/configuracion/licencia/activar') {
+            $this->licenciaControlador->activar();
+            return;
+        }
+
+        if ($metodo === 'POST' && $ruta === '/sistema/configuracion/licencia/generar') {
+            $this->licenciaControlador->generar();
             return;
         }
 
