@@ -27,15 +27,15 @@ final class ConexionBaseDatos
 
         $dsn = sprintf(
             'pgsql:host=%s;port=%s;dbname=%s',
-            $this->configuracion->obtener('DB_HOST', '127.0.0.1'),
+            $this->configuracion->obtener('DB_HOST'),
             $this->configuracion->obtener('DB_PORT', '5432'),
-            $this->configuracion->obtener('DB_DATABASE', 'intesis')
+            $this->configuracion->obtener('DB_DATABASE')
         );
 
         $this->conexion = new PDO(
             $dsn,
-            $this->configuracion->obtener('DB_USERNAME', 'postgres'),
-            $this->configuracion->obtener('DB_PASSWORD', ''),
+            $this->configuracion->obtener('DB_USERNAME'),
+            $this->configuracion->obtener('DB_PASSWORD'),
             [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,

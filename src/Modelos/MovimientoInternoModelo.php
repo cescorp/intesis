@@ -51,25 +51,43 @@ final class MovimientoInternoModelo
      */
     public function listarTransferenciasPendientes(int $empresaId, int $usuarioId, bool $superusuario): array
     {
-        $bodegas = $this->listarBodegasPermitidas($empresaId, $usuarioId, $superusuario);
-        $ids = array_map(fn (array $bodega): int => (int) $bodega['inv_bodega_id'], $bodegas);
-        if (!$ids) {
-            return [];
+        $pdo = $this->conexionBaseDatos->obtener();
+
+        if ($superusuario) {
+            $sentencia = $pdo->prepare("
+                SELECT m.*, bo.inv_bodega_codigo AS bodega_origen, bd.inv_bodega_codigo AS bodega_destino
+                FROM inv_movimientos m
+                INNER JOIN sis_estado es ON es.sis_estado_id = m.sis_estado_id
+                INNER JOIN inv_bodega bo ON bo.inv_bodega_id = m.inv_bodega_origen_id
+                INNER JOIN inv_bodega bd ON bd.inv_bodega_id = m.inv_bodega_destino_id
+                WHERE m.sis_empresa_id = :empresa_id
+                  AND m.inv_movimientos_tipo = 'TRANSFERENCIA'
+                  AND es.sis_estado_codigo = 'EN_TRANSITO'
+                ORDER BY m.fecha_crea
+            ");
+            $sentencia->execute(['empresa_id' => $empresaId]);
+
+            return $sentencia->fetchAll();
         }
-        $marcadores = implode(',', array_fill(0, count($ids), '?'));
-        $sentencia = $this->conexionBaseDatos->obtener()->prepare("
+
+        /* Para usuarios normales: solo transferencias cuya bodega destino esté
+           explícitamente asignada al usuario en inv_bodega_usuarios. Sin fallback. */
+        $sentencia = $pdo->prepare("
             SELECT m.*, bo.inv_bodega_codigo AS bodega_origen, bd.inv_bodega_codigo AS bodega_destino
             FROM inv_movimientos m
             INNER JOIN sis_estado es ON es.sis_estado_id = m.sis_estado_id
             INNER JOIN inv_bodega bo ON bo.inv_bodega_id = m.inv_bodega_origen_id
             INNER JOIN inv_bodega bd ON bd.inv_bodega_id = m.inv_bodega_destino_id
-            WHERE m.sis_empresa_id = ?
+            INNER JOIN inv_bodega_usuarios bu ON bu.inv_bodega_id = m.inv_bodega_destino_id
+                AND bu.sis_empresa_id = :empresa_id
+                AND bu.sis_usuarios_id = :usuario_id
+                AND bu.inv_bodega_usuarios_estado = 1
+            WHERE m.sis_empresa_id = :empresa_id
               AND m.inv_movimientos_tipo = 'TRANSFERENCIA'
               AND es.sis_estado_codigo = 'EN_TRANSITO'
-              AND m.inv_bodega_destino_id IN ({$marcadores})
             ORDER BY m.fecha_crea
         ");
-        $sentencia->execute(array_merge([$empresaId], $ids));
+        $sentencia->execute(['empresa_id' => $empresaId, 'usuario_id' => $usuarioId]);
 
         return $sentencia->fetchAll();
     }
@@ -100,6 +118,42 @@ final class MovimientoInternoModelo
         }
 
         return false;
+    }
+
+    /**
+     * ***************************************************************************
+     * * VERIFICA SI EL USUARIO TIENE ASIGNADA LA BODEGA ORIGEN DEL MOVIMIENTO.
+     * ***************************************************************************
+     */
+    public function usuarioPuedeDespachar(int $empresaId, int $movimientoId, int $usuarioId, bool $superusuario): bool
+    {
+        if ($superusuario) {
+            return true;
+        }
+        $sentencia = $this->conexionBaseDatos->obtener()->prepare("
+            SELECT inv_bodega_origen_id
+            FROM inv_movimientos
+            WHERE sis_empresa_id = :empresa_id
+              AND inv_movimientos_id = :movimiento_id
+            LIMIT 1
+        ");
+        $sentencia->execute(['empresa_id' => $empresaId, 'movimiento_id' => $movimientoId]);
+        $origenId = (int) $sentencia->fetchColumn();
+        if ($origenId <= 0) {
+            return false;
+        }
+        $sentencia = $this->conexionBaseDatos->obtener()->prepare("
+            SELECT 1
+            FROM inv_bodega_usuarios
+            WHERE sis_empresa_id = :empresa_id
+              AND sis_usuarios_id = :usuario_id
+              AND inv_bodega_id = :bodega_id
+              AND inv_bodega_usuarios_estado = 1
+            LIMIT 1
+        ");
+        $sentencia->execute(['empresa_id' => $empresaId, 'usuario_id' => $usuarioId, 'bodega_id' => $origenId]);
+
+        return (bool) $sentencia->fetchColumn();
     }
 
     /**

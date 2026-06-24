@@ -2487,6 +2487,7 @@
         const lineas = datos.lineas || [];
         const puedeAnularProcesado = Boolean(datos.puede_anular_procesado);
         const puedeRecibir = Boolean(datos.puede_recibir);
+        const puedeDespachar = Boolean(datos.puede_despachar);
         const estado = String(cab.sis_estado_codigo || '');
         const permisos = window.INTESIS_MOVIMIENTO_PERMISOS || {};
         const appUrl = window.INTESIS_APP_URL || '';
@@ -2601,13 +2602,14 @@
         let botonesHtml = '';
 
         if (estado === 'PENDIENTE') {
+            const esTrans = cab.inv_movimientos_tipo === 'TRANSFERENCIA';
             if (permisos.editar) {
                 botonesHtml += `<button type="button" class="btn btn-secundario btn-detalle-editar" data-id="${escaparHtml(movId)}" data-detalle="${escaparHtml(cab.inv_movimientos_observacion || '')}" data-bs-target="#modalEditarMovimiento" data-bs-toggle="modal"><i class="bi bi-pencil-square"></i> Editar obs.</button>`;
             }
-            if (permisos.aprobar) {
+            if (permisos.aprobar && (!esTrans || puedeRecibir)) {
                 botonesHtml += botonAccion('bi-check2-square', 'Aprobar', 'btn-activar', 'aprobar');
             }
-            if (permisos.anular) {
+            if (permisos.anular && (!esTrans || puedeDespachar)) {
                 botonesHtml += botonAccion('bi-x-octagon', 'Anular', 'btn-inactivar', 'anular');
             }
         } else if (estado === 'EN_TRANSITO') {

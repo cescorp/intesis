@@ -138,11 +138,18 @@ final class MovimientoInternoControlador
             $movimientoId = (int) ($_GET['movimiento_id'] ?? 0);
             $empresaId = (int) $usuario['empresa_id'];
             $datos = $this->movimientoInternoModelo->detalle($empresaId, $movimientoId);
+            $superusuario = $this->esSuperusuario($usuario);
             $datos['puede_recibir'] = $this->movimientoInternoModelo->usuarioPuedeRecibir(
                 $empresaId,
                 $movimientoId,
                 (int) $usuario['id'],
-                $this->esSuperusuario($usuario)
+                $superusuario
+            );
+            $datos['puede_despachar'] = $this->movimientoInternoModelo->usuarioPuedeDespachar(
+                $empresaId,
+                $movimientoId,
+                (int) $usuario['id'],
+                $superusuario
             );
             $this->responderJson(true, 'DETALLE_OK', 'Detalle del movimiento.', $datos);
         } catch (Throwable $excepcion) {
