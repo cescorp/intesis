@@ -49,6 +49,7 @@ $editBodegaId  = $modoEditar ? (int) $documento['inv_bodega_id']         : $bode
 $editNumero    = $modoEditar ? htmlspecialchars((string) $documento['com_documento_numero'])  : '';
 $editFecha     = $modoEditar ? substr((string) $documento['com_documento_fecha_emision'], 0, 10) : date('Y-m-d');
 $editObs       = $modoEditar ? htmlspecialchars((string) ($documento['com_documento_observacion'] ?? '')) : '';
+$editDescuento = $modoEditar ? (float) ($documento['com_documento_descuento'] ?? 0) : 0;
 ?>
 <div class="app-wrapper">
     <!-- NAVBAR -->
@@ -65,7 +66,7 @@ $editObs       = $modoEditar ? htmlspecialchars((string) ($documento['com_docume
                 </span></li>
             </ul>
             <ul class="navbar-nav ms-auto align-items-center">
-                <li class="nav-item me-3 d-none d-md-block"><span class="usuario-navbar"><?= htmlspecialchars($usuario['nombre']) ?></span></li>
+                <li class="nav-item me-3 d-none d-md-block"><span class="usuario-navbar"><?= htmlspecialchars((($usuario['bodega'] ?? null) ? $usuario['bodega'] . ' - ' : '') . $usuario['nombre']) ?></span></li>
                 <li class="nav-item"><form action="<?= $appUrl ?>/salir" method="post"><button class="btn btn-salir" type="submit" title="Cerrar sesion"><i class="bi bi-power"></i></button></form></li>
             </ul>
         </div>
@@ -164,12 +165,12 @@ $editObs       = $modoEditar ? htmlspecialchars((string) ($documento['com_docume
                     <table id="tablaDetalle" class="table table-sm table-bordered mb-0" style="font-size:.81rem">
                         <thead class="table-light"><tr>
                             <th style="width:26px">#</th>
-                            <th style="min-width:105px">Cod. Proveedor</th>
                             <th style="min-width:105px">Cod. Interno</th>
+                            <th style="min-width:105px">Cod. Proveedor</th>
                             <th>Descripcion</th>
+                            <th style="min-width:110px">Marca</th>
                             <th style="width:70px" class="text-center">Cant.</th>
                             <th style="width:96px">Costo</th>
-                            <th style="width:76px">Desc.</th>
                             <th style="width:100px">IVA</th>
                             <th style="width:72px" class="text-center">% PVP</th>
                             <th style="width:96px">PVP</th>
@@ -189,7 +190,12 @@ $editObs       = $modoEditar ? htmlspecialchars((string) ($documento['com_docume
                 <table class="table table-sm table-bordered mb-0" style="font-size:.82rem">
                     <tr><td class="text-muted ps-2">Subtotal base 0%</td>  <td class="text-end pe-2 fw-semibold" id="resBase0">$ 0.00</td></tr>
                     <tr><td class="text-muted ps-2">Subtotal base IVA</td> <td class="text-end pe-2 fw-semibold" id="resBaseIva">$ 0.00</td></tr>
-                    <tr><td class="text-muted ps-2">Descuento</td>         <td class="text-end pe-2 fw-semibold" id="resDescuento">$ 0.00</td></tr>
+                    <tr>
+                        <td class="text-muted ps-2 align-middle">Descuento</td>
+                        <td class="text-end pe-2">
+                            <input type="number" class="form-control form-control-sm text-end d-inline-block" style="width:110px" id="inp_descuento" name="descuento" value="<?= number_format($editDescuento, 2, '.', '') ?>" min="0" step="0.01">
+                        </td>
+                    </tr>
                     <tr><td class="text-muted ps-2">IVA</td>               <td class="text-end pe-2 fw-semibold" id="resIva">$ 0.00</td></tr>
                     <tr class="table-light"><td class="fw-bold ps-2">Total</td><td class="text-end pe-2 fw-bold" id="resTotal">$ 0.00</td></tr>
                 </table>
@@ -197,7 +203,6 @@ $editObs       = $modoEditar ? htmlspecialchars((string) ($documento['com_docume
         </div>
 
         <input type="hidden" name="subtotal"  id="inp_subtotal">
-        <input type="hidden" name="descuento" id="inp_descuento">
         <input type="hidden" name="iva_total" id="inp_iva_total">
         <input type="hidden" name="total"     id="inp_total">
     </form>
@@ -263,6 +268,30 @@ $editObs       = $modoEditar ? htmlspecialchars((string) ($documento['com_docume
                         <tbody id="cuerpoCodigoModal"><tr><td colspan="5" class="text-center text-muted py-3">Cargando...</td></tr></tbody>
                     </table>
                 </div>
+                <div id="panelNuevoProducto" class="d-none border rounded p-2 mt-2">
+                    <div class="row g-2">
+                        <div class="col-md-3">
+                            <label class="form-label mb-0 small">Codigo</label>
+                            <input type="text" id="np_codigo" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-9">
+                            <label class="form-label mb-0 small">Nombre</label>
+                            <input type="text" id="np_nombre" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label mb-0 small">Categoria</label>
+                            <select id="np_categoria" class="form-control form-control-sm"></select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label mb-0 small">Marca</label>
+                            <select id="np_marca" class="form-control form-control-sm"></select>
+                        </div>
+                    </div>
+                    <div class="text-end mt-2">
+                        <button type="button" class="btn btn-sm btn-secundario" id="btnCancelarNuevoProducto">Cancelar</button>
+                        <button type="button" class="btn btn-sm btn-intesis" id="btnGuardarNuevoProducto">Guardar</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -275,8 +304,11 @@ $editObs       = $modoEditar ? htmlspecialchars((string) ($documento['com_docume
 
 const appUrl        = '<?= $appUrl ?>';
 const ivaList       = <?= json_encode(array_values($ivaList), JSON_UNESCAPED_UNICODE) ?>;
+const marcasList    = <?= json_encode(array_values($marcasList ?? []), JSON_UNESCAPED_UNICODE) ?>;
+const categoriasList = <?= json_encode(array_values($categoriasList ?? []), JSON_UNESCAPED_UNICODE) ?>;
 const ivaDefault    = <?= (int) $ivaDefault ?>;
 const ivaDefaultVal = <?= (float) $ivaDefaultValor ?>;
+let siguienteCodigoSugerido = <?= json_encode($siguienteCodigoSugerido ?? '1') ?>;
 let lineaIdx   = 0;
 let filaActual = null;
 
@@ -309,6 +341,36 @@ function opcionesIva(seleccionado) {
     return html;
 }
 
+/* ── Marca select options ─────────────────────────────────────────────────── */
+function opcionesMarca(seleccionado) {
+    let html = '<option value="">Sin marca</option>';
+    marcasList.forEach(m => {
+        const sel = parseInt(m.inv_marca_id) === seleccionado ? 'selected' : '';
+        html += `<option value="${m.inv_marca_id}" ${sel}>${esc(m.inv_marca_nombre)}</option>`;
+    });
+    return html;
+}
+
+/* ── Categoria select options ─────────────────────────────────────────────── */
+function opcionesCategoria(seleccionado) {
+    let html = '<option value="">Seleccione</option>';
+    categoriasList.forEach(c => {
+        const sel = parseInt(c.inv_categoria_id) === seleccionado ? 'selected' : '';
+        html += `<option value="${c.inv_categoria_id}" ${sel}>${esc(c.inv_categoria_nombre)}</option>`;
+    });
+    return html;
+}
+
+/* ── Siguiente codigo sugerido: mantiene el prefijo de letras, sube el numero ─ */
+function siguienteCodigoDesdeActual(codigo) {
+    const m = String(codigo || '').match(/^(.*?)(\d+)$/);
+    if (!m) return '1';
+    const prefijo = m[1];
+    const numero  = m[2];
+    const siguiente = String(parseInt(numero, 10) + 1).padStart(numero.length, '0');
+    return prefijo + siguiente;
+}
+
 /* ── Crear fila ───────────────────────────────────────────────────────────── */
 function crearFila(datos) {
     const idx = lineaIdx++;
@@ -319,12 +381,12 @@ function crearFila(datos) {
 
     tr.innerHTML = `
       <td class="text-center text-muted small align-middle num-linea">${num}</td>
-      <td><input type="text"   class="form-control form-control-sm inp-cod-prov"    placeholder="Cod. prov."  autocomplete="off" name="lineas[${idx}][cod_proveedor]" value="${esc(datos.cod_proveedor||'')}"></td>
       <td><input type="text"   class="form-control form-control-sm inp-cod-interno" placeholder="Codigo"      autocomplete="off" value="${esc(datos.codigo_interno||'')}"></td>
+      <td><input type="text"   class="form-control form-control-sm inp-cod-prov"    placeholder="Cod. prov."  autocomplete="off" name="lineas[${idx}][cod_proveedor]" value="${esc(datos.cod_proveedor||'')}"></td>
       <td><input type="text"   class="form-control form-control-sm inp-descripcion" value="${esc(datos.producto_nombre||'')}" disabled></td>
+      <td><select class="form-control form-control-sm inp-marca" name="lineas[${idx}][marca_id]">${opcionesMarca(parseInt(datos.marca_id) || 0)}</select></td>
       <td class="text-center"><input type="number" class="form-control form-control-sm text-center inp-cantidad" name="lineas[${idx}][cantidad]" value="${datos.cantidad}" min="1" step="1"></td>
       <td><input type="number" class="form-control form-control-sm inp-costo"       name="lineas[${idx}][costo]"     value="${datos.costo||0}"    min="0"       step="0.000001"></td>
-      <td><input type="number" class="form-control form-control-sm inp-descuento"   name="lineas[${idx}][descuento]" value="${datos.descuento||0}"  min="0"       step="0.01"></td>
       <td>
         <select class="form-control form-control-sm inp-iva" name="lineas[${idx}][iva_id]">
           ${opcionesIva(parseInt(datos.iva_id) || ivaDefault)}
@@ -356,12 +418,11 @@ function crearFila(datos) {
 function calcularFila(tr) {
     const qty  = parseFloat(tr.querySelector('.inp-cantidad')?.value)  || 0;
     const cost = parseFloat(tr.querySelector('.inp-costo')?.value)     || 0;
-    const desc = parseFloat(tr.querySelector('.inp-descuento')?.value) || 0;
     const ivaS = tr.querySelector('.inp-iva');
     const opt  = ivaS?.options[ivaS?.selectedIndex];
     const ivaV = parseFloat(opt?.dataset?.valor || 0);
     tr.querySelector('.inp-iva-valor').value = ivaV;
-    const base = Math.max(0, qty * cost - desc);
+    const base = Math.max(0, qty * cost);
     const iva  = base * ivaV / 100;
     tr.querySelector('.inp-total-display').textContent = '$ ' + fmt2(base + iva);
     calcularTotales();
@@ -369,27 +430,24 @@ function calcularFila(tr) {
 
 /* ── Calcular totales generales ───────────────────────────────────────────── */
 function calcularTotales() {
-    let base0 = 0, baseIva = 0, totalDesc = 0, totalIva = 0;
+    let base0 = 0, baseIva = 0, totalIva = 0;
     document.querySelectorAll('#cuerpoDetalle tr').forEach(tr => {
         const qty  = parseFloat(tr.querySelector('.inp-cantidad')?.value)  || 0;
         const cost = parseFloat(tr.querySelector('.inp-costo')?.value)     || 0;
-        const desc = parseFloat(tr.querySelector('.inp-descuento')?.value) || 0;
         const ivaS = tr.querySelector('.inp-iva');
         const opt  = ivaS?.options[ivaS?.selectedIndex];
         const ivaV = parseFloat(opt?.dataset?.valor || 0);
-        const base = Math.max(0, qty * cost - desc);
-        totalDesc += desc;
+        const base = Math.max(0, qty * cost);
         if (ivaV > 0) baseIva += base; else base0 += base;
         totalIva  += base * ivaV / 100;
     });
-    const total = base0 + baseIva + totalIva;
+    const descuento = parseFloat(q('#inp_descuento')?.value) || 0;
+    const total = base0 + baseIva + totalIva - descuento;
     q('#resBase0').textContent     = '$ ' + fmt2(base0);
     q('#resBaseIva').textContent   = '$ ' + fmt2(baseIva);
-    q('#resDescuento').textContent = '$ ' + fmt2(totalDesc);
     q('#resIva').textContent       = '$ ' + fmt2(totalIva);
     q('#resTotal').textContent     = '$ ' + fmt2(total);
     q('#inp_subtotal').value  = fmt2(base0 + baseIva);
-    q('#inp_descuento').value = fmt2(totalDesc);
     q('#inp_iva_total').value = fmt2(totalIva);
     q('#inp_total').value     = fmt2(total);
 }
@@ -415,6 +473,7 @@ function cargarProductoEnFila(tr, prod) {
     tr.querySelector('.inp-cod-prov').value    = prod.cod_proveedor       || '';
     tr.querySelector('.inp-cod-interno').value = prod.codigo_interno      || '';
     tr.querySelector('.inp-descripcion').value = prod.inv_producto_nombre || '';
+    tr.querySelector('.inp-marca').value       = String(prod.marca_id || '');
     tr.querySelector('.inp-costo').value       = costo.toFixed(6);
     tr.querySelector('.inp-pvp-pct').value     = calcularPvpPct(costo, pvp).toFixed(2);
     tr.querySelector('.inp-pvp').value         = pvp.toFixed(2);
@@ -439,7 +498,7 @@ cuerpoDetalle.addEventListener('input', (e) => {
         const pvp   = parseFloat(tr.querySelector('.inp-pvp')?.value)   || 0;
         tr.querySelector('.inp-pvp-pct').value = calcularPvpPct(costo, pvp).toFixed(2);
     }
-    if (e.target.matches('.inp-cantidad,.inp-costo,.inp-descuento,.inp-pvp,.inp-pvp-pct')) calcularFila(tr);
+    if (e.target.matches('.inp-cantidad,.inp-costo,.inp-pvp,.inp-pvp-pct')) calcularFila(tr);
     if (e.target.matches('.inp-cod-prov')) actualizarLeyendaCodigos();
 });
 cuerpoDetalle.addEventListener('change', (e) => {
@@ -448,6 +507,8 @@ cuerpoDetalle.addEventListener('change', (e) => {
 });
 
 q('#btnAgregarLinea').addEventListener('click', () => crearFila({}));
+
+q('#inp_descuento').addEventListener('input', calcularTotales);
 
 cuerpoDetalle.addEventListener('click', (e) => {
     if (e.target.closest('.btn-eliminar-linea')) {
@@ -503,6 +564,18 @@ cuerpoDetalle.addEventListener('keydown', (e) => {
     filaActual = tr;
     if (isCodProv)    abrirModalCodProv(val);
     if (isCodInterno) abrirModalCodInterno(val);
+});
+
+/* ── Enter en PVP agrega nueva linea automaticamente ─────────────────────── */
+cuerpoDetalle.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    if (!e.target.matches('.inp-pvp')) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const nuevaFila = crearFila({});
+    nuevaFila.querySelector('.inp-cod-interno')?.focus();
 });
 
 /* ── RUC ─────────────────────────────────────────────────────────────────── */
@@ -620,10 +693,11 @@ function abrirModalCodInterno(texto) {
 
 async function buscarPorCodigo(term) {
     const tbody = q('#cuerpoCodigoModal');
+    ocultarPanelNuevoProducto();
     tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Buscando...</td></tr>';
     try {
         const json = await fetchJson(appUrl + '/compras/documentos/productos?tipo=codigo&q=' + encodeURIComponent(term));
-        renderProductos(tbody, json.productos || []);
+        renderProductos(tbody, json.productos || [], term);
     } catch { tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Error</td></tr>'; }
 }
 q('#buscarCodigoInput').addEventListener('input', (e) => {
@@ -637,7 +711,75 @@ q('#cuerpoCodigoModal').addEventListener('click', (e) => {
     filaActual = null;
     bootstrap.Modal.getInstance(q('#modalProductosCodigo'))?.hide();
 });
-q('#modalProductosCodigo').addEventListener('hidden.bs.modal', () => { filaActual = null; });
+q('#modalProductosCodigo').addEventListener('hidden.bs.modal', () => { filaActual = null; ocultarPanelNuevoProducto(); });
+
+/* ── Panel "Crear producto" dentro del modal Codigo Interno ──────────────── */
+function ocultarPanelNuevoProducto() {
+    q('#panelNuevoProducto').classList.add('d-none');
+}
+
+function mostrarPanelNuevoProducto(terminoBuscado) {
+    q('#btnAbrirNuevoProducto')?.classList.add('d-none');
+    q('#panelNuevoProducto').classList.remove('d-none');
+    q('#np_codigo').value    = siguienteCodigoSugerido;
+    q('#np_nombre').value    = /\d/.test(terminoBuscado || '') ? '' : (terminoBuscado || '');
+    q('#np_categoria').innerHTML = opcionesCategoria(0);
+    q('#np_marca').innerHTML     = opcionesMarca(0);
+    setTimeout(() => q('#np_nombre')?.focus(), 50);
+}
+
+q('#btnCancelarNuevoProducto').addEventListener('click', () => {
+    ocultarPanelNuevoProducto();
+    buscarPorCodigo(q('#buscarCodigoInput').value);
+});
+
+q('#btnGuardarNuevoProducto').addEventListener('click', async () => {
+    const codigo    = q('#np_codigo').value.trim();
+    const nombre    = q('#np_nombre').value.trim();
+    const categoria = q('#np_categoria').value;
+    const marca     = q('#np_marca').value;
+    if (!codigo || !nombre || !categoria || !marca) {
+        Swal.fire({ icon: 'warning', title: 'Datos incompletos', text: 'Codigo, nombre, categoria y marca son obligatorios.' });
+        return;
+    }
+    const btn = q('#btnGuardarNuevoProducto');
+    btn.disabled = true;
+    try {
+        const fd = new FormData();
+        const empresaIdInput = q('input[name="empresa_id"]');
+        if (empresaIdInput) fd.append('empresa_id', empresaIdInput.value);
+        fd.append('codigo_principal', codigo);
+        fd.append('nombre', nombre);
+        fd.append('categoria_id', categoria);
+        fd.append('marca_id', marca);
+        const resultado = await fetch(appUrl + '/inventario/productos/crear', {
+            method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        });
+        const json = await resultado.json();
+        if (!json.ok) throw new Error(json.mensaje || 'No se pudo crear el producto.');
+        const marcaNombre = marcasList.find(m => parseInt(m.inv_marca_id) === parseInt(marca))?.inv_marca_nombre || '';
+        if (filaActual) {
+            cargarProductoEnFila(filaActual, {
+                inv_producto_id: json.data.producto_id,
+                codigo_interno: codigo,
+                inv_producto_nombre: nombre,
+                marca_nombre: marcaNombre,
+                marca_id: marca,
+                costo: 0,
+                pvp: 0,
+                cod_proveedor: '',
+            });
+        }
+        siguienteCodigoSugerido = siguienteCodigoDesdeActual(codigo);
+        filaActual = null;
+        ocultarPanelNuevoProducto();
+        bootstrap.Modal.getInstance(q('#modalProductosCodigo'))?.hide();
+    } catch (error) {
+        Swal.fire({ icon: 'error', title: 'No se pudo crear', text: error.message || 'Revise los datos.' });
+    } finally {
+        btn.disabled = false;
+    }
+});
 
 /* ── Render tabla productos: modal Cod. Proveedor ─────────────────────────── */
 function renderProductosCodProv(tbody, lista) {
@@ -658,11 +800,18 @@ function renderProductosCodProv(tbody, lista) {
 }
 
 /* ── Render tabla productos: modal Cod. Interno ───────────────────────────── */
-function renderProductos(tbody, lista) {
+function renderProductos(tbody, lista, termino) {
     if (!lista.length) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">Sin resultados</td></tr>';
+        tbody.innerHTML = `<tr><td colspan="5" class="py-2 text-center">
+            <span class="text-muted me-2">Sin resultados${termino ? ` para "<strong>${esc(termino)}</strong>"` : ''}</span>
+            <button type="button" class="btn btn-sm btn-intesis" id="btnAbrirNuevoProducto">
+                <i class="bi bi-plus-lg me-1"></i>Crear producto
+            </button>
+        </td></tr>`;
+        q('#btnAbrirNuevoProducto')?.addEventListener('click', () => mostrarPanelNuevoProducto(termino));
         return;
     }
+    ocultarPanelNuevoProducto();
     tbody.innerHTML = lista.map((p, i) => {
         const safeJson = JSON.stringify(p).replace(/'/g, '&#39;');
         return `<tr style="cursor:pointer" data-prod='${safeJson}'>
@@ -697,14 +846,29 @@ function actualizarLeyendaCodigos() {
 
 /* ── Guardar: validar y enviar (botón type="button" → submit explícito) ──── */
 q('#btnGuardar').addEventListener('click', async () => {
+    if (!q('#numero').value.trim()) {
+        Swal.fire({ icon: 'warning', title: 'Datos incompletos', text: 'El número de documento es obligatorio.' });
+        q('#numero').focus();
+        return;
+    }
+    if (!q('#fecha_emision').value) {
+        Swal.fire({ icon: 'warning', title: 'Datos incompletos', text: 'La fecha de emisión es obligatoria.' });
+        q('#fecha_emision').focus();
+        return;
+    }
+    if (!q('#bodega_id').value) {
+        Swal.fire({ icon: 'warning', title: 'Datos incompletos', text: 'Debe seleccionar la bodega destino.' });
+        q('#bodega_id').focus();
+        return;
+    }
     if (!q('#proveedor_id').value) {
-        alert('Debe seleccionar un proveedor antes de guardar.');
+        Swal.fire({ icon: 'warning', title: 'Datos incompletos', text: 'Debe seleccionar un proveedor antes de guardar.' });
         q('#ruc_input').focus();
         return;
     }
     const filas = document.querySelectorAll('#cuerpoDetalle tr');
     if (!filas.length) {
-        alert('Debe agregar al menos una linea de detalle.');
+        Swal.fire({ icon: 'warning', title: 'Datos incompletos', text: 'Debe agregar al menos una línea de detalle.' });
         return;
     }
     // Sincronizar producto_id desde dataset al hidden input
@@ -738,9 +902,9 @@ crearFila(<?= json_encode([
     'codigo_interno'  => (string) ($linea['codigo_interno'] ?? ''),
     'producto_nombre' => (string) ($linea['producto_nombre'] ?? ''),
     'marca_nombre'    => (string) ($linea['marca_nombre'] ?? ''),
+    'marca_id'        => (int)    ($linea['marca_id'] ?? 0),
     'cantidad'        => (float)  $linea['com_documento_detalle_cantidad'],
     'costo'           => (float)  $linea['com_documento_detalle_precio'],
-    'descuento'       => (float)  $linea['com_documento_detalle_descuento'],
     'iva_id'          => (int)    ($linea['sis_iva_id'] ?? 0),
     'iva_valor'       => (float)  ($linea['sis_iva_valor'] ?? 0),
     'pvp'             => (float)  $linea['com_documento_detalle_pvp'],

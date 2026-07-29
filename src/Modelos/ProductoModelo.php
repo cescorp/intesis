@@ -178,6 +178,44 @@ final class ProductoModelo
 
     /**
      * ***************************************************************************
+     * * OBTIENE EL CODIGO DEL ULTIMO PRODUCTO CREADO EN LA EMPRESA.
+     * ***************************************************************************
+     */
+    public function obtenerUltimoCodigo(int $empresaId): ?string
+    {
+        $sentencia = $this->conexionBaseDatos->obtener()->prepare("
+            SELECT inv_producto_codigo_principal
+            FROM inv_producto
+            WHERE sis_empresa_id = :empresa_id
+            ORDER BY inv_producto_id DESC
+            LIMIT 1
+        ");
+        $sentencia->execute(['empresa_id' => $empresaId]);
+        $codigo = $sentencia->fetchColumn();
+
+        return $codigo !== false ? (string) $codigo : null;
+    }
+
+    /**
+     * ***************************************************************************
+     * * CALCULA EL SIGUIENTE CODIGO SUGERIDO MANTENIENDO EL PREFIJO DE LETRAS
+     * * Y SUBIENDO SOLO LA PARTE NUMERICA FINAL (EJ. A105 -> A106).
+     * ***************************************************************************
+     */
+    public function sugerirSiguienteCodigo(?string $ultimoCodigo): string
+    {
+        if ($ultimoCodigo === null || !preg_match('/^(.*?)(\d+)$/', $ultimoCodigo, $coincidencia)) {
+            return '1';
+        }
+        [, $prefijo, $numero] = $coincidencia;
+        $siguiente = (string) ((int) $numero + 1);
+        $siguiente = str_pad($siguiente, strlen($numero), '0', STR_PAD_LEFT);
+
+        return $prefijo . $siguiente;
+    }
+
+    /**
+     * ***************************************************************************
      * * VERIFICA CODIGO PRINCIPAL REPETIDO POR EMPRESA.
      * ***************************************************************************
      */

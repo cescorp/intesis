@@ -181,6 +181,9 @@ final class KardexControlador
             'observacion' => $cabecera['inv_movimientos_observacion'],
             'responsable' => $cabecera['responsable'],
             'aprobado_por' => $cabecera['aprobado_por'] ?? null,
+            'tipo_movimiento' => $cabecera['inv_movimientos_tipo'] ?? '',
+            'bodega_origen' => $cabecera['bodega_origen_nombre'] ?? null,
+            'bodega_destino' => $cabecera['bodega_destino_nombre'] ?? null,
         ];
     }
 

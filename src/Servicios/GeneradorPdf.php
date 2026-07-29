@@ -47,20 +47,33 @@ final class GeneradorPdf
      */
     private function crearHtmlMovimientoInventario(array $cabecera, array $detalles): string
     {
+        $esTransferencia = ($cabecera['tipo_movimiento'] ?? '') === 'TRANSFERENCIA';
+        $columnas = $esTransferencia ? 5 : 6;
         $filas = '';
         foreach ($detalles as $detalle) {
-            $filas .= '<tr>'
-                . '<td>' . $this->escapar((string) $detalle['codigo']) . '</td>'
-                . '<td>' . $this->escapar((string) $detalle['producto']) . '</td>'
-                . '<td>' . $this->escapar((string) $detalle['bodega']) . '</td>'
-                . '<td class="numero text-center">' . $this->numeroEntero((float) $detalle['entrada']) . '</td>'
-                . '<td class="numero text-center">' . $this->numeroEntero((float) $detalle['salida']) . '</td>'
-                . '<td class="numero text-center">' . $this->numeroEntero((float) $detalle['saldo']) . '</td>'
-                . '</tr>';
+            if ($esTransferencia) {
+                $salida = (float) $detalle['salida'];
+                $filas .= '<tr>'
+                    . '<td>' . $this->escapar((string) $detalle['codigo']) . '</td>'
+                    . '<td>' . $this->escapar((string) $detalle['producto']) . '</td>'
+                    . '<td class="text-center">' . ($salida > 0 ? '-' : '+') . '</td>'
+                    . '<td class="numero text-center">' . $this->numeroEntero($salida > 0 ? $salida : (float) $detalle['entrada']) . '</td>'
+                    . '<td class="numero text-center">' . $this->numeroEntero((float) $detalle['saldo']) . '</td>'
+                    . '</tr>';
+            } else {
+                $filas .= '<tr>'
+                    . '<td>' . $this->escapar((string) $detalle['codigo']) . '</td>'
+                    . '<td>' . $this->escapar((string) $detalle['producto']) . '</td>'
+                    . '<td>' . $this->escapar((string) $detalle['bodega']) . '</td>'
+                    . '<td class="numero text-center">' . $this->numeroEntero((float) $detalle['entrada']) . '</td>'
+                    . '<td class="numero text-center">' . $this->numeroEntero((float) $detalle['salida']) . '</td>'
+                    . '<td class="numero text-center">' . $this->numeroEntero((float) $detalle['saldo']) . '</td>'
+                    . '</tr>';
+            }
         }
 
         if ($filas === '') {
-            $filas = '<tr><td colspan="6" class="sin-registros">Sin detalles registrados.</td></tr>';
+            $filas = '<tr><td colspan="' . $columnas . '" class="sin-registros">Sin detalles registrados.</td></tr>';
         }
 
         return '<!doctype html>
@@ -108,18 +121,27 @@ final class GeneradorPdf
         <tr>
             <td width="50%"><span class="etiqueta">Realizado por:</span> ' . $this->escapar((string) $cabecera['responsable']) . '</td>
             <td>' . (!empty($cabecera['aprobado_por']) ? '<span class="etiqueta">Aprobado por:</span> ' . $this->escapar((string) $cabecera['aprobado_por']) : '') . '</td>
-        </tr>
+        </tr>' . ($esTransferencia ? '
+        <tr>
+            <td><span class="etiqueta">Bodega Origen:</span> ' . $this->escapar((string) ($cabecera['bodega_origen'] ?? '')) . '</td>
+            <td><span class="etiqueta">Bodega Destino:</span> ' . $this->escapar((string) ($cabecera['bodega_destino'] ?? '')) . '</td>
+        </tr>' : '') . '
         <tr><td colspan="2"><span class="etiqueta">Observacion:</span> ' . $this->escapar((string) $cabecera['observacion']) . '</td></tr>
     </table>
     <table class="tabla-detalle">
         <thead>
-            <tr>
+            <tr>' . ($esTransferencia ? '
+                <th>Codigo</th>
+                <th>Producto</th>
+                <th class="text-center">Accion</th>
+                <th class="numero text-center">Cantidad</th>
+                <th class="numero text-center">Saldo</th>' : '
                 <th>Codigo</th>
                 <th>Producto</th>
                 <th>Bodega</th>
                 <th class="numero text-center">Cantidad</th>
                 <th class="numero text-center">Salida</th>
-                <th class="numero text-center">Saldo</th>
+                <th class="numero text-center">Saldo</th>') . '
             </tr>
         </thead>
         <tbody>' . $filas . '</tbody>

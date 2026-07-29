@@ -12,7 +12,7 @@ $appUrl = rtrim($configuracion->obtener('APP_URL', ''), '/');
                 <li class="nav-item"><span class="nav-link breadcrumb-navbar"><span><?= htmlspecialchars($appNombre) ?></span><i class="bi bi-chevron-right"></i><span>Inventario</span><i class="bi bi-chevron-right"></i><strong>Movimientos internos</strong></span></li>
             </ul>
             <ul class="navbar-nav ms-auto align-items-center">
-                <li class="nav-item me-3 d-none d-md-block"><span class="usuario-navbar"><?= htmlspecialchars($usuario['nombre']) ?></span></li>
+                <li class="nav-item me-3 d-none d-md-block"><span class="usuario-navbar"><?= htmlspecialchars((($usuario['bodega'] ?? null) ? $usuario['bodega'] . ' - ' : '') . $usuario['nombre']) ?></span></li>
                 <li class="nav-item"><form action="<?= $appUrl ?>/salir" method="post"><button class="btn btn-salir" type="submit" title="Cerrar sesion"><i class="bi bi-power"></i></button></form></li>
             </ul>
         </div>
@@ -35,6 +35,7 @@ $appUrl = rtrim($configuracion->obtener('APP_URL', ''), '/');
                                 <label class="form-label mb-1 small text-muted">Hasta</label>
                                 <input type="date" id="filtroMovHasta" class="form-control form-control-sm" style="width:135px">
                             </div>
+                            <button type="button" class="btn btn-secundario btn-sm" id="btnFiltrarMovimientos"><i class="bi bi-funnel"></i> Filtrar</button>
                         </div>
                         <div class="nav nav-pills tabs-intesis" role="tablist">
                             <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabMovimientos" type="button">Movimientos</button>
@@ -161,13 +162,15 @@ $appUrl = rtrim($configuracion->obtener('APP_URL', ''), '/');
             <div class="modal-header"><div><p class="modal-etiqueta">Inventario</p><h2 class="modal-title" id="modalMovimientoTitulo">Movimiento interno</h2></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button></div>
             <div class="modal-body formulario-compacto">
                 <div class="row g-2 mb-3">
-                    <div class="col-md-3"><label class="form-label">Fecha y hora</label><input type="text" class="form-control form-control-sm" value="<?= date('d/m/Y H:i') ?>" disabled></div>
-                    <div class="col-md-3"><label class="form-label">Usuario</label><input class="form-control form-control-sm" value="<?= htmlspecialchars($usuario['nombre']) ?>" disabled></div>
-                    <div class="col-md-6"><label class="form-label">Detalle</label><input class="form-control form-control-sm" name="detalle" id="movimiento_detalle" required maxlength="180"></div>
+                    <div class="col-md-2"><label class="form-label">Fecha y hora</label><input type="text" class="form-control form-control-sm" value="<?= date('d/m/Y H:i') ?>" disabled></div>
+                    <div class="col-md-2"><label class="form-label">Usuario</label><input class="form-control form-control-sm" value="<?= htmlspecialchars($usuario['nombre']) ?>" disabled></div>
+                    <div class="col-md-2 d-none" id="contenedorOrigenCabecera"><label class="form-label">Bodega Origen</label><select class="form-control form-control-sm" id="movimiento_origen_id"><option value="">Origen</option></select></div>
+                    <div class="col-md-2 d-none" id="contenedorDestinoCabecera"><label class="form-label">Bodega Destino</label><select class="form-control form-control-sm" id="movimiento_destino_id"><option value="">Destino</option></select></div>
+                    <div class="col-md-4" id="contenedorDetalleMovimiento"><label class="form-label">Detalle</label><input class="form-control form-control-sm" name="detalle" id="movimiento_detalle" required maxlength="180"></div>
                 </div>
                 <div class="table-responsive stock-tabla-contenedor">
                     <table class="table table-sm align-middle" id="tablaLineasMovimiento">
-                        <thead><tr><th>Codigo</th><th>Descripcion</th><th>PVP</th><th>Accion</th><th>Origen</th><th class="th-stock-origen text-center">Stock origen</th><th>Destino</th><th class="text-center">Cantidad</th><th>Total</th><th></th></tr></thead>
+                        <thead><tr><th>Codigo</th><th>Descripcion</th><th>PVP</th><th>Accion</th><th class="th-origen-linea">Origen</th><th class="th-stock-origen text-center">Stock origen</th><th class="th-destino-linea">Destino</th><th class="text-center">Cantidad</th><th>Total</th><th></th></tr></thead>
                         <tbody></tbody>
                     </table>
                 </div>
@@ -186,7 +189,7 @@ $appUrl = rtrim($configuracion->obtener('APP_URL', ''), '/');
             <div class="modal-header"><div><p class="modal-etiqueta">Inventario</p><h2 class="modal-title">Buscar producto</h2></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button></div>
             <div class="modal-body">
                 <div class="input-group input-group-sm mb-2"><input class="form-control" id="buscar_producto_movimiento_texto" placeholder="Buscar por codigo o nombre"><button class="btn btn-intesis" id="btnBuscarProductoMovimiento" type="button"><i class="bi bi-search"></i></button></div>
-                <div class="table-responsive"><table class="table table-sm table-hover align-middle"><thead><tr><th>Imagen</th><th>Codigo</th><th>Producto</th><th>Marca</th><th>PVP</th><th>Stock</th><th></th></tr></thead><tbody id="tablaBuscarProductoMovimiento"></tbody></table></div>
+                <div class="table-responsive"><table class="table table-sm table-hover align-middle"><thead><tr><th>Imagen</th><th>Codigo</th><th>Producto</th><th>Marca</th><th>PVP</th><th id="thStockBuscarUnico">Stock</th><th id="thStockBuscarOrigen" class="d-none"></th><th id="thStockBuscarDestino" class="d-none"></th></tr></thead><tbody id="tablaBuscarProductoMovimiento"></tbody></table></div>
             </div>
         </div>
     </div>

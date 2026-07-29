@@ -86,6 +86,7 @@ final class DocumentoCompraModelo
                    p.inv_producto_codigo_principal  AS codigo_interno,
                    p.inv_producto_nombre            AS producto_nombre,
                    m.inv_marca_nombre               AS marca_nombre,
+                   COALESCE(dd.com_documento_detalle_marca_id, p.inv_marca_id) AS marca_id,
                    iv.sis_iva_valor,
                    COALESCE(
                        NULLIF(dd.com_documento_detalle_codigo, ''),
@@ -95,7 +96,7 @@ final class DocumentoCompraModelo
             FROM com_documento_detalle dd
             INNER JOIN com_documento d    ON d.com_documento_id   = dd.com_documento_id
             INNER JOIN inv_producto p     ON p.inv_producto_id    = dd.inv_producto_id
-            LEFT  JOIN inv_marca m        ON m.inv_marca_id       = p.inv_marca_id
+            LEFT  JOIN inv_marca m        ON m.inv_marca_id       = COALESCE(dd.com_documento_detalle_marca_id, p.inv_marca_id)
             LEFT  JOIN sis_iva iv         ON iv.sis_iva_id        = dd.sis_iva_id
             LEFT  JOIN inv_codigo_proveedor cp ON cp.inv_producto_id   = dd.inv_producto_id
                                               AND cp.com_proveedor_id  = d.com_proveedor_id
@@ -157,11 +158,13 @@ final class DocumentoCompraModelo
                     com_documento_detalle_descuento, com_documento_detalle_total,
                     com_documento_detalle_marca_iva, sis_iva_id,
                     com_documento_detalle_pvp, com_documento_detalle_codigo,
+                    com_documento_detalle_marca_id,
                     usuario_crea
                 ) VALUES (
                     :empresa_id, :documento_id, :producto_id,
                     :cantidad, :precio, :descuento, :total,
                     :marca_iva, :iva_id, :pvp, :codigo,
+                    :marca_id,
                     :usuario_crea
                 )
             ");
@@ -178,9 +181,13 @@ final class DocumentoCompraModelo
                     'iva_id'       => $linea['iva_id'] ?: null,
                     'pvp'          => $linea['pvp'] ?? 0,
                     'codigo'       => $linea['cod_proveedor'] !== '' ? $linea['cod_proveedor'] : null,
+                    'marca_id'     => $linea['marca_id'] ?? null,
                     'usuario_crea' => $usuarioId,
                 ]);
             }
+            // Descomentar si se necesita que la compra actualice tambien la marca
+            // global del producto (hoy la marca solo queda como historial de esta compra):
+            // $this->actualizarMarcaProductos($pdo, $lineas, $usuarioId);
 
             $pdo->commit();
             return $documentoId;
@@ -265,11 +272,13 @@ final class DocumentoCompraModelo
                     com_documento_detalle_descuento, com_documento_detalle_total,
                     com_documento_detalle_marca_iva, sis_iva_id,
                     com_documento_detalle_pvp, com_documento_detalle_codigo,
+                    com_documento_detalle_marca_id,
                     usuario_crea
                 ) VALUES (
                     :empresa_id, :documento_id, :producto_id,
                     :cantidad, :precio, :descuento, :total,
                     :marca_iva, :iva_id, :pvp, :codigo,
+                    :marca_id,
                     :usuario_crea
                 )
             ");
@@ -286,14 +295,46 @@ final class DocumentoCompraModelo
                     'iva_id'       => $linea['iva_id'] ?: null,
                     'pvp'          => $linea['pvp'] ?? 0,
                     'codigo'       => $linea['cod_proveedor'] !== '' ? $linea['cod_proveedor'] : null,
+                    'marca_id'     => $linea['marca_id'] ?? null,
                     'usuario_crea' => $usuarioId,
                 ]);
             }
+            // Descomentar si se necesita que la compra actualice tambien la marca
+            // global del producto (hoy la marca solo queda como historial de esta compra):
+            // $this->actualizarMarcaProductos($pdo, $lineas, $usuarioId);
 
             $pdo->commit();
         } catch (\Throwable $e) {
             $pdo->rollBack();
             throw $e;
+        }
+    }
+
+    /**
+     * ***************************************************************************
+     * * ACTUALIZA LA MARCA DEL PRODUCTO SI SE CAMBIO DESDE LA LINEA DE COMPRA.
+     * ***************************************************************************
+     */
+    private function actualizarMarcaProductos(\PDO $pdo, array $lineas, int $usuarioId): void
+    {
+        $sentencia = $pdo->prepare("
+            UPDATE inv_producto
+            SET inv_marca_id = :marca_id,
+                usuario_modifica = :usuario_modifica,
+                fecha_modifica = now()
+            WHERE inv_producto_id = :producto_id
+              AND inv_marca_id IS DISTINCT FROM :marca_id_comparar
+        ");
+        foreach ($lineas as $linea) {
+            if (empty($linea['marca_id'])) {
+                continue;
+            }
+            $sentencia->execute([
+                'marca_id' => $linea['marca_id'],
+                'marca_id_comparar' => $linea['marca_id'],
+                'usuario_modifica' => $usuarioId,
+                'producto_id' => $linea['producto_id'],
+            ]);
         }
     }
 
@@ -566,6 +607,7 @@ final class DocumentoCompraModelo
                    p.inv_producto_nombre,
                    p.inv_producto_costo_ultimo      AS costo,
                    COALESCE(m.inv_marca_nombre, '')  AS marca_nombre,
+                   p.inv_marca_id                   AS marca_id,
                    cp.inv_codigo_proveedor_codigo    AS cod_proveedor,
                    COALESCE(SUM(s.inv_stock_cantidad_disponible), 0) AS stock_total,
                    (SELECT COALESCE(d.ven_lista_precio_detalle_valor, 0)
@@ -591,7 +633,7 @@ final class DocumentoCompraModelo
               AND es.sis_estado_codigo = 'ACTIVO'
               AND upper(cp.inv_codigo_proveedor_codigo) LIKE upper(:like)
             GROUP BY p.inv_producto_id, p.inv_producto_codigo_principal, p.inv_producto_nombre,
-                     p.inv_producto_costo_ultimo, m.inv_marca_nombre, cp.inv_codigo_proveedor_codigo
+                     p.inv_producto_costo_ultimo, m.inv_marca_nombre, p.inv_marca_id, cp.inv_codigo_proveedor_codigo
             ORDER BY p.inv_producto_nombre
             LIMIT 50
         ");
@@ -614,6 +656,7 @@ final class DocumentoCompraModelo
                    p.inv_producto_nombre,
                    p.inv_producto_costo_ultimo      AS costo,
                    COALESCE(m.inv_marca_nombre, '')  AS marca_nombre,
+                   p.inv_marca_id                   AS marca_id,
                    COALESCE(SUM(s.inv_stock_cantidad_disponible), 0) AS stock_total,
                    (SELECT COALESCE(d.ven_lista_precio_detalle_valor, 0)
                     FROM ven_lista_precio lp
@@ -639,7 +682,7 @@ final class DocumentoCompraModelo
                   OR upper(p.inv_producto_nombre) LIKE upper(:like2)
               )
             GROUP BY p.inv_producto_id, p.inv_producto_codigo_principal, p.inv_producto_nombre,
-                     p.inv_producto_costo_ultimo, m.inv_marca_nombre
+                     p.inv_producto_costo_ultimo, m.inv_marca_nombre, p.inv_marca_id
             ORDER BY p.inv_producto_nombre
             LIMIT 50
         ");

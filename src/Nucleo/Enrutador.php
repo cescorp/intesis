@@ -889,6 +889,31 @@ final class Enrutador
             return;
         }
 
+        if ($metodo === 'GET' && $ruta === '/ventas/formas-pago') {
+            $this->facturaControlador->formasPagoListar();
+            return;
+        }
+        if ($metodo === 'POST' && $ruta === '/ventas/formas-pago/crear') {
+            $this->facturaControlador->formaPagoCrear();
+            return;
+        }
+        if ($metodo === 'POST' && $ruta === '/ventas/formas-pago/editar') {
+            $this->facturaControlador->formaPagoEditar();
+            return;
+        }
+        if ($metodo === 'POST' && $ruta === '/ventas/formas-pago/activar') {
+            $this->facturaControlador->formaPagoActivar();
+            return;
+        }
+        if ($metodo === 'POST' && $ruta === '/ventas/formas-pago/inactivar') {
+            $this->facturaControlador->formaPagoInactivar();
+            return;
+        }
+        if ($metodo === 'POST' && $ruta === '/ventas/formas-pago/eliminar') {
+            $this->facturaControlador->formaPagoEliminar();
+            return;
+        }
+
         http_response_code(404);
         $this->vista->renderizar('errores/error404', [
             'titulo' => 'Pagina no encontrada',

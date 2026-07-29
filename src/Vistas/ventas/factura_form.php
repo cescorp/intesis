@@ -47,7 +47,7 @@ foreach ($formasPago as $fp) {
                 </span></li>
             </ul>
             <ul class="navbar-nav ms-auto align-items-center">
-                <li class="nav-item me-3 d-none d-md-block"><span class="usuario-navbar"><?= htmlspecialchars($usuario['nombre']) ?></span></li>
+                <li class="nav-item me-3 d-none d-md-block"><span class="usuario-navbar"><?= htmlspecialchars((($usuario['bodega'] ?? null) ? $usuario['bodega'] . ' - ' : '') . $usuario['nombre']) ?></span></li>
                 <li class="nav-item"><form action="<?= $appUrl ?>/salir" method="post"><button class="btn btn-salir" type="submit" title="Cerrar sesion"><i class="bi bi-power"></i></button></form></li>
             </ul>
         </div>
@@ -125,19 +125,36 @@ foreach ($formasPago as $fp) {
                             placeholder="Opcional..." value="<?= $editObs ?>">
                     </div>
                 </div>
-                <!-- Fila 2: forma de pago -->
+                <!-- Fila 2: forma de pago + datos de contacto del cliente -->
                 <div class="row g-2">
                     <div class="col-md-3">
                         <label class="form-label mb-0 small">Forma de pago <span class="text-danger">*</span></label>
-                        <select id="selFormaPago" class="form-select form-select-sm">
-                            <?php foreach ($formasPago as $fp): ?>
-                            <option value="<?= $fp['ven_forma_pago_id'] ?>"
-                                data-calculadora="<?= $fp['ven_forma_pago_calculadora'] ?? 'N' ?>"
-                                <?= $editFormaPagoId === (int)$fp['ven_forma_pago_id'] ? 'selected' : '' ?>>
-                                <?= htmlspecialchars($fp['ven_forma_pago_nombre']) ?>
-                            </option>
-                            <?php endforeach; ?>
-                        </select>
+                        <div class="input-group input-group-sm">
+                            <select id="selFormaPago" class="form-select form-select-sm">
+                                <?php foreach ($formasPago as $fp): ?>
+                                <option value="<?= $fp['ven_forma_pago_id'] ?>"
+                                    data-calculadora="<?= $fp['ven_forma_pago_calculadora'] ?? 'N' ?>"
+                                    <?= $editFormaPagoId === (int)$fp['ven_forma_pago_id'] ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($fp['ven_forma_pago_nombre']) ?>
+                                </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <?php if ($permisosFormaPago['crear'] ?? false): ?>
+                            <button class="btn btn-outline-secondary" type="button" id="btnAbrirFormasPago" title="Administrar formas de pago"><i class="bi bi-plus-lg"></i></button>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label mb-0 small">Correo</label>
+                        <input type="text" id="cliente_correo_display" class="form-control form-control-sm" disabled
+                            placeholder="—"
+                            value="<?= $esEdicion ? htmlspecialchars($factura['ven_cliente_email'] ?? '') : '' ?>">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label mb-0 small">Telefono</label>
+                        <input type="text" id="cliente_telefono_display" class="form-control form-control-sm" disabled
+                            placeholder="—"
+                            value="<?= $esEdicion ? htmlspecialchars($factura['ven_cliente_telefono'] ?? '') : '' ?>">
                     </div>
                 </div>
             </div>
@@ -364,6 +381,47 @@ foreach ($formasPago as $fp) {
     </div>
 </div>
 
+<!-- ═══ MODAL FORMAS DE PAGO (mini CRUD) ═══ -->
+<div class="modal fade modal-intesis" id="modalFormasPago" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <div><p class="modal-etiqueta mb-0">Ventas</p><h2 class="modal-title h6 mb-0">Formas de pago</h2></div>
+                <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body py-2">
+                <form id="formFormaPago" class="row g-2 align-items-end mb-3 border-bottom pb-3">
+                    <input type="hidden" id="fp_id">
+                    <div class="col-md-5">
+                        <label class="form-label mb-0 small">Nombre</label>
+                        <input type="text" id="fp_nombre" class="form-control form-control-sm" maxlength="100">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label mb-0 small">Cod. SRI</label>
+                        <input type="text" id="fp_codigo_sri" class="form-control form-control-sm" maxlength="2">
+                    </div>
+                    <div class="col-md-2">
+                        <div class="form-check form-switch switch-intesis mt-4">
+                            <input class="form-check-input" type="checkbox" role="switch" id="fp_calculadora">
+                            <label class="form-check-label small" for="fp_calculadora">Calculadora</label>
+                        </div>
+                    </div>
+                    <div class="col-md-2 d-flex gap-1">
+                        <button type="button" id="btnCancelarFormaPago" class="btn btn-sm btn-secundario flex-fill d-none">Cancelar</button>
+                        <button type="submit" id="btnGuardarFormaPago" class="btn btn-sm btn-intesis flex-fill">Guardar</button>
+                    </div>
+                </form>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0" style="font-size:.82rem">
+                        <thead class="table-light"><tr><th>Nombre</th><th>Cod. SRI</th><th class="text-center">Calculadora</th><th class="text-center">Estado</th><th class="text-end">Acciones</th></tr></thead>
+                        <tbody id="cuerpoFormasPagoModal"><tr><td colspan="5" class="text-center text-muted py-3">Cargando...</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 (function () {
 'use strict';
@@ -376,6 +434,7 @@ const ivaList        = <?= json_encode(array_values($ivaList), JSON_UNESCAPED_UN
 const ivaDefault     = <?= (int) $ivaDefault ?>;
 const ivaDefaultVal  = <?= (float) $ivaDefaultValor ?>;
 const lineasIni      = <?= $lineasJson ?>;
+const permisosFormaPago = <?= json_encode($permisosFormaPago ?? [], JSON_UNESCAPED_UNICODE) ?>;
 
 let lineaIdx   = 0;
 let filaActual = null;
@@ -636,6 +695,8 @@ function cargarCliente(c) {
     q('#cliente_id').value            = c.ven_cliente_id;
     q('#ruc_input').value             = c.ven_cliente_identificacion;
     q('#razon_social_display').value  = c.ven_cliente_razon_social;
+    q('#cliente_correo_display').value    = c.ven_cliente_email    || '';
+    q('#cliente_telefono_display').value  = c.ven_cliente_telefono || '';
 }
 
 /* ── Modal buscar cliente ─────────────────────────────────────────────── */
@@ -669,6 +730,7 @@ function expandirFormularioNuevoCliente() {
     else if (limpio.length === 10) nc_tipo.value = 'C';
     else                           nc_tipo.value = '';
     panel.classList.remove('d-none');
+    q('#btnAbrirNuevoCliente')?.classList.add('d-none');
     setTimeout(() => q('#nc_razon_social')?.focus(), 50);
 }
 
@@ -693,7 +755,9 @@ async function buscarClientes(term) {
         tbody.innerHTML = lista.map((c, i) => `
             <tr style="cursor:pointer" data-id="${c.ven_cliente_id}"
                 data-ruc="${esc(c.ven_cliente_identificacion)}"
-                data-razon="${esc(c.ven_cliente_razon_social)}">
+                data-razon="${esc(c.ven_cliente_razon_social)}"
+                data-correo="${esc(c.ven_cliente_email||'')}"
+                data-telefono="${esc(c.ven_cliente_telefono||'')}">
               <td>${i+1}</td>
               <td>${esc(c.ven_cliente_identificacion)}</td>
               <td>${esc(c.ven_cliente_razon_social)}</td>
@@ -704,6 +768,12 @@ async function buscarClientes(term) {
     }
 }
 
+q('#buscarClienteInput').addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    clearTimeout(timerCliente);
+    buscarClientes(e.target.value);
+});
 q('#buscarClienteInput').addEventListener('input', (e) => {
     clearTimeout(timerCliente);
     timerCliente = setTimeout(() => buscarClientes(e.target.value), 300);
@@ -711,7 +781,13 @@ q('#buscarClienteInput').addEventListener('input', (e) => {
 q('#cuerpoClientesModal').addEventListener('click', (e) => {
     const tr = e.target.closest('tr[data-id]');
     if (!tr) return;
-    cargarCliente({ ven_cliente_id: tr.dataset.id, ven_cliente_identificacion: tr.dataset.ruc, ven_cliente_razon_social: tr.dataset.razon });
+    cargarCliente({
+        ven_cliente_id: tr.dataset.id,
+        ven_cliente_identificacion: tr.dataset.ruc,
+        ven_cliente_razon_social: tr.dataset.razon,
+        ven_cliente_email: tr.dataset.correo,
+        ven_cliente_telefono: tr.dataset.telefono,
+    });
     bootstrap.Modal.getInstance(q('#modalBuscarCliente'))?.hide();
 });
 q('#modalBuscarCliente').addEventListener('hidden.bs.modal', () => ocultarPanelNuevoCliente());
@@ -1074,6 +1150,175 @@ crearFila({});
     if (razon)  razon.value  = <?= json_encode((string)($factura['ven_cliente_razon_social'] ?? ''), JSON_UNESCAPED_UNICODE) ?>;
 })();
 <?php endif; ?>
+
+/* ── Mini CRUD: Formas de pago ────────────────────────────────────────── */
+const btnAbrirFormasPago = q('#btnAbrirFormasPago');
+if (btnAbrirFormasPago) {
+    let formaPagoEditandoId = null;
+
+    function resetFormularioFormaPago() {
+        formaPagoEditandoId = null;
+        q('#fp_id').value = '';
+        q('#fp_nombre').value = '';
+        q('#fp_codigo_sri').value = '';
+        q('#fp_calculadora').checked = false;
+        q('#btnCancelarFormaPago').classList.add('d-none');
+        q('#btnGuardarFormaPago').innerHTML = 'Guardar';
+    }
+
+    function sincronizarSelectFormaPago(lista, seleccionarId) {
+        const select = q('#selFormaPago');
+        const valorPrevio = select.value;
+        select.innerHTML = '';
+        lista.filter(fp => fp.ven_forma_pago_estado === 'A').forEach(fp => {
+            const opcion = new Option(fp.ven_forma_pago_nombre, fp.ven_forma_pago_id);
+            opcion.dataset.calculadora = fp.ven_forma_pago_calculadora || 'N';
+            select.add(opcion);
+        });
+        const idFinal = seleccionarId ? String(seleccionarId) : valorPrevio;
+        if ([...select.options].some(o => o.value === idFinal)) {
+            select.value = idFinal;
+        }
+    }
+
+    function renderFormasPago(lista) {
+        const tbody = q('#cuerpoFormasPagoModal');
+        if (!lista.length) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">Sin formas de pago</td></tr>';
+            return;
+        }
+        tbody.innerHTML = lista.map(fp => {
+            const activo = fp.ven_forma_pago_estado === 'A';
+            let acciones = '';
+            if (permisosFormaPago.editar) {
+                acciones += `<button type="button" class="btn btn-sm btn-outline-secondary btn-editar-forma-pago" data-id="${fp.ven_forma_pago_id}" title="Editar"><i class="bi bi-pencil"></i></button> `;
+            }
+            if (permisosFormaPago.inactivar) {
+                acciones += `<button type="button" class="btn btn-sm btn-outline-secondary btn-toggle-forma-pago" data-id="${fp.ven_forma_pago_id}" data-activo="${activo ? '1' : '0'}" title="${activo ? 'Inactivar' : 'Activar'}"><i class="bi ${activo ? 'bi-toggle-on' : 'bi-toggle-off'}"></i></button> `;
+            }
+            if (permisosFormaPago.eliminar) {
+                acciones += `<button type="button" class="btn btn-sm btn-outline-danger btn-eliminar-forma-pago" data-id="${fp.ven_forma_pago_id}" title="Eliminar"><i class="bi bi-trash"></i></button>`;
+            }
+            return `<tr>
+              <td>${esc(fp.ven_forma_pago_nombre)}</td>
+              <td>${esc(fp.ven_forma_pago_codigo_sri || '—')}</td>
+              <td class="text-center">${fp.ven_forma_pago_calculadora === 'S' ? 'Si' : 'No'}</td>
+              <td class="text-center"><span class="badge ${activo ? 'bg-success' : 'bg-secondary'}">${activo ? 'Activo' : 'Inactivo'}</span></td>
+              <td class="text-end">${acciones}</td>
+            </tr>`;
+        }).join('');
+    }
+
+    let listaFormasPagoActual = [];
+
+    async function cargarFormasPago(seleccionarId) {
+        const tbody = q('#cuerpoFormasPagoModal');
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">Cargando...</td></tr>';
+        try {
+            const json = await fetchJson(appUrl + '/ventas/formas-pago');
+            listaFormasPagoActual = json.data?.formasPago || [];
+            renderFormasPago(listaFormasPagoActual);
+            sincronizarSelectFormaPago(listaFormasPagoActual, seleccionarId);
+        } catch {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger py-3">Error al cargar</td></tr>';
+        }
+    }
+
+    btnAbrirFormasPago.addEventListener('click', () => {
+        resetFormularioFormaPago();
+        bootstrap.Modal.getOrCreateInstance(q('#modalFormasPago')).show();
+        cargarFormasPago();
+    });
+
+    q('#btnCancelarFormaPago').addEventListener('click', resetFormularioFormaPago);
+
+    q('#formFormaPago').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const nombre = q('#fp_nombre').value.trim();
+        if (!nombre) {
+            Swal.fire({ icon: 'warning', title: 'Datos incompletos', text: 'El nombre es obligatorio.' });
+            return;
+        }
+        const form = new FormData();
+        form.append('nombre', nombre);
+        form.append('codigo_sri', q('#fp_codigo_sri').value.trim());
+        if (q('#fp_calculadora').checked) form.append('calculadora', '1');
+        if (formaPagoEditandoId) form.append('forma_pago_id', String(formaPagoEditandoId));
+
+        const url = appUrl + (formaPagoEditandoId ? '/ventas/formas-pago/editar' : '/ventas/formas-pago/crear');
+        try {
+            const resp = await fetch(url, { method: 'POST', body: form });
+            const json = await resp.json();
+            if (!json.ok) throw new Error(json.mensaje || 'No se pudo guardar.');
+            const idGuardado = json.data.forma_pago.ven_forma_pago_id;
+            resetFormularioFormaPago();
+            cargarFormasPago(idGuardado);
+        } catch (error) {
+            Swal.fire({ icon: 'error', title: 'No se pudo guardar', text: error.message || 'Revise los datos.' });
+        }
+    });
+
+    q('#cuerpoFormasPagoModal').addEventListener('click', async (e) => {
+        const btnEditar  = e.target.closest('.btn-editar-forma-pago');
+        const btnToggle  = e.target.closest('.btn-toggle-forma-pago');
+        const btnEliminar = e.target.closest('.btn-eliminar-forma-pago');
+
+        if (btnEditar) {
+            const id = btnEditar.dataset.id;
+            const fp = listaFormasPagoActual.find(f => String(f.ven_forma_pago_id) === id);
+            if (!fp) return;
+            formaPagoEditandoId = fp.ven_forma_pago_id;
+            q('#fp_id').value = fp.ven_forma_pago_id;
+            q('#fp_nombre').value = fp.ven_forma_pago_nombre;
+            q('#fp_codigo_sri').value = fp.ven_forma_pago_codigo_sri || '';
+            q('#fp_calculadora').checked = fp.ven_forma_pago_calculadora === 'S';
+            q('#btnCancelarFormaPago').classList.remove('d-none');
+            q('#btnGuardarFormaPago').innerHTML = 'Actualizar';
+            q('#fp_nombre').focus();
+            return;
+        }
+
+        if (btnToggle) {
+            const id = btnToggle.dataset.id;
+            const activo = btnToggle.dataset.activo === '1';
+            const form = new FormData();
+            form.append('forma_pago_id', id);
+            try {
+                const resp = await fetch(appUrl + (activo ? '/ventas/formas-pago/inactivar' : '/ventas/formas-pago/activar'), { method: 'POST', body: form });
+                const json = await resp.json();
+                if (!json.ok) throw new Error(json.mensaje || 'No se pudo cambiar el estado.');
+                cargarFormasPago();
+            } catch (error) {
+                Swal.fire({ icon: 'error', title: 'No se pudo cambiar el estado', text: error.message || '' });
+            }
+            return;
+        }
+
+        if (btnEliminar) {
+            const id = btnEliminar.dataset.id;
+            const confirmacion = await Swal.fire({
+                icon: 'warning',
+                title: '¿Eliminar forma de pago?',
+                text: 'Esta acción no se puede deshacer.',
+                showCancelButton: true,
+                confirmButtonText: 'Eliminar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#dc3545',
+            });
+            if (!confirmacion.isConfirmed) return;
+            const form = new FormData();
+            form.append('forma_pago_id', id);
+            try {
+                const resp = await fetch(appUrl + '/ventas/formas-pago/eliminar', { method: 'POST', body: form });
+                const json = await resp.json();
+                if (!json.ok) throw new Error(json.mensaje || 'No se pudo eliminar.');
+                cargarFormasPago();
+            } catch (error) {
+                Swal.fire({ icon: 'error', title: 'No se pudo eliminar', text: error.message || '' });
+            }
+        }
+    });
+}
 
 }());
 </script>

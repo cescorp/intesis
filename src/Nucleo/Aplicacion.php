@@ -47,6 +47,7 @@ use Intesis\Modelos\DocumentoCompraModelo;
 use Intesis\Modelos\ClienteModelo;
 use Intesis\Modelos\ProformaModelo;
 use Intesis\Modelos\FacturaModelo;
+use Intesis\Modelos\FormaPagoModelo;
 use Intesis\Modelos\LicenciaModelo;
 use Intesis\Modelos\TipoDocumentoModelo;
 use Intesis\Modelos\UsuarioEmpresaModelo;
@@ -109,6 +110,7 @@ final class Aplicacion
         $clienteModelo   = new ClienteModelo($conexion);
         $proformaModelo  = new ProformaModelo($conexion, $secuenciaModelo);
         $facturaModelo   = new FacturaModelo($conexion, $secuenciaModelo);
+        $formaPagoModelo = new FormaPagoModelo($conexion->obtener());
         $sriXmlServicio = new SriXmlServicio();
         $sriImportacionModelo = new SriImportacionModelo($conexion->obtener());
         $autenticacionServicio = new AutenticacionServicio($usuarioModelo, $registroErrores);
@@ -133,7 +135,7 @@ final class Aplicacion
         $licenciaModelo = new LicenciaModelo($conexion);
 
         $this->enrutador = new Enrutador(
-            new AutenticacionControlador($vista, $sesion, $autenticacionServicio, $configuracion),
+            new AutenticacionControlador($vista, $sesion, $autenticacionServicio, $configuracion, $bodegaModelo),
             new PanelControlador($vista, $sesion, $moduloModelo, $menuModelo, $configuracion),
             new EmpresaControlador($vista, $sesion, $empresaModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
             new UsuarioControlador($vista, $sesion, $usuarioEmpresaModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
@@ -150,10 +152,10 @@ final class Aplicacion
             new MovimientoInternoControlador($vista, $sesion, $movimientoInternoModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
             new ProveedorControlador($vista, $sesion, $proveedorModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
             new CodigoProveedorControlador($vista, $sesion, $codigoProveedorModelo, $documentoCompraModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
-            new DocumentoCompraControlador($vista, $sesion, $documentoCompraModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores, $sriXmlServicio, $sriImportacionModelo),
+            new DocumentoCompraControlador($vista, $sesion, $documentoCompraModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores, $sriXmlServicio, $sriImportacionModelo, $marcaModelo, $categoriaModelo, $productoModelo),
             new ClienteControlador($vista, $sesion, $clienteModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
             new ProformaControlador($vista, $sesion, $proformaModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores, $generadorPdf),
-            new FacturaControlador($vista, $sesion, $facturaModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores, $generadorPdf, $facturacionElectronicaServicio),
+            new FacturaControlador($vista, $sesion, $facturaModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores, $generadorPdf, $facturacionElectronicaServicio, $formaPagoModelo),
             new LicenciaControlador($vista, $sesion, $licenciaModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
             $configuracion,
             $vista,

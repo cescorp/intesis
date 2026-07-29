@@ -36,6 +36,8 @@ final class EmpresaModelo
                 e.sis_empresa_certificado_ruta,
                 e.sis_empresa_certificado_clave,
                 e.sis_empresa_num_contribuyente_especial,
+                e.sis_empresa_descuento_maximo_facturas,
+                e.sis_empresa_descuento_maximo_notas_venta,
                 es.sis_estado_codigo,
                 es.sis_estado_nombre
             FROM sis_empresa e
@@ -96,6 +98,8 @@ final class EmpresaModelo
                 sis_empresa_ambiente_sri,
                 sis_empresa_num_contribuyente_especial,
                 sis_empresa_certificado_clave,
+                sis_empresa_descuento_maximo_facturas,
+                sis_empresa_descuento_maximo_notas_venta,
                 sis_estado_id,
                 usuario_crea
             )
@@ -111,6 +115,8 @@ final class EmpresaModelo
                 :ambiente_sri,
                 :num_contribuyente_especial,
                 :certificado_clave,
+                :descuento_maximo_facturas,
+                :descuento_maximo_notas_venta,
                 :estado_id,
                 :usuario_crea
             )
@@ -127,6 +133,7 @@ final class EmpresaModelo
 
             $empresaId = (int) $sentencia->fetchColumn();
             $this->crearPerfilesBase($empresaId, $usuarioId);
+            $this->crearSecuenciasBase($empresaId, $usuarioId);
             $pdo->commit();
 
             return $empresaId;
@@ -155,6 +162,8 @@ final class EmpresaModelo
                 sis_empresa_contribuyente_especial     = :contribuyente_especial,
                 sis_empresa_ambiente_sri               = :ambiente_sri,
                 sis_empresa_num_contribuyente_especial = :num_contribuyente_especial,
+                sis_empresa_descuento_maximo_facturas    = :descuento_maximo_facturas,
+                sis_empresa_descuento_maximo_notas_venta = :descuento_maximo_notas_venta,
                 sis_empresa_certificado_ruta           = COALESCE(:certificado_ruta, sis_empresa_certificado_ruta),
                 sis_empresa_certificado_clave          = CASE
                                                             WHEN :certificado_clave_check = '' THEN sis_empresa_certificado_clave
@@ -258,6 +267,8 @@ final class EmpresaModelo
         $sentencia->bindValue(':ambiente_sri', $datos['ambiente_sri'] ?: '1');
         $sentencia->bindValue(':num_contribuyente_especial', $datos['num_contribuyente_especial'] ?: null);
         $sentencia->bindValue(':certificado_clave', $datos['certificado_clave'] ?: null);
+        $sentencia->bindValue(':descuento_maximo_facturas', (float) $datos['descuento_maximo_facturas']);
+        $sentencia->bindValue(':descuento_maximo_notas_venta', (float) $datos['descuento_maximo_notas_venta']);
     }
 
     /**
@@ -281,6 +292,75 @@ final class EmpresaModelo
             $perfilId = $this->crearPerfilBase($empresaId, $codigo, $nombre, $usuarioId);
             $this->crearPermisosPerfilBase($empresaId, $perfilId, $codigo, $usuarioId);
         }
+    }
+
+    /**
+     * ***************************************************************************
+     * * CREA LA SECUENCIA 001-001 DE CADA TIPO DE DOCUMENTO OPERATIVO PARA
+     * * UNA EMPRESA NUEVA, PARA QUE PUEDA FACTURAR SIN CONFIGURACION MANUAL.
+     * ***************************************************************************
+     */
+    private function crearSecuenciasBase(int $empresaId, int $usuarioId): void
+    {
+        $tipos = [
+            ['codigo' => 'FACTURA_VENTA', 'modulo' => 'VENTAS'],
+            ['codigo' => 'NOTA_VENTA', 'modulo' => 'VENTAS'],
+            ['codigo' => 'PROFORMA', 'modulo' => 'VENTAS'],
+            ['codigo' => 'AJUSTE', 'modulo' => 'INVENTARIO'],
+            ['codigo' => 'TRANSFERENCIA', 'modulo' => 'INVENTARIO'],
+        ];
+
+        $sentencia = $this->conexionBaseDatos->obtener()->prepare("
+            INSERT INTO sis_secuencias (
+                sis_empresa_id, sis_tipo_documento_id,
+                sis_secuencias_establecimiento, sis_secuencias_punto_emision,
+                sis_secuencias_desde, sis_secuencias_actual, sis_secuencias_hasta,
+                sis_secuencias_observacion, sis_estado_id, usuario_crea
+            )
+            SELECT :empresa_id, td.sis_tipo_documento_id,
+                   '001', '001',
+                   1, 1, 999999999,
+                   'Secuencia base creada automaticamente', :estado_id, :usuario_crea
+            FROM sis_tipo_documento td
+            WHERE td.sis_tipo_documento_codigo = :codigo
+              AND td.sis_tipo_documento_modulo = :modulo
+              AND NOT EXISTS (
+                  SELECT 1 FROM sis_secuencias s
+                  WHERE s.sis_empresa_id = :empresa_id
+                    AND s.sis_tipo_documento_id = td.sis_tipo_documento_id
+              )
+        ");
+        $estadoId = $this->obtenerEstadoIdSecuencia('ACTIVO');
+
+        foreach ($tipos as $tipo) {
+            $sentencia->execute([
+                'empresa_id' => $empresaId,
+                'estado_id' => $estadoId,
+                'usuario_crea' => $usuarioId,
+                'codigo' => $tipo['codigo'],
+                'modulo' => $tipo['modulo'],
+            ]);
+        }
+    }
+
+    /**
+     * ***************************************************************************
+     * * OBTIENE EL ID DE ESTADO DE SECUENCIAS SEGUN SU CODIGO.
+     * ***************************************************************************
+     */
+    private function obtenerEstadoIdSecuencia(string $codigo): int
+    {
+        $sentencia = $this->conexionBaseDatos->obtener()->prepare("
+            SELECT sis_estado_id
+            FROM sis_estado
+            WHERE sis_estado_modulo = 'SISTEMA'
+              AND sis_estado_entidad = 'SIS_SECUENCIAS'
+              AND sis_estado_codigo = :codigo
+            LIMIT 1
+        ");
+        $sentencia->execute(['codigo' => $codigo]);
+
+        return (int) $sentencia->fetchColumn();
     }
 
     /**

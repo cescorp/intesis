@@ -81,7 +81,7 @@ $renderizarArbolPermisos = function (int $padreId, int $nivel) use (&$renderizar
             </ul>
             <ul class="navbar-nav ms-auto align-items-center">
                 <li class="nav-item me-3 d-none d-md-block">
-                    <span class="usuario-navbar"><?= htmlspecialchars($usuario['nombre']) ?></span>
+                    <span class="usuario-navbar"><?= htmlspecialchars((($usuario['bodega'] ?? null) ? $usuario['bodega'] . ' - ' : '') . $usuario['nombre']) ?></span>
                 </li>
                 <li class="nav-item">
                     <form action="<?= $appUrl ?>/salir" method="post">
@@ -164,7 +164,7 @@ $renderizarArbolPermisos = function (int $padreId, int $nivel) use (&$renderizar
                                                 </button>
                                             <?php endif; ?>
                                             <?php if ($permisos['editar'] && !$protegido): ?>
-                                                <button type="button" class="btn btn-accion btn-editar-perfil" title="Editar perfil" data-bs-toggle="modal" data-bs-target="#modalPerfil" data-modo="editar" data-id="<?= (int) $perfil['sis_perfil_id'] ?>" data-empresa="<?= (int) $perfil['sis_empresa_id'] ?>" data-nombre="<?= htmlspecialchars($perfil['sis_perfil_nombre']) ?>">
+                                                <button type="button" class="btn btn-accion btn-editar-perfil" title="Editar perfil" data-bs-toggle="modal" data-bs-target="#modalPerfil" data-modo="editar" data-id="<?= (int) $perfil['sis_perfil_id'] ?>" data-empresa="<?= (int) $perfil['sis_empresa_id'] ?>" data-nombre="<?= htmlspecialchars($perfil['sis_perfil_nombre']) ?>" data-venta-todas-bodegas="<?= $perfil['sis_perfil_venta_todas_bodegas'] ? '1' : '0' ?>">
                                                     <i class="bi bi-pencil-square"></i>
                                                 </button>
                                             <?php endif; ?>
@@ -223,6 +223,13 @@ $renderizarArbolPermisos = function (int $padreId, int $nivel) use (&$renderizar
                     <div class="col-12">
                         <label class="form-label" for="perfil_nombre">Nombre</label>
                         <input type="text" class="form-control form-control-sm" id="perfil_nombre" name="nombre" required>
+                    </div>
+                    <div class="col-12">
+                        <div class="form-check form-switch switch-intesis">
+                            <input class="form-check-input" type="checkbox" role="switch" id="perfil_venta_todas_bodegas" name="venta_todas_bodegas">
+                            <label class="form-check-label" for="perfil_venta_todas_bodegas">Vender stock de todas las bodegas</label>
+                        </div>
+                        <small class="text-muted">Si está desactivado, este perfil solo vende lo disponible en su bodega asignada (predeterminado).</small>
                     </div>
                 </div>
             </div>
