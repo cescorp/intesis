@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Intesis\Controladores;
 
 use Intesis\Modelos\ClienteModelo;
+use Intesis\Modelos\FacturaModelo;
 use Intesis\Modelos\MenuModelo;
 use Intesis\Modelos\MensajeSistemaModelo;
+use Intesis\Modelos\ProformaModelo;
 use Intesis\Nucleo\Configuracion;
 use Intesis\Nucleo\ControladorComun;
 use Intesis\Nucleo\RegistroErrores;
@@ -25,7 +27,9 @@ final class ClienteControlador
         private MenuModelo $menuModelo,
         private MensajeSistemaModelo $mensajeSistemaModelo,
         private Configuracion $configuracion,
-        private RegistroErrores $registroErrores
+        private RegistroErrores $registroErrores,
+        private FacturaModelo $facturaModelo,
+        private ProformaModelo $proformaModelo
     ) {
     }
 
@@ -53,6 +57,34 @@ final class ClienteControlador
                 'USUARIO_DATOS_OBLIGATORIOS',
                 'CONFIRMAR_INACTIVAR_CLIENTE',
             ]),
+        ]);
+    }
+
+    /**
+     * ***************************************************************************
+     * * LISTA FACTURAS, NOTAS DE VENTA Y PROFORMAS DE UN CLIENTE.
+     * ***************************************************************************
+     */
+    public function historialVentas(): void
+    {
+        $usuario   = $this->exigirSesionJson();
+        $this->exigirPermisoJson('/ventas/clientes/ver');
+        $verTodas  = $this->esSuperusuario($usuario);
+        $empresaId = (int) $usuario['empresa_id'];
+        $clienteId = (int) ($_GET['cliente_id'] ?? 0);
+
+        if ($clienteId <= 0) {
+            $this->responderJson(false, 'ERROR_VALIDACION', 'Cliente no válido.');
+        }
+
+        $documentos = $this->facturaModelo->listarPorCliente($clienteId, $empresaId, $verTodas);
+        $facturas = array_values(array_filter($documentos, fn (array $d): bool => $d['tipo_codigo'] === 'FACTURA_VENTA'));
+        $notasVenta = array_values(array_filter($documentos, fn (array $d): bool => $d['tipo_codigo'] === 'NOTA_VENTA'));
+
+        $this->responderJson(true, 'OK', '', [
+            'facturas' => $facturas,
+            'notas_venta' => $notasVenta,
+            'proformas' => $this->proformaModelo->listarPorCliente($clienteId, $empresaId, $verTodas),
         ]);
     }
 
