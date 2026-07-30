@@ -56,7 +56,8 @@ final class UsuarioModelo
                 e.sis_empresa_razon_social,
                 e.sis_empresa_nombre_comercial,
                 p.sis_perfil_codigo,
-                p.sis_perfil_nombre
+                p.sis_perfil_nombre,
+                p.sis_perfil_venta_todas_bodegas
             FROM sis_usuario_empresa ue
             INNER JOIN sis_empresa e ON e.sis_empresa_id = ue.sis_empresa_id
             INNER JOIN sis_estado ee ON ee.sis_estado_id = e.sis_estado_id

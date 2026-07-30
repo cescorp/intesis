@@ -174,36 +174,6 @@
         });
     }
 
-    const modalEmpresa = document.getElementById('modalEmpresa');
-    if (modalEmpresa) {
-        modalEmpresa.addEventListener('show.bs.modal', (evento) => {
-            const boton = evento.relatedTarget;
-            const modo = boton?.dataset.modo || 'crear';
-            const formulario = document.getElementById('formularioEmpresa');
-            const titulo = document.getElementById('modalEmpresaTitulo');
-
-            formulario.reset();
-            document.getElementById('empresa_id').value = '';
-
-            if (modo === 'editar') {
-                titulo.textContent = 'Editar empresa';
-                formulario.action = `${window.location.origin}${document.body.dataset.baseUrl || ''}/sistema/empresas/editar`;
-                document.getElementById('empresa_id').value = boton.dataset.id || '';
-                document.getElementById('ruc').value = boton.dataset.ruc || '';
-                document.getElementById('razon_social').value = boton.dataset.razon || '';
-                document.getElementById('nombre_comercial').value = boton.dataset.comercial || '';
-                document.getElementById('direccion').value = boton.dataset.direccion || '';
-                document.getElementById('telefono').value = boton.dataset.telefono || '';
-                document.getElementById('email').value = boton.dataset.email || '';
-                document.getElementById('contribuyente_especial').checked = boton.dataset.especial === '1';
-                document.getElementById('obligado_contabilidad').checked = boton.dataset.obligado === '1';
-            } else {
-                titulo.textContent = 'Nueva empresa';
-                formulario.action = `${window.location.origin}${document.body.dataset.baseUrl || ''}/sistema/empresas/crear`;
-            }
-        });
-    }
-
     const filtrarPerfilesUsuario = () => {
         const empresa = document.getElementById('usuario_empresa_id');
         const perfil = document.getElementById('usuario_perfil_id');
@@ -541,6 +511,7 @@
                 document.getElementById('perfil_id').value = boton.dataset.id || '';
                 document.getElementById('perfil_empresa_id').value = boton.dataset.empresa || '';
                 document.getElementById('perfil_nombre').value = boton.dataset.nombre || '';
+                document.getElementById('perfil_venta_todas_bodegas').checked = boton.dataset.ventaTodasBodegas === '1';
             } else {
                 titulo.textContent = 'Nuevo perfil';
                 formulario.action = `${window.location.origin}${document.body.dataset.baseUrl || ''}/sistema/perfiles/crear`;
@@ -2071,7 +2042,7 @@
         if (!modal || !visor) return;
         const base = `${window.location.origin}${document.body.dataset.baseUrl || ''}`;
         let src;
-        if (documentoTipo === 'FACTURA_VENTA' || documentoTipo === 'NOTA_VENTA') {
+        if (documentoTipo === 'VEN_FACTURA') {
             src = `${base}/ventas/facturas/pdf?id=${documentoId}`;
         } else {
             const parametros = new URLSearchParams({ empresa_id: empresaId, documento_tipo: documentoTipo, documento_id: documentoId });
@@ -2127,6 +2098,11 @@
             origen.disabled = false;
             destino.disabled = false;
         }
+        if (tipo === 'AJUSTE' && bodegasMovimiento.length === 1) {
+            const unicaBodegaId = String(bodegasMovimiento[0].inv_bodega_id);
+            if (!origen.disabled && !origen.value) origen.value = unicaBodegaId;
+            if (!destino.disabled && !destino.value) destino.value = unicaBodegaId;
+        }
         actualizarStockOrigen(fila);
     };
 
@@ -2160,9 +2136,9 @@
             <td><input class="form-control form-control-sm mov-linea-descripcion" value="${escaparHtml(producto.inv_producto_nombre || '')}" disabled></td>
             <td><input class="form-control form-control-sm text-end mov-linea-pvp" value="${Number(producto.pvp || 0).toFixed(2)}" disabled></td>
             <td><select class="form-control form-control-sm mov-linea-accion" ${tipo === 'TRANSFERENCIA' ? 'disabled' : ''}>${accionesMovimiento(tipo)}</select></td>
-            <td><select class="form-control form-control-sm mov-linea-origen"><option value="">Origen</option>${opcionesBodegaMovimiento()}</select></td>
+            <td class="td-origen-linea"><select class="form-control form-control-sm mov-linea-origen"><option value="">Origen</option>${opcionesBodegaMovimiento(tipo === 'TRANSFERENCIA' ? document.getElementById('movimiento_origen_id')?.value || '' : '')}</select></td>
             <td class="text-center mov-linea-stock-origen text-muted">—</td>
-            <td><select class="form-control form-control-sm mov-linea-destino"><option value="">Destino</option>${tipo === 'TRANSFERENCIA' ? opcionesBodegaDestino() : opcionesBodegaMovimiento()}</select></td>
+            <td class="td-destino-linea"><select class="form-control form-control-sm mov-linea-destino"><option value="">Destino</option>${tipo === 'TRANSFERENCIA' ? opcionesBodegaDestino(document.getElementById('movimiento_destino_id')?.value || '') : opcionesBodegaMovimiento()}</select></td>
             <td class="text-center"><input type="number" min="1" step="1" class="form-control form-control-sm text-center mov-linea-cantidad" value="1"></td>
             <td class="text-end mov-linea-total">0.00</td>
             <td><button type="button" class="btn btn-accion btn-eliminar-linea-movimiento"><i class="bi bi-trash3"></i></button></td>
@@ -2202,30 +2178,84 @@
         const parametros = new URLSearchParams();
         if (termino) parametros.set('q', termino);
         if (codigo) parametros.set('codigo', codigo);
-        const bodegaId = lineaProductoMovimientoActiva?.querySelector('.mov-linea-origen')?.value || '';
-        if (bodegaId) parametros.set('bodega_id', bodegaId);
+        const tipoBusqueda = document.getElementById('movimiento_tipo')?.value || '';
+        if (tipoBusqueda !== 'TRANSFERENCIA') {
+            const bodegaId = lineaProductoMovimientoActiva?.querySelector('.mov-linea-origen')?.value || '';
+            if (bodegaId) parametros.set('bodega_id', bodegaId);
+        }
         const respuesta = await fetch(`${window.location.origin}${document.body.dataset.baseUrl || ''}/inventario/movimientos/productos?${parametros.toString()}`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
         const json = await respuesta.json();
         if (!json.ok) throw new Error(json.mensaje || 'No se pudo buscar productos.');
         return json.data?.productos || [];
     };
 
+    const prepararColumnasStockBusquedaMovimiento = () => {
+        const tipo = document.getElementById('movimiento_tipo')?.value || '';
+        const thUnico = document.getElementById('thStockBuscarUnico');
+        const thOrigen = document.getElementById('thStockBuscarOrigen');
+        const thDestino = document.getElementById('thStockBuscarDestino');
+        const esTransferencia = tipo === 'TRANSFERENCIA';
+        thUnico.classList.toggle('d-none', esTransferencia);
+        thOrigen.classList.toggle('d-none', !esTransferencia);
+        thDestino.classList.toggle('d-none', !esTransferencia);
+        if (esTransferencia) {
+            const origenSel = document.getElementById('movimiento_origen_id');
+            const destinoSel = document.getElementById('movimiento_destino_id');
+            thOrigen.textContent = origenSel?.options[origenSel.selectedIndex]?.textContent.split(' - ')[0] || 'Origen';
+            thDestino.textContent = destinoSel?.options[destinoSel.selectedIndex]?.textContent.split(' - ')[0] || 'Destino';
+        }
+    };
+
+    const validarOrigenDestinoParaBuscar = () => {
+        const tipo = document.getElementById('movimiento_tipo')?.value || '';
+        if (tipo !== 'TRANSFERENCIA') return true;
+        const origenId = document.getElementById('movimiento_origen_id')?.value || '';
+        const destinoId = document.getElementById('movimiento_destino_id')?.value || '';
+        if (!origenId || !destinoId) {
+            mostrarAlerta({ icono: 'warning', titulo: 'Falta bodega', texto: 'Elija Bodega Origen y Bodega Destino en el encabezado antes de buscar productos.' });
+            return false;
+        }
+        return true;
+    };
+
     const renderizarBusquedaMovimiento = (productos) => {
         const cuerpo = document.getElementById('tablaBuscarProductoMovimiento');
         if (!cuerpo) return;
+        const tipo = document.getElementById('movimiento_tipo')?.value || '';
+        if (tipo === 'TRANSFERENCIA') {
+            const origenId = document.getElementById('movimiento_origen_id')?.value || '';
+            const destinoId = document.getElementById('movimiento_destino_id')?.value || '';
+            cuerpo.innerHTML = productos.length ? productos.map((producto, indice) => {
+                const saldoPor = (bodegaId) => {
+                    const saldo = (producto.saldos || []).find((s) => String(s.inv_bodega_id) === String(bodegaId));
+                    return Number(saldo?.inv_stock_cantidad_disponible || 0);
+                };
+                const imagen = producto.imagen_principal_id ? `<img src="${window.location.origin}${document.body.dataset.baseUrl || ''}/inventario/productos/archivos/ver?archivo_id=${producto.imagen_principal_id}" alt="" style="width:34px;height:34px;object-fit:cover;border-radius:5px;">` : '<i class="bi bi-image"></i>';
+                return `<tr style="cursor:pointer" class="fila-seleccionar-producto-movimiento" data-indice="${indice}">
+                    <td>${imagen}</td>
+                    <td>${escaparHtml(producto.inv_producto_codigo_principal)}</td>
+                    <td>${escaparHtml(producto.inv_producto_nombre)}</td>
+                    <td>${escaparHtml(producto.inv_marca_nombre)}</td>
+                    <td class="text-end">${Number(producto.pvp || 0).toFixed(2)}</td>
+                    <td class="text-center">${saldoPor(origenId)}</td>
+                    <td class="text-center">${saldoPor(destinoId)}</td>
+                </tr>`;
+            }).join('') : '<tr><td colspan="7" class="text-muted">Sin productos.</td></tr>';
+            window.INTESIS_PRODUCTOS_MOVIMIENTO = productos;
+            return;
+        }
         cuerpo.innerHTML = productos.length ? productos.map((producto, indice) => {
             const stock = (producto.saldos || []).map((saldo) => `${escaparHtml(saldo.inv_bodega_codigo)}: ${Number(saldo.inv_stock_cantidad_disponible || 0)}`).join('<br>');
             const imagen = producto.imagen_principal_id ? `<img src="${window.location.origin}${document.body.dataset.baseUrl || ''}/inventario/productos/archivos/ver?archivo_id=${producto.imagen_principal_id}" alt="" style="width:34px;height:34px;object-fit:cover;border-radius:5px;">` : '<i class="bi bi-image"></i>';
-            return `<tr>
+            return `<tr style="cursor:pointer" class="fila-seleccionar-producto-movimiento" data-indice="${indice}">
                 <td>${imagen}</td>
                 <td>${escaparHtml(producto.inv_producto_codigo_principal)}</td>
                 <td>${escaparHtml(producto.inv_producto_nombre)}</td>
                 <td>${escaparHtml(producto.inv_marca_nombre)}</td>
                 <td class="text-end">${Number(producto.pvp || 0).toFixed(2)}</td>
                 <td>${stock || '0.00'}</td>
-                <td><button type="button" class="btn btn-accion btn-seleccionar-producto-movimiento" data-indice="${indice}"><i class="bi bi-check2"></i></button></td>
             </tr>`;
-        }).join('') : '<tr><td colspan="7" class="text-muted">Sin productos.</td></tr>';
+        }).join('') : '<tr><td colspan="6" class="text-muted">Sin productos.</td></tr>';
         window.INTESIS_PRODUCTOS_MOVIMIENTO = productos;
     };
 
@@ -2242,11 +2272,48 @@
             document.getElementById('formularioMovimientoInterno').reset();
             document.getElementById('movimiento_tipo').value = tipo;
             document.getElementById('modalMovimientoTitulo').textContent = tipo === 'TRANSFERENCIA' ? 'Transferencia entre bodegas' : 'Ajuste de inventario';
+
+            const esTransferencia = tipo === 'TRANSFERENCIA';
+            document.getElementById('contenedorOrigenCabecera').classList.toggle('d-none', !esTransferencia);
+            document.getElementById('contenedorDestinoCabecera').classList.toggle('d-none', !esTransferencia);
+            document.getElementById('contenedorDetalleMovimiento').classList.toggle('col-md-6', !esTransferencia);
+            document.getElementById('contenedorDetalleMovimiento').classList.toggle('col-md-4', esTransferencia);
+            document.getElementById('tablaLineasMovimiento').classList.toggle('modo-transferencia', esTransferencia);
+
+            const origenCabecera = document.getElementById('movimiento_origen_id');
+            const destinoCabecera = document.getElementById('movimiento_destino_id');
+            origenCabecera.innerHTML = '<option value="">Origen</option>' + opcionesBodegaMovimiento();
+            destinoCabecera.innerHTML = '<option value="">Destino</option>' + opcionesBodegaDestino();
+
             document.querySelector('#tablaLineasMovimiento tbody').innerHTML = '';
             indiceLineaMovimiento = 0;
             agregarLineaMovimiento();
         });
     }
+
+    const sincronizarBodegaCabeceraEnLineas = (clase, valor) => {
+        document.querySelectorAll(`#tablaLineasMovimiento tbody tr`).forEach((fila) => {
+            const select = fila.querySelector(clase);
+            if (!select) return;
+            select.value = valor;
+            actualizarStockOrigen(fila);
+        });
+        recalcularMovimiento();
+    };
+
+    document.getElementById('movimiento_origen_id')?.addEventListener('change', function () {
+        const destinoCabecera = document.getElementById('movimiento_destino_id');
+        if (this.value && destinoCabecera.value === this.value) destinoCabecera.value = '';
+        sincronizarBodegaCabeceraEnLineas('.mov-linea-origen', this.value);
+        sincronizarBodegaCabeceraEnLineas('.mov-linea-destino', destinoCabecera.value);
+    });
+
+    document.getElementById('movimiento_destino_id')?.addEventListener('change', function () {
+        const origenCabecera = document.getElementById('movimiento_origen_id');
+        if (this.value && origenCabecera.value === this.value) origenCabecera.value = '';
+        sincronizarBodegaCabeceraEnLineas('.mov-linea-destino', this.value);
+        sincronizarBodegaCabeceraEnLineas('.mov-linea-origen', origenCabecera.value);
+    });
 
     document.getElementById('btnAgregarLineaMovimiento')?.addEventListener('click', () => agregarLineaMovimiento());
 
@@ -2267,11 +2334,13 @@
             return;
         }
         if (evento.target.closest('.btn-buscar-linea-movimiento')) {
+            if (!validarOrigenDestinoParaBuscar()) return;
             lineaProductoMovimientoActiva = fila;
             const codigoBuscar = fila.querySelector('.mov-linea-codigo')?.value?.trim() || '';
             const inputBuscarModal = document.getElementById('buscar_producto_movimiento_texto');
             if (inputBuscarModal) inputBuscarModal.value = codigoBuscar;
             terminoPendienteBusquedaMovimiento = codigoBuscar;
+            prepararColumnasStockBusquedaMovimiento();
             renderizarBusquedaMovimiento([]);
             bootstrap.Modal.getOrCreateInstance(document.getElementById('modalBuscarProductoMovimiento')).show();
         }
@@ -2301,13 +2370,16 @@
         const codigo = evento.target.value.trim();
         const inputBuscarFocusout = document.getElementById('buscar_producto_movimiento_texto');
         if (!codigo) {
+            if (!validarOrigenDestinoParaBuscar()) return;
             lineaProductoMovimientoActiva = fila;
             if (inputBuscarFocusout) inputBuscarFocusout.value = '';
             terminoPendienteBusquedaMovimiento = null;
+            prepararColumnasStockBusquedaMovimiento();
             renderizarBusquedaMovimiento([]);
             bootstrap.Modal.getOrCreateInstance(document.getElementById('modalBuscarProductoMovimiento')).show();
             return;
         }
+        if (!validarOrigenDestinoParaBuscar()) return;
         try {
             const productos = await buscarProductosMovimiento('', codigo);
             if (productos.length === 1) {
@@ -2316,6 +2388,7 @@
                 lineaProductoMovimientoActiva = fila;
                 if (inputBuscarFocusout) inputBuscarFocusout.value = codigo;
                 terminoPendienteBusquedaMovimiento = null;
+                prepararColumnasStockBusquedaMovimiento();
                 renderizarBusquedaMovimiento(productos);
                 bootstrap.Modal.getOrCreateInstance(document.getElementById('modalBuscarProductoMovimiento')).show();
             }
@@ -2348,9 +2421,9 @@
     });
 
     document.getElementById('tablaBuscarProductoMovimiento')?.addEventListener('click', (evento) => {
-        const boton = evento.target.closest('.btn-seleccionar-producto-movimiento');
-        if (!boton || !lineaProductoMovimientoActiva) return;
-        cargarProductoEnLineaMovimiento(lineaProductoMovimientoActiva, (window.INTESIS_PRODUCTOS_MOVIMIENTO || [])[Number(boton.dataset.indice)] || {});
+        const fila = evento.target.closest('.fila-seleccionar-producto-movimiento');
+        if (!fila || !lineaProductoMovimientoActiva) return;
+        cargarProductoEnLineaMovimiento(lineaProductoMovimientoActiva, (window.INTESIS_PRODUCTOS_MOVIMIENTO || [])[Number(fila.dataset.indice)] || {});
         bootstrap.Modal.getOrCreateInstance(document.getElementById('modalBuscarProductoMovimiento')).hide();
     });
 
@@ -2470,6 +2543,10 @@
         });
         document.getElementById('filtroMovEstado')?.addEventListener('change', () => {
             jQuery('#tablaMovimientosLista').DataTable().draw();
+        });
+        document.getElementById('btnFiltrarMovimientos')?.addEventListener('click', () => {
+            jQuery('#tablaMovimientosLista').DataTable().draw();
+            jQuery('#tablaTransferenciasLista').DataTable().draw();
         });
     }
 

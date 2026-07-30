@@ -267,6 +267,29 @@ final class BodegaModelo
 
     /**
      * ***************************************************************************
+     * * OBTIENE LA BODEGA PREDETERMINADA DEL USUARIO EN LA EMPRESA ACTIVA.
+     * ***************************************************************************
+     */
+    public function obtenerBodegaPredeterminadaUsuario(int $empresaId, int $usuarioId): ?array
+    {
+        $sentencia = $this->conexionBaseDatos->obtener()->prepare("
+            SELECT b.inv_bodega_id, b.inv_bodega_nombre
+            FROM inv_bodega_usuarios bu
+            INNER JOIN inv_bodega b ON b.inv_bodega_id = bu.inv_bodega_id
+            WHERE bu.sis_empresa_id = :empresa_id
+              AND bu.sis_usuarios_id = :usuario_id
+              AND bu.inv_bodega_usuarios_estado = 1
+              AND bu.inv_bodega_usuarios_predeterminada = TRUE
+            LIMIT 1
+        ");
+        $sentencia->execute(['empresa_id' => $empresaId, 'usuario_id' => $usuarioId]);
+        $bodega = $sentencia->fetch();
+
+        return $bodega ?: null;
+    }
+
+    /**
+     * ***************************************************************************
      * * LISTA USUARIOS PERMITIDOS PARA UNA BODEGA.
      * ***************************************************************************
      */

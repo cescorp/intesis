@@ -305,19 +305,10 @@ final class StockControlador
             $fila = array_combine(self::COLUMNAS_CSV, array_map('trim', $datos));
             $errores  = [];
             $avisos   = [];
-            foreach (['cantidad_inicial', 'costo_unitario'] as $campo) {
-                if (str_contains((string) $fila[$campo], ',')) {
-                    $errores[] = 'Use punto decimal, no coma.';
-                }
-                if (!is_numeric($fila[$campo]) || (float) $fila[$campo] < 0) {
-                    $errores[] = $campo . ' invalido.';
-                }
+            foreach (['cantidad_inicial', 'costo_unitario', 'pvp'] as $campo) {
+                $errores = array_merge($errores, $this->validarCampoNumerico($campo, (string) $fila[$campo]));
             }
-            if (str_contains((string) $fila['pvp'], ',')) {
-                $errores[] = 'Use punto decimal en pvp.';
-            } elseif (!is_numeric($fila['pvp']) || (float) $fila['pvp'] < 0) {
-                $errores[] = 'pvp invalido.';
-            } elseif ((float) $fila['pvp'] === 0.0) {
+            if (!$errores && (float) $fila['pvp'] === 0.0) {
                 $avisos[] = 'PVP en 0, se actualizara a 0.';
             }
             $codigoProd = strtoupper($fila['codigo_producto']);
@@ -357,6 +348,31 @@ final class StockControlador
         fclose($manejador);
 
         return $filas;
+    }
+
+    /**
+     * ***************************************************************************
+     * * VALIDA UN CAMPO NUMERICO DEL CSV E INDICA EL VALOR RECIBIDO EN EL ERROR.
+     * ***************************************************************************
+     */
+    private function validarCampoNumerico(string $campo, string $valor): array
+    {
+        if ($valor === '') {
+            return ["{$campo} invalido: el valor esta vacio."];
+        }
+        if (str_contains($valor, ',')) {
+            $normalizado = str_replace(',', '.', $valor);
+            if (is_numeric($normalizado) && (float) $normalizado >= 0) {
+                return ["Use punto decimal en {$campo} (recibido: \"{$valor}\")."];
+            }
+
+            return ["{$campo} invalido: \"{$valor}\" no es un numero valido."];
+        }
+        if (!is_numeric($valor) || (float) $valor < 0) {
+            return ["{$campo} invalido: \"{$valor}\" no es un numero valido."];
+        }
+
+        return [];
     }
 
     private function filaError(int $linea, array $datos, string $mensaje): array

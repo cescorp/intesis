@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Intesis\Controladores;
 
+use Intesis\Modelos\BodegaModelo;
 use Intesis\Nucleo\Configuracion;
 use Intesis\Nucleo\ControladorComun;
 use Intesis\Nucleo\Sesion;
@@ -18,7 +19,8 @@ final class AutenticacionControlador
         private Vista $vista,
         private Sesion $sesion,
         private AutenticacionServicio $autenticacionServicio,
-        private Configuracion $configuracion
+        private Configuracion $configuracion,
+        private BodegaModelo $bodegaModelo
     ) {
     }
 
@@ -114,15 +116,20 @@ final class AutenticacionControlador
      */
     private function construirSesionUsuario(array $usuario, array $empresa): array
     {
+        $empresaId = (int) $empresa['sis_empresa_id'];
+        $bodega = $this->bodegaModelo->obtenerBodegaPredeterminadaUsuario($empresaId, (int) $usuario['id']);
+
         return [
             'id' => (int) $usuario['id'],
-            'empresa_id' => (int) $empresa['sis_empresa_id'],
+            'empresa_id' => $empresaId,
             'perfil_id' => (int) $empresa['sis_perfil_id'],
             'nombre' => $usuario['nombre'],
             'correo' => $usuario['correo'],
             'perfil' => $empresa['sis_perfil_nombre'],
             'perfil_codigo' => $empresa['sis_perfil_codigo'],
             'empresa' => $empresa['sis_empresa_razon_social'],
+            'bodega' => $bodega['inv_bodega_nombre'] ?? null,
+            'venta_todas_bodegas' => (bool) ($empresa['sis_perfil_venta_todas_bodegas'] ?? false),
         ];
     }
 }

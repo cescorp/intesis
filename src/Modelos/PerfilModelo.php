@@ -64,14 +64,16 @@ final class PerfilModelo
         $sentencia = $this->conexionBaseDatos->obtener()->prepare("
             INSERT INTO sis_perfil (
                 sis_empresa_id, sis_perfil_codigo, sis_perfil_nombre,
+                sis_perfil_venta_todas_bodegas,
                 sis_perfil_estado, usuario_crea
             )
-            VALUES (:empresa_id, :codigo, :nombre, 1, :usuario_crea)
+            VALUES (:empresa_id, :codigo, :nombre, :venta_todas_bodegas, 1, :usuario_crea)
         ");
         $sentencia->execute([
             'empresa_id' => $datos['empresa_id'],
             'codigo' => $datos['codigo'],
             'nombre' => $datos['nombre'],
+            'venta_todas_bodegas' => $datos['venta_todas_bodegas'] ? 1 : 0,
             'usuario_crea' => $usuarioId,
         ]);
     }
@@ -88,6 +90,7 @@ final class PerfilModelo
             SET sis_empresa_id = :empresa_id,
                 sis_perfil_codigo = :codigo,
                 sis_perfil_nombre = :nombre,
+                sis_perfil_venta_todas_bodegas = :venta_todas_bodegas,
                 usuario_modifica = :usuario_modifica,
                 fecha_modifica = now()
             WHERE sis_perfil_id = :perfil_id
@@ -97,6 +100,7 @@ final class PerfilModelo
             'empresa_id' => $datos['empresa_id'],
             'codigo' => $datos['codigo'],
             'nombre' => $datos['nombre'],
+            'venta_todas_bodegas' => $datos['venta_todas_bodegas'] ? 1 : 0,
             'usuario_modifica' => $usuarioId,
         ]);
     }

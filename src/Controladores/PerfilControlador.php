@@ -209,6 +209,7 @@ final class PerfilControlador
             'empresa_id' => (int) ($_POST['empresa_id'] ?? 0),
             'nombre' => mb_strtoupper($nombre, 'UTF-8'),
             'codigo' => $this->generarCodigo($nombre),
+            'venta_todas_bodegas' => isset($_POST['venta_todas_bodegas']),
         ];
     }
 

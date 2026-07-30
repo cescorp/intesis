@@ -1365,3 +1365,10 @@ body {
         min-height: 0;
     }
 }
+
+#tablaLineasMovimiento.modo-transferencia .th-origen-linea,
+#tablaLineasMovimiento.modo-transferencia .td-origen-linea,
+#tablaLineasMovimiento.modo-transferencia .th-destino-linea,
+#tablaLineasMovimiento.modo-transferencia .td-destino-linea {
+    display: none;
+}

@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace Intesis\Controladores;
 
+use Intesis\Modelos\CategoriaModelo;
 use Intesis\Modelos\DocumentoCompraModelo;
+use Intesis\Modelos\MarcaModelo;
 use Intesis\Modelos\MenuModelo;
 use Intesis\Modelos\MensajeSistemaModelo;
+use Intesis\Modelos\ProductoModelo;
 use Intesis\Modelos\SriImportacionModelo;
 use Intesis\Nucleo\Configuracion;
 use Intesis\Nucleo\ControladorComun;
@@ -29,7 +32,10 @@ final class DocumentoCompraControlador
         private Configuracion $configuracion,
         private RegistroErrores $registroErrores,
         private SriXmlServicio $sriXmlServicio,
-        private SriImportacionModelo $sriImportacionModelo
+        private SriImportacionModelo $sriImportacionModelo,
+        private MarcaModelo $marcaModelo,
+        private CategoriaModelo $categoriaModelo,
+        private ProductoModelo $productoModelo
     ) {
     }
 
@@ -101,6 +107,9 @@ final class DocumentoCompraControlador
             'tiposDocumento'  => $this->documentoCompraModelo->listarTiposDocumento(),
             'bodegas'         => $this->documentoCompraModelo->listarBodegasPermitidas($empresaId, $usuarioId, $verTodas),
             'ivaList'         => $this->documentoCompraModelo->listarIva($empresaId),
+            'marcasList'      => $this->marcaModelo->listar($empresaId, false, true),
+            'categoriasList'  => $this->categoriaModelo->listar($empresaId, false, true),
+            'siguienteCodigoSugerido' => $this->productoModelo->sugerirSiguienteCodigo($this->productoModelo->obtenerUltimoCodigo($empresaId)),
             'esSuperusuario'  => $verTodas,
             'mensaje'         => $this->sesion->consumirMensaje(),
         ]);
@@ -132,6 +141,9 @@ final class DocumentoCompraControlador
             'tiposDocumento' => $this->documentoCompraModelo->listarTiposDocumento(),
             'bodegas'        => $this->documentoCompraModelo->listarBodegasPermitidas($empresaId, $usuarioId, $verTodas),
             'ivaList'        => $this->documentoCompraModelo->listarIva($empresaId),
+            'marcasList'     => $this->marcaModelo->listar($empresaId, false, true),
+            'categoriasList' => $this->categoriaModelo->listar($empresaId, false, true),
+            'siguienteCodigoSugerido' => $this->productoModelo->sugerirSiguienteCodigo($this->productoModelo->obtenerUltimoCodigo($empresaId)),
             'esSuperusuario' => $verTodas,
             'documento'      => $doc,
             'lineas'         => $lineas,
@@ -894,6 +906,7 @@ final class DocumentoCompraControlador
                 'iva_valor'     => $ivaValor,
                 'pvp'           => $pvp,
                 'cod_proveedor' => trim((string) ($item['cod_proveedor'] ?? '')),
+                'marca_id'      => (int) ($item['marca_id'] ?? 0) ?: null,
             ];
         }
         return $lineas;

@@ -53,6 +53,7 @@ final class EmpresaControlador
                 'EMPRESA_RUC_INVALIDO',
                 'EMPRESA_DATOS_OBLIGATORIOS',
                 'EMPRESA_EMAIL_INVALIDO',
+                'EMPRESA_DESCUENTO_INVALIDO',
                 'CONFIRMAR_INACTIVAR_EMPRESA',
                 'CONFIRMAR_ELIMINAR_EMPRESA',
             ]),
@@ -235,6 +236,9 @@ final class EmpresaControlador
             'num_contribuyente_especial' => trim((string) ($_POST['num_contribuyente_especial'] ?? '')),
             'certificado_clave'         => trim((string) ($_POST['certificado_clave'] ?? '')),
             'certificado_ruta'          => null,
+            'descuento_maximo_facturas'    => (float) ($_POST['descuento_maximo_facturas'] ?? 0),
+            'descuento_maximo_notas_venta' => (float) ($_POST['descuento_maximo_notas_venta'] ?? 0),
+            'formula_descuento'            => (string) ($_POST['formula_descuento'] ?? 'C'),
         ];
     }
 
@@ -257,6 +261,16 @@ final class EmpresaControlador
 
         if ($datos['email'] !== '' && !filter_var($datos['email'], FILTER_VALIDATE_EMAIL)) {
             throw new \InvalidArgumentException('EMPRESA_EMAIL_INVALIDO');
+        }
+
+        foreach (['descuento_maximo_facturas', 'descuento_maximo_notas_venta'] as $campo) {
+            if ($datos[$campo] < 0 || $datos[$campo] > 100) {
+                throw new \InvalidArgumentException('EMPRESA_DESCUENTO_INVALIDO');
+            }
+        }
+
+        if (!in_array($datos['formula_descuento'], ['A', 'B', 'C'], true)) {
+            throw new \InvalidArgumentException('Formula de descuento no valida.');
         }
     }
 

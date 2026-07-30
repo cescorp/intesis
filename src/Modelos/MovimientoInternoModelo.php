@@ -19,8 +19,29 @@ final class MovimientoInternoModelo
      * * LISTA MOVIMIENTOS INTERNOS DE UNA EMPRESA.
      * ***************************************************************************
      */
-    public function listar(int $empresaId): array
+    public function listar(int $empresaId, ?array $bodegasDestinoPermitidas = null): array
     {
+        $filtroBodega = '';
+        $parametros = ['empresa_id' => $empresaId];
+        if ($bodegasDestinoPermitidas !== null) {
+            if (!$bodegasDestinoPermitidas) {
+                return [];
+            }
+            $marcadores = [];
+            foreach (array_values($bodegasDestinoPermitidas) as $indice => $bodegaId) {
+                $clave = "bodega_destino_{$indice}";
+                $marcadores[] = ":{$clave}";
+                $parametros[$clave] = $bodegaId;
+            }
+            /* El destino de AJUSTE vive por linea en inv_movimientos_detalle (el
+               encabezado inv_movimientos.inv_bodega_destino_id solo se llena en
+               TRANSFERENCIA), por eso se filtra contra el detalle. */
+            $filtroBodega = ' AND EXISTS (
+                SELECT 1 FROM inv_movimientos_detalle d
+                WHERE d.inv_movimientos_id = m.inv_movimientos_id
+                  AND d.inv_bodega_destino_id IN (' . implode(',', $marcadores) . ')
+            )';
+        }
         $sentencia = $this->conexionBaseDatos->obtener()->prepare("
             SELECT
                 m.*, es.sis_estado_codigo, es.sis_estado_nombre,
@@ -37,9 +58,10 @@ final class MovimientoInternoModelo
             LEFT JOIN inv_bodega bd ON bd.inv_bodega_id = m.inv_bodega_destino_id
             WHERE m.sis_empresa_id = :empresa_id
               AND COALESCE(m.inv_movimientos_tipo, '') IN ('AJUSTE', 'AJUSTE_IN', 'AJUSTE_OUT', 'TRANSFERENCIA')
+              {$filtroBodega}
             ORDER BY m.fecha_crea DESC, m.inv_movimientos_id DESC
         ");
-        $sentencia->execute(['empresa_id' => $empresaId]);
+        $sentencia->execute($parametros);
 
         return $sentencia->fetchAll();
     }

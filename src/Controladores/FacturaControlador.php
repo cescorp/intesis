@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Intesis\Controladores;
 
 use Intesis\Modelos\FacturaModelo;
+use Intesis\Modelos\FormaPagoModelo;
 use Intesis\Modelos\MensajeSistemaModelo;
 use Intesis\Modelos\MenuModelo;
 use Intesis\Nucleo\Configuracion;
@@ -29,7 +30,8 @@ final class FacturaControlador
         private Configuracion                   $configuracion,
         private RegistroErrores                 $registroErrores,
         private GeneradorPdf                    $generadorPdf,
-        private FacturacionElectronicaServicio  $facturacionServicio
+        private FacturacionElectronicaServicio  $facturacionServicio,
+        private FormaPagoModelo                 $formaPagoModelo
     ) {
     }
 
@@ -111,6 +113,8 @@ final class FacturaControlador
             'formasPago'     => $this->facturaModelo->listarFormasPago($empresaId),
             'esSuperusuario' => $verTodas,
             'permisos'       => $this->obtenerPermisos($usuario),
+            'permisosFormaPago' => $this->obtenerPermisosFormaPago($usuario),
+            'configDescuento' => $this->facturaModelo->obtenerConfigDescuento($empresaId),
             'mensaje'        => $this->sesion->consumirMensaje(),
         ]);
     }
@@ -142,6 +146,8 @@ final class FacturaControlador
             'formasPago'     => $this->facturaModelo->listarFormasPago($empresaId),
             'esSuperusuario' => $verTodas,
             'permisos'       => $this->obtenerPermisos($usuario),
+            'permisosFormaPago' => $this->obtenerPermisosFormaPago($usuario),
+            'configDescuento' => $this->facturaModelo->obtenerConfigDescuento($empresaId),
             'factura'        => $factura,
             'lineas'         => $this->facturaModelo->listarDetalle($facturaId),
             'mensaje'        => $this->sesion->consumirMensaje(),
@@ -173,12 +179,15 @@ final class FacturaControlador
 
             $this->validarCabecera($cabecera);
             $this->validarLineas($lineas);
+            $this->validarDescuentoMaximo($empresaId, $cabecera);
+
+            $ventaTodasBodegas = $this->esSuperusuario($usuario) || !empty($usuario['venta_todas_bodegas']);
 
             if ($esEdicion) {
-                $this->facturaModelo->actualizar($facturaId, $cabecera, $lineas, (int) $usuario['id']);
+                $this->facturaModelo->actualizar($facturaId, $cabecera, $lineas, (int) $usuario['id'], $ventaTodasBodegas);
                 $this->responderJson(true, 'OK', 'Factura actualizada correctamente.', ['factura_id' => $facturaId]);
             } else {
-                $nuevoId = $this->facturaModelo->crear($cabecera, $lineas, (int) $usuario['id']);
+                $nuevoId = $this->facturaModelo->crear($cabecera, $lineas, (int) $usuario['id'], $ventaTodasBodegas);
                 $this->responderJson(true, 'OK', 'Factura creada correctamente.', ['factura_id' => $nuevoId]);
             }
         } catch (Throwable $excepcion) {
@@ -251,10 +260,6 @@ final class FacturaControlador
         $empresaId = (int) $usuario['empresa_id'];
         $termino   = trim((string) ($_GET['q'] ?? ''));
 
-        if (strlen($termino) < 2) {
-            $this->responderJson(true, 'OK', '', ['clientes' => []]);
-        }
-
         $this->responderJson(true, 'OK', '', [
             'clientes' => $this->facturaModelo->buscarClientes($empresaId, $termino),
         ]);
@@ -271,9 +276,142 @@ final class FacturaControlador
             $this->responderJson(true, 'OK', '', ['productos' => []]);
         }
 
+        $bodegaId = ($this->esSuperusuario($usuario) || !empty($usuario['venta_todas_bodegas']))
+            ? null
+            : $this->facturaModelo->obtenerBodegaUsuario($empresaId, (int) $usuario['id']);
+
         $this->responderJson(true, 'OK', '', [
-            'productos' => $this->facturaModelo->buscarProductos($empresaId, $termino),
+            'productos' => $this->facturaModelo->buscarProductos($empresaId, $termino, $bodegaId),
         ]);
+    }
+
+    // =========================================================================
+    // MINI-CRUD FORMAS DE PAGO (accesible solo desde el botón "+" de este form)
+    // =========================================================================
+
+    public function formasPagoListar(): void
+    {
+        $usuario   = $this->exigirSesionJson();
+        $this->exigirPermisoJson('/ventas/facturas/crear');
+        $empresaId = (int) $usuario['empresa_id'];
+
+        $this->responderJson(true, 'OK', '', [
+            'formasPago' => $this->formaPagoModelo->listar($empresaId),
+        ]);
+    }
+
+    public function formaPagoCrear(): void
+    {
+        $usuario   = $this->exigirSesionJson();
+        $this->exigirPermisoJson('/ventas/formas-pago/crear');
+        $empresaId = (int) $usuario['empresa_id'];
+
+        try {
+            [$nombre, $codigoSri, $calculadora] = $this->normalizarDatosFormaPago();
+            $this->validarDatosFormaPago($empresaId, $nombre, null);
+            $id = $this->formaPagoModelo->crear($empresaId, $nombre, $codigoSri, $calculadora, (int) $usuario['id']);
+            $this->responderJson(true, 'OK', 'Forma de pago creada correctamente.', ['forma_pago' => $this->formaPagoModelo->buscar($id)]);
+        } catch (Throwable $excepcion) {
+            $this->registrarErrorCrud('CREAR FORMA DE PAGO', $excepcion);
+            $this->responderJson(false, 'ERROR_VALIDACION', $excepcion->getMessage());
+        }
+    }
+
+    public function formaPagoEditar(): void
+    {
+        $usuario   = $this->exigirSesionJson();
+        $this->exigirPermisoJson('/ventas/formas-pago/editar');
+        $empresaId = (int) $usuario['empresa_id'];
+
+        try {
+            $id = (int) ($_POST['forma_pago_id'] ?? 0);
+            $registro = $this->obtenerFormaPagoPermitida($id, $empresaId);
+            [$nombre, $codigoSri, $calculadora] = $this->normalizarDatosFormaPago();
+            $this->validarDatosFormaPago($empresaId, $nombre, (int) $registro['ven_forma_pago_id']);
+            $this->formaPagoModelo->actualizar($id, $nombre, $codigoSri, $calculadora, (int) $usuario['id']);
+            $this->responderJson(true, 'OK', 'Forma de pago actualizada correctamente.', ['forma_pago' => $this->formaPagoModelo->buscar($id)]);
+        } catch (Throwable $excepcion) {
+            $this->registrarErrorCrud('EDITAR FORMA DE PAGO', $excepcion);
+            $this->responderJson(false, 'ERROR_VALIDACION', $excepcion->getMessage());
+        }
+    }
+
+    public function formaPagoActivar(): void
+    {
+        $this->cambiarEstadoFormaPago('A', 'Forma de pago activada.');
+    }
+
+    public function formaPagoInactivar(): void
+    {
+        $this->cambiarEstadoFormaPago('I', 'Forma de pago inactivada.');
+    }
+
+    public function formaPagoEliminar(): void
+    {
+        $usuario   = $this->exigirSesionJson();
+        $this->exigirPermisoJson('/ventas/formas-pago/eliminar');
+        $empresaId = (int) $usuario['empresa_id'];
+
+        try {
+            $id = (int) ($_POST['forma_pago_id'] ?? 0);
+            $this->obtenerFormaPagoPermitida($id, $empresaId);
+            if ($this->formaPagoModelo->estaEnUso($id)) {
+                throw new \InvalidArgumentException('No se puede eliminar: está en uso en documentos existentes. Puede inactivarla.');
+            }
+            $this->formaPagoModelo->eliminar($id);
+            $this->responderJson(true, 'OK', 'Forma de pago eliminada correctamente.');
+        } catch (Throwable $excepcion) {
+            $this->registrarErrorCrud('ELIMINAR FORMA DE PAGO', $excepcion);
+            $this->responderJson(false, 'ERROR_VALIDACION', $excepcion->getMessage());
+        }
+    }
+
+    private function cambiarEstadoFormaPago(string $estado, string $mensaje): void
+    {
+        $usuario   = $this->exigirSesionJson();
+        $this->exigirPermisoJson('/ventas/formas-pago/inactivar');
+        $empresaId = (int) $usuario['empresa_id'];
+
+        try {
+            $id = (int) ($_POST['forma_pago_id'] ?? 0);
+            $this->obtenerFormaPagoPermitida($id, $empresaId);
+            $this->formaPagoModelo->cambiarEstado($id, $estado, (int) $usuario['id']);
+            $this->responderJson(true, 'OK', $mensaje);
+        } catch (Throwable $excepcion) {
+            $this->registrarErrorCrud('CAMBIAR ESTADO FORMA DE PAGO', $excepcion);
+            $this->responderJson(false, 'ERROR_VALIDACION', $excepcion->getMessage());
+        }
+    }
+
+    private function normalizarDatosFormaPago(): array
+    {
+        return [
+            mb_strtoupper(trim((string) ($_POST['nombre'] ?? '')), 'UTF-8'),
+            trim((string) ($_POST['codigo_sri'] ?? '')),
+            !empty($_POST['calculadora']) ? 'S' : 'N',
+        ];
+    }
+
+    private function validarDatosFormaPago(int $empresaId, string $nombre, ?int $excluirId): void
+    {
+        if ($nombre === '') {
+            throw new \InvalidArgumentException('El nombre es obligatorio.');
+        }
+        if ($this->formaPagoModelo->existeNombre($empresaId, $nombre, $excluirId)) {
+            throw new \InvalidArgumentException("Ya existe una forma de pago con el nombre \"$nombre\".");
+        }
+    }
+
+    private function obtenerFormaPagoPermitida(int $id, int $empresaId): array
+    {
+        $registro = $id > 0 ? $this->formaPagoModelo->buscar($id) : null;
+        if (!$registro) {
+            throw new \InvalidArgumentException('Forma de pago no válida.');
+        }
+        if ((int) $registro['sis_empresa_id'] !== $empresaId) {
+            throw new \InvalidArgumentException('Sin acceso a este registro.');
+        }
+        return $registro;
     }
 
     // =========================================================================
@@ -359,6 +497,7 @@ final class FacturaControlador
             'tipo_doc'      => in_array(trim((string)($body['tipo_doc'] ?? '')), ['FACTURA_VENTA', 'NOTA_VENTA'], true)
                                 ? trim((string)$body['tipo_doc'])
                                 : 'FACTURA_VENTA',
+            'descuento_porcentaje' => round((float) ($body['descuento_porcentaje'] ?? 0), 2),
         ];
     }
 
@@ -404,6 +543,20 @@ final class FacturaControlador
         }
     }
 
+    private function validarDescuentoMaximo(int $empresaId, array $cabecera): void
+    {
+        $pct = $cabecera['descuento_porcentaje'];
+        if ($pct <= 0) return;
+
+        $config = $this->facturaModelo->obtenerConfigDescuento($empresaId);
+        $max = $cabecera['tipo_doc'] === 'NOTA_VENTA' ? $config['max_notas_venta'] : $config['max_facturas'];
+
+        if ($pct > $max) {
+            $etiqueta = $cabecera['tipo_doc'] === 'NOTA_VENTA' ? 'notas de venta' : 'facturas';
+            throw new \InvalidArgumentException("El descuento ({$pct}%) supera el máximo permitido para {$etiqueta} ({$max}%).");
+        }
+    }
+
     private function obtenerPermisos(array $usuario): array
     {
         $eId = (int) $usuario['empresa_id'];
@@ -412,6 +565,18 @@ final class FacturaControlador
             'crear'  => $this->menuModelo->tienePermiso($eId, $pId, '/ventas/facturas/crear'),
             'editar' => $this->menuModelo->tienePermiso($eId, $pId, '/ventas/facturas/editar'),
             'anular' => $this->menuModelo->tienePermiso($eId, $pId, '/ventas/facturas/anular'),
+        ];
+    }
+
+    private function obtenerPermisosFormaPago(array $usuario): array
+    {
+        $eId = (int) $usuario['empresa_id'];
+        $pId = (int) $usuario['perfil_id'];
+        return [
+            'crear'     => $this->menuModelo->tienePermiso($eId, $pId, '/ventas/formas-pago/crear'),
+            'editar'    => $this->menuModelo->tienePermiso($eId, $pId, '/ventas/formas-pago/editar'),
+            'inactivar' => $this->menuModelo->tienePermiso($eId, $pId, '/ventas/formas-pago/inactivar'),
+            'eliminar'  => $this->menuModelo->tienePermiso($eId, $pId, '/ventas/formas-pago/eliminar'),
         ];
     }
 

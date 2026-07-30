@@ -149,7 +149,7 @@ final class FacturaModelo
     // CREAR
     // =========================================================================
 
-    public function crear(array $cabecera, array $lineas, int $usuarioId): int
+    public function crear(array $cabecera, array $lineas, int $usuarioId, bool $ventaTodasBodegas = false): int
     {
         $pdo = $this->pdo();
         $pdo->beginTransaction();
@@ -159,7 +159,7 @@ final class FacturaModelo
             $bodegaId  = $this->obtenerBodegaId($pdo, $empresaId, $usuarioId);
             $numero    = $this->secuenciaModelo->obtenerSiguiente($pdo, $empresaId, $tipoCodigo, 'VENTAS', $bodegaId);
 
-            $this->validarStock($pdo, $empresaId, $lineas);
+            $this->validarStock($pdo, $empresaId, $lineas, $ventaTodasBodegas ? null : $bodegaId);
 
             $stmt = $pdo->prepare("
                 INSERT INTO ven_documento (
@@ -221,7 +221,7 @@ final class FacturaModelo
     // ACTUALIZAR (solo estado CREADA)
     // =========================================================================
 
-    public function actualizar(int $facturaId, array $cabecera, array $lineas, int $usuarioId): void
+    public function actualizar(int $facturaId, array $cabecera, array $lineas, int $usuarioId, bool $ventaTodasBodegas = false): void
     {
         $pdo = $this->pdo();
         $pdo->beginTransaction();
@@ -234,7 +234,8 @@ final class FacturaModelo
             $this->revertirStockYKardex($pdo, $facturaId, $usuarioId);
 
             $empresaId = (int) $cabecera['empresa_id'];
-            $this->validarStock($pdo, $empresaId, $lineas);
+            $bodegaId  = $this->obtenerBodegaId($pdo, $empresaId, $usuarioId);
+            $this->validarStock($pdo, $empresaId, $lineas, $ventaTodasBodegas ? null : $bodegaId);
 
             $pdo->prepare("
                 UPDATE ven_documento
@@ -271,8 +272,7 @@ final class FacturaModelo
                 WHERE ven_documento_id = :id AND ven_documento_detalle_estado = 1
             ")->execute(['u' => $usuarioId, 'id' => $facturaId]);
 
-            $numero   = $doc['ven_documento_numero'];
-            $bodegaId = $this->obtenerBodegaId($pdo, $empresaId, $usuarioId);
+            $numero = $doc['ven_documento_numero'];
             $this->insertarLineasYDescontarStock($pdo, $facturaId, $empresaId, $bodegaId, $numero, $lineas, $usuarioId);
 
             $pdo->commit();
@@ -390,7 +390,8 @@ final class FacturaModelo
         $sentencia = $this->pdo()->prepare("
             SELECT c.ven_cliente_id, c.ven_cliente_identificacion,
                    c.ven_cliente_tipo_identificacion, c.ven_cliente_razon_social,
-                   c.ven_cliente_nombre_comercial
+                   c.ven_cliente_nombre_comercial,
+                   c.ven_cliente_telefono, c.ven_cliente_email
             FROM ven_cliente c
             INNER JOIN sis_estado es ON es.sis_estado_id = c.sis_estado_id
             WHERE c.sis_empresa_id = :empresa_id
@@ -404,9 +405,10 @@ final class FacturaModelo
         return $sentencia->fetchAll();
     }
 
-    public function buscarProductos(int $empresaId, string $termino): array
+    public function buscarProductos(int $empresaId, string $termino, ?int $bodegaId = null): array
     {
         $like = '%' . $termino . '%';
+        $filtroBodegaStock = $bodegaId !== null ? 'AND s.inv_bodega_id = :bodega_id' : '';
         $sentencia = $this->pdo()->prepare("
             SELECT p.inv_producto_id,
                    p.inv_producto_codigo_principal AS codigo_interno,
@@ -421,6 +423,7 @@ final class FacturaModelo
             LEFT JOIN inv_marca m     ON m.inv_marca_id    = p.inv_marca_id
             LEFT JOIN inv_stock s     ON s.inv_producto_id = p.inv_producto_id
                                      AND s.sis_empresa_id  = :empresa_id
+                                     {$filtroBodegaStock}
             LEFT JOIN ven_lista_precio lp ON lp.sis_empresa_id = :empresa_id2
                                          AND lp.ven_lista_precio_predeterminado = 1
                                          AND lp.sis_estado = 1
@@ -441,12 +444,16 @@ final class FacturaModelo
             ORDER BY p.inv_producto_nombre
             LIMIT 30
         ");
-        $sentencia->execute([
+        $parametros = [
             'empresa_id'  => $empresaId, 'empresa_id2' => $empresaId,
             'empresa_id3' => $empresaId, 'empresa_id4' => $empresaId,
             'empresa_id5' => $empresaId,
             'like' => $like, 'like2' => $like,
-        ]);
+        ];
+        if ($bodegaId !== null) {
+            $parametros['bodega_id'] = $bodegaId;
+        }
+        $sentencia->execute($parametros);
         return $sentencia->fetchAll();
     }
 
@@ -466,12 +473,31 @@ final class FacturaModelo
         return $stmt->fetch() ?: [];
     }
 
+    public function obtenerConfigDescuento(int $empresaId): array
+    {
+        $stmt = $this->pdo()->prepare("
+            SELECT sis_empresa_formula_descuento AS formula,
+                   sis_empresa_descuento_maximo_facturas AS max_facturas,
+                   sis_empresa_descuento_maximo_notas_venta AS max_notas_venta
+            FROM sis_empresa WHERE sis_empresa_id = :id LIMIT 1
+        ");
+        $stmt->execute(['id' => $empresaId]);
+        $fila = $stmt->fetch();
+
+        return [
+            'formula' => $fila['formula'] ?? 'C',
+            'max_facturas' => (float) ($fila['max_facturas'] ?? 0),
+            'max_notas_venta' => (float) ($fila['max_notas_venta'] ?? 0),
+        ];
+    }
+
     // =========================================================================
     // HELPERS PRIVADOS
     // =========================================================================
 
-    private function validarStock(\PDO $pdo, int $empresaId, array $lineas): void
+    private function validarStock(\PDO $pdo, int $empresaId, array $lineas, ?int $bodegaId = null): void
     {
+        $filtroBodega = $bodegaId !== null ? 'AND inv_bodega_id = :bodega_id' : '';
         foreach ($lineas as $linea) {
             $productoId = (int) $linea['producto_id'];
             $cantidad   = (float) $linea['cantidad'];
@@ -480,8 +506,13 @@ final class FacturaModelo
                 SELECT COALESCE(SUM(inv_stock_cantidad_disponible), 0) AS stock
                 FROM inv_stock
                 WHERE sis_empresa_id = :empresa_id AND inv_producto_id = :producto_id
+                {$filtroBodega}
             ");
-            $stmt->execute(['empresa_id' => $empresaId, 'producto_id' => $productoId]);
+            $parametros = ['empresa_id' => $empresaId, 'producto_id' => $productoId];
+            if ($bodegaId !== null) {
+                $parametros['bodega_id'] = $bodegaId;
+            }
+            $stmt->execute($parametros);
             $stock = (float) $stmt->fetchColumn();
 
             if ($stock < $cantidad) {
@@ -722,6 +753,11 @@ final class FacturaModelo
         $doc = $stmt->fetch();
         if (!$doc) throw new RuntimeException('Factura no encontrada.');
         return $doc;
+    }
+
+    public function obtenerBodegaUsuario(int $empresaId, int $usuarioId): int
+    {
+        return $this->obtenerBodegaId($this->pdo(), $empresaId, $usuarioId);
     }
 
     private function obtenerBodegaId(\PDO $pdo, int $empresaId, int $usuarioId): int

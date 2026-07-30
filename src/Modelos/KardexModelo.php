@@ -144,6 +144,7 @@ final class KardexModelo
                 m.inv_movimientos_id,
                 m.inv_movimientos_numero,
                 m.inv_movimientos_fecha,
+                m.inv_movimientos_tipo,
                 to_char(COALESCE(m.fecha_crea, now()), 'HH24:MI:SS') AS hora,
                 COALESCE(m.inv_movimientos_referencia, '') AS inv_movimientos_referencia,
                 COALESCE(m.inv_movimientos_observacion, '') AS inv_movimientos_observacion,
@@ -153,12 +154,16 @@ final class KardexModelo
                 COALESCE(e.sis_empresa_direccion, '') AS sis_empresa_direccion,
                 td.sis_tipo_documento_nombre,
                 COALESCE(u.sis_usuarios_nombre, 'SIN RESPONSABLE') AS responsable,
-                ua.sis_usuarios_nombre AS aprobado_por
+                ua.sis_usuarios_nombre AS aprobado_por,
+                bo.inv_bodega_nombre AS bodega_origen_nombre,
+                bd.inv_bodega_nombre AS bodega_destino_nombre
             FROM inv_movimientos m
             INNER JOIN sis_empresa e ON e.sis_empresa_id = m.sis_empresa_id
             INNER JOIN sis_tipo_documento td ON td.sis_tipo_documento_id = m.sis_tipo_documento_id
             LEFT JOIN sis_usuarios u ON u.sis_usuarios_id = m.usuario_crea
             LEFT JOIN sis_usuarios ua ON ua.sis_usuarios_id = m.usuario_modifica
+            LEFT JOIN inv_bodega bo ON bo.inv_bodega_id = m.inv_bodega_origen_id
+            LEFT JOIN inv_bodega bd ON bd.inv_bodega_id = m.inv_bodega_destino_id
             WHERE m.sis_empresa_id = :empresa_id
               AND m.inv_movimientos_id = :movimiento_id
             LIMIT 1

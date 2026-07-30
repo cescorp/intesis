@@ -37,6 +37,7 @@ require_once __DIR__ . '/src/Modelos/SriImportacionModelo.php';
 require_once __DIR__ . '/src/Modelos/ClienteModelo.php';
 require_once __DIR__ . '/src/Modelos/ProformaModelo.php';
 require_once __DIR__ . '/src/Modelos/FacturaModelo.php';
+require_once __DIR__ . '/src/Modelos/FormaPagoModelo.php';
 if (is_file(__DIR__ . '/vendor/autoload.php')) {
     require_once __DIR__ . '/vendor/autoload.php';
 }
