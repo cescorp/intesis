@@ -615,10 +615,10 @@ final class ProformaModelo
     public function listarIva(int $empresaId): array
     {
         $sentencia = $this->pdo()->prepare("
-            SELECT sis_iva_id, sis_iva_valor
+            SELECT sis_iva_id, sis_iva_valor, sis_iva_predeterminado
             FROM sis_iva
             WHERE sis_empresa_id = :empresa_id AND sis_iva_estado = 1
-            ORDER BY sis_iva_valor
+            ORDER BY sis_iva_predeterminado DESC, sis_iva_valor
         ");
         $sentencia->execute(['empresa_id' => $empresaId]);
         return $sentencia->fetchAll();
