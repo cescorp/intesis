@@ -238,6 +238,7 @@ final class EmpresaControlador
             'certificado_ruta'          => null,
             'descuento_maximo_facturas'    => (float) ($_POST['descuento_maximo_facturas'] ?? 0),
             'descuento_maximo_notas_venta' => (float) ($_POST['descuento_maximo_notas_venta'] ?? 0),
+            'formula_descuento'            => (string) ($_POST['formula_descuento'] ?? 'C'),
         ];
     }
 
@@ -266,6 +267,10 @@ final class EmpresaControlador
             if ($datos[$campo] < 0 || $datos[$campo] > 100) {
                 throw new \InvalidArgumentException('EMPRESA_DESCUENTO_INVALIDO');
             }
+        }
+
+        if (!in_array($datos['formula_descuento'], ['A', 'B', 'C'], true)) {
+            throw new \InvalidArgumentException('Formula de descuento no valida.');
         }
     }
 

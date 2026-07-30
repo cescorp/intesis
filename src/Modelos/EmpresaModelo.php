@@ -38,6 +38,7 @@ final class EmpresaModelo
                 e.sis_empresa_num_contribuyente_especial,
                 e.sis_empresa_descuento_maximo_facturas,
                 e.sis_empresa_descuento_maximo_notas_venta,
+                e.sis_empresa_formula_descuento,
                 es.sis_estado_codigo,
                 es.sis_estado_nombre
             FROM sis_empresa e
@@ -100,6 +101,7 @@ final class EmpresaModelo
                 sis_empresa_certificado_clave,
                 sis_empresa_descuento_maximo_facturas,
                 sis_empresa_descuento_maximo_notas_venta,
+                sis_empresa_formula_descuento,
                 sis_estado_id,
                 usuario_crea
             )
@@ -117,6 +119,7 @@ final class EmpresaModelo
                 :certificado_clave,
                 :descuento_maximo_facturas,
                 :descuento_maximo_notas_venta,
+                :formula_descuento,
                 :estado_id,
                 :usuario_crea
             )
@@ -134,6 +137,7 @@ final class EmpresaModelo
             $empresaId = (int) $sentencia->fetchColumn();
             $this->crearPerfilesBase($empresaId, $usuarioId);
             $this->crearSecuenciasBase($empresaId, $usuarioId);
+            $this->crearFormasPagoBase($empresaId, $usuarioId);
             $pdo->commit();
 
             return $empresaId;
@@ -164,6 +168,7 @@ final class EmpresaModelo
                 sis_empresa_num_contribuyente_especial = :num_contribuyente_especial,
                 sis_empresa_descuento_maximo_facturas    = :descuento_maximo_facturas,
                 sis_empresa_descuento_maximo_notas_venta = :descuento_maximo_notas_venta,
+                sis_empresa_formula_descuento           = :formula_descuento,
                 sis_empresa_certificado_ruta           = COALESCE(:certificado_ruta, sis_empresa_certificado_ruta),
                 sis_empresa_certificado_clave          = CASE
                                                             WHEN :certificado_clave_check = '' THEN sis_empresa_certificado_clave
@@ -269,6 +274,7 @@ final class EmpresaModelo
         $sentencia->bindValue(':certificado_clave', $datos['certificado_clave'] ?: null);
         $sentencia->bindValue(':descuento_maximo_facturas', (float) $datos['descuento_maximo_facturas']);
         $sentencia->bindValue(':descuento_maximo_notas_venta', (float) $datos['descuento_maximo_notas_venta']);
+        $sentencia->bindValue(':formula_descuento', in_array($datos['formula_descuento'] ?? 'C', ['A', 'B', 'C'], true) ? $datos['formula_descuento'] : 'C');
     }
 
     /**
@@ -339,6 +345,48 @@ final class EmpresaModelo
                 'usuario_crea' => $usuarioId,
                 'codigo' => $tipo['codigo'],
                 'modulo' => $tipo['modulo'],
+            ]);
+        }
+    }
+
+    /**
+     * ***************************************************************************
+     * * CREA LAS FORMAS DE PAGO BASE (EFECTIVO, TRANSFERENCIA, TARJETA CREDITO)
+     * * PARA UNA EMPRESA NUEVA, CON CODIGO SRI YA ASIGNADO.
+     * ***************************************************************************
+     */
+    private function crearFormasPagoBase(int $empresaId, int $usuarioId): void
+    {
+        $formas = [
+            ['nombre' => 'EFECTIVO', 'codigo_sri' => '01', 'calculadora' => 'S'],
+            ['nombre' => 'TRANSFERENCIA', 'codigo_sri' => '16', 'calculadora' => 'N'],
+            ['nombre' => 'TARJETA CRÉDITO', 'codigo_sri' => '19', 'calculadora' => 'N'],
+        ];
+
+        $sentencia = $this->conexionBaseDatos->obtener()->prepare("
+            INSERT INTO ven_forma_pago (
+                sis_empresa_id, ven_forma_pago_nombre, ven_forma_pago_codigo_sri,
+                ven_forma_pago_calculadora, ven_forma_pago_estado, usuario_crea
+            )
+            SELECT CAST(:empresa_id_insert AS INTEGER), CAST(:nombre_insert AS VARCHAR(100)),
+                   CAST(:codigo_sri AS VARCHAR(2)), CAST(:calculadora AS CHAR(1)),
+                   'A', CAST(:usuario_crea AS INTEGER)
+            WHERE NOT EXISTS (
+                SELECT 1 FROM ven_forma_pago
+                WHERE sis_empresa_id = CAST(:empresa_id_buscar AS INTEGER)
+                  AND upper(ven_forma_pago_nombre) = upper(CAST(:nombre_buscar AS VARCHAR(100)))
+            )
+        ");
+
+        foreach ($formas as $forma) {
+            $sentencia->execute([
+                'empresa_id_insert' => $empresaId,
+                'empresa_id_buscar' => $empresaId,
+                'nombre_insert' => $forma['nombre'],
+                'nombre_buscar' => $forma['nombre'],
+                'codigo_sri' => $forma['codigo_sri'],
+                'calculadora' => $forma['calculadora'],
+                'usuario_crea' => $usuarioId,
             ]);
         }
     }

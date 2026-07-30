@@ -111,6 +111,7 @@ $appUrl = rtrim($configuracion->obtener('APP_URL', ''), '/');
                                                     data-num-especial="<?= htmlspecialchars($empresa['sis_empresa_num_contribuyente_especial'] ?? '') ?>"
                                                     data-descuento-facturas="<?= htmlspecialchars((string) ($empresa['sis_empresa_descuento_maximo_facturas'] ?? '0')) ?>"
                                                     data-descuento-notas-venta="<?= htmlspecialchars((string) ($empresa['sis_empresa_descuento_maximo_notas_venta'] ?? '0')) ?>"
+                                                    data-formula-descuento="<?= htmlspecialchars((string) ($empresa['sis_empresa_formula_descuento'] ?? 'C')) ?>"
                                                     data-cert-ruta="<?= htmlspecialchars($empresa['sis_empresa_certificado_ruta'] ?? '') ?>"
                                                     data-cert-clave="<?= htmlspecialchars($empresa['sis_empresa_certificado_clave'] ?? '') ?>"
                                                 >
@@ -260,6 +261,15 @@ $appUrl = rtrim($configuracion->obtener('APP_URL', ''), '/');
                                 <input type="number" class="form-control" id="descuento_maximo_notas_venta" name="descuento_maximo_notas_venta" min="0" max="100" step="0.01" value="0">
                             </div>
                             <div class="col-12">
+                                <label class="form-label" for="formula_descuento">Fórmula de aplicación del descuento (Nueva Factura / Nota de Venta)</label>
+                                <select class="form-control" id="formula_descuento" name="formula_descuento">
+                                    <option value="A">A - Reduce la base antes de IVA (recalcula el IVA)</option>
+                                    <option value="B">B - Reduce el total ya con IVA incluido</option>
+                                    <option value="C" selected>C - Reduce solo la base, el IVA se suma completo (predeterminado)</option>
+                                </select>
+                                <small class="text-muted">No aplica a Compras, que siempre usa la fórmula C.</small>
+                            </div>
+                            <div class="col-12">
                                 <hr class="my-1">
                                 <label class="form-label fw-semibold">Certificado digital</label>
                             </div>
@@ -337,6 +347,7 @@ $appUrl = rtrim($configuracion->obtener('APP_URL', ''), '/');
             document.getElementById('cert_nombre').value = '';
             document.getElementById('descuento_maximo_facturas').value = '0';
             document.getElementById('descuento_maximo_notas_venta').value = '0';
+            document.getElementById('formula_descuento').value = 'C';
         } else {
             titulo.textContent = 'Editar empresa';
             form.action = appUrl + '/sistema/empresas/editar';
@@ -360,6 +371,7 @@ $appUrl = rtrim($configuracion->obtener('APP_URL', ''), '/');
             document.getElementById('certificado_clave').value          = btn.dataset.certClave  || '';
             document.getElementById('descuento_maximo_facturas').value    = btn.dataset.descuentoFacturas   || '0';
             document.getElementById('descuento_maximo_notas_venta').value = btn.dataset.descuentoNotasVenta || '0';
+            document.getElementById('formula_descuento').value            = btn.dataset.formulaDescuento    || 'C';
 
             // Mostrar nombre del archivo actual
             const ruta = btn.dataset.certRuta || '';

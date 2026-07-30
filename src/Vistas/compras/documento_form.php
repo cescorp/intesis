@@ -49,7 +49,9 @@ $editBodegaId  = $modoEditar ? (int) $documento['inv_bodega_id']         : $bode
 $editNumero    = $modoEditar ? htmlspecialchars((string) $documento['com_documento_numero'])  : '';
 $editFecha     = $modoEditar ? substr((string) $documento['com_documento_fecha_emision'], 0, 10) : date('Y-m-d');
 $editObs       = $modoEditar ? htmlspecialchars((string) ($documento['com_documento_observacion'] ?? '')) : '';
-$editDescuento = $modoEditar ? (float) ($documento['com_documento_descuento'] ?? 0) : 0;
+$editSubtotal       = $modoEditar ? (float) ($documento['com_documento_subtotal'] ?? 0) : 0;
+$editDescuentoValor = $modoEditar ? (float) ($documento['com_documento_descuento'] ?? 0) : 0;
+$editDescuentoPct   = ($modoEditar && $editSubtotal > 0) ? round($editDescuentoValor / $editSubtotal * 100, 2) : 0;
 ?>
 <div class="app-wrapper">
     <!-- NAVBAR -->
@@ -193,7 +195,10 @@ $editDescuento = $modoEditar ? (float) ($documento['com_documento_descuento'] ??
                     <tr>
                         <td class="text-muted ps-2 align-middle">Descuento</td>
                         <td class="text-end pe-2">
-                            <input type="number" class="form-control form-control-sm text-end d-inline-block" style="width:110px" id="inp_descuento" name="descuento" value="<?= number_format($editDescuento, 2, '.', '') ?>" min="0" step="0.01">
+                            <div class="input-group input-group-sm justify-content-end" style="width:110px;margin-left:auto">
+                                <input type="number" class="form-control form-control-sm text-end" id="inp_descuento_pct" value="<?= number_format($editDescuentoPct, 2, '.', '') ?>" min="0" max="100" step="0.01">
+                                <span class="input-group-text px-1">%</span>
+                            </div>
                         </td>
                     </tr>
                     <tr><td class="text-muted ps-2">IVA</td>               <td class="text-end pe-2 fw-semibold" id="resIva">$ 0.00</td></tr>
@@ -203,6 +208,7 @@ $editDescuento = $modoEditar ? (float) ($documento['com_documento_descuento'] ??
         </div>
 
         <input type="hidden" name="subtotal"  id="inp_subtotal">
+        <input type="hidden" name="descuento" id="inp_descuento">
         <input type="hidden" name="iva_total" id="inp_iva_total">
         <input type="hidden" name="total"     id="inp_total">
     </form>
@@ -441,13 +447,16 @@ function calcularTotales() {
         if (ivaV > 0) baseIva += base; else base0 += base;
         totalIva  += base * ivaV / 100;
     });
-    const descuento = parseFloat(q('#inp_descuento')?.value) || 0;
-    const total = base0 + baseIva + totalIva - descuento;
+    const pct = parseFloat(q('#inp_descuento_pct')?.value) || 0;
+    const subtotal = base0 + baseIva;
+    const total = subtotal * (1 - pct / 100) + totalIva;
+    const descuento = (subtotal + totalIva) - total;
     q('#resBase0').textContent     = '$ ' + fmt2(base0);
     q('#resBaseIva').textContent   = '$ ' + fmt2(baseIva);
     q('#resIva').textContent       = '$ ' + fmt2(totalIva);
     q('#resTotal').textContent     = '$ ' + fmt2(total);
-    q('#inp_subtotal').value  = fmt2(base0 + baseIva);
+    q('#inp_subtotal').value  = fmt2(subtotal);
+    q('#inp_descuento').value = fmt2(descuento);
     q('#inp_iva_total').value = fmt2(totalIva);
     q('#inp_total').value     = fmt2(total);
 }
@@ -508,7 +517,7 @@ cuerpoDetalle.addEventListener('change', (e) => {
 
 q('#btnAgregarLinea').addEventListener('click', () => crearFila({}));
 
-q('#inp_descuento').addEventListener('input', calcularTotales);
+q('#inp_descuento_pct').addEventListener('input', calcularTotales);
 
 cuerpoDetalle.addEventListener('click', (e) => {
     if (e.target.closest('.btn-eliminar-linea')) {

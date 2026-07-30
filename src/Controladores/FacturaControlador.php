@@ -114,6 +114,7 @@ final class FacturaControlador
             'esSuperusuario' => $verTodas,
             'permisos'       => $this->obtenerPermisos($usuario),
             'permisosFormaPago' => $this->obtenerPermisosFormaPago($usuario),
+            'configDescuento' => $this->facturaModelo->obtenerConfigDescuento($empresaId),
             'mensaje'        => $this->sesion->consumirMensaje(),
         ]);
     }
@@ -146,6 +147,7 @@ final class FacturaControlador
             'esSuperusuario' => $verTodas,
             'permisos'       => $this->obtenerPermisos($usuario),
             'permisosFormaPago' => $this->obtenerPermisosFormaPago($usuario),
+            'configDescuento' => $this->facturaModelo->obtenerConfigDescuento($empresaId),
             'factura'        => $factura,
             'lineas'         => $this->facturaModelo->listarDetalle($facturaId),
             'mensaje'        => $this->sesion->consumirMensaje(),
@@ -177,6 +179,7 @@ final class FacturaControlador
 
             $this->validarCabecera($cabecera);
             $this->validarLineas($lineas);
+            $this->validarDescuentoMaximo($empresaId, $cabecera);
 
             $ventaTodasBodegas = $this->esSuperusuario($usuario) || !empty($usuario['venta_todas_bodegas']);
 
@@ -494,6 +497,7 @@ final class FacturaControlador
             'tipo_doc'      => in_array(trim((string)($body['tipo_doc'] ?? '')), ['FACTURA_VENTA', 'NOTA_VENTA'], true)
                                 ? trim((string)$body['tipo_doc'])
                                 : 'FACTURA_VENTA',
+            'descuento_porcentaje' => round((float) ($body['descuento_porcentaje'] ?? 0), 2),
         ];
     }
 
@@ -536,6 +540,20 @@ final class FacturaControlador
             if ($l['producto_id'] <= 0) throw new \InvalidArgumentException("Línea {$n}: seleccione un producto.");
             if ($l['cantidad'] <= 0)    throw new \InvalidArgumentException("Línea {$n}: la cantidad debe ser mayor a cero.");
             if ($l['precio'] < 0)       throw new \InvalidArgumentException("Línea {$n}: el precio no puede ser negativo.");
+        }
+    }
+
+    private function validarDescuentoMaximo(int $empresaId, array $cabecera): void
+    {
+        $pct = $cabecera['descuento_porcentaje'];
+        if ($pct <= 0) return;
+
+        $config = $this->facturaModelo->obtenerConfigDescuento($empresaId);
+        $max = $cabecera['tipo_doc'] === 'NOTA_VENTA' ? $config['max_notas_venta'] : $config['max_facturas'];
+
+        if ($pct > $max) {
+            $etiqueta = $cabecera['tipo_doc'] === 'NOTA_VENTA' ? 'notas de venta' : 'facturas';
+            throw new \InvalidArgumentException("El descuento ({$pct}%) supera el máximo permitido para {$etiqueta} ({$max}%).");
         }
     }
 

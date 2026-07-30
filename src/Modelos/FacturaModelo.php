@@ -473,6 +473,24 @@ final class FacturaModelo
         return $stmt->fetch() ?: [];
     }
 
+    public function obtenerConfigDescuento(int $empresaId): array
+    {
+        $stmt = $this->pdo()->prepare("
+            SELECT sis_empresa_formula_descuento AS formula,
+                   sis_empresa_descuento_maximo_facturas AS max_facturas,
+                   sis_empresa_descuento_maximo_notas_venta AS max_notas_venta
+            FROM sis_empresa WHERE sis_empresa_id = :id LIMIT 1
+        ");
+        $stmt->execute(['id' => $empresaId]);
+        $fila = $stmt->fetch();
+
+        return [
+            'formula' => $fila['formula'] ?? 'C',
+            'max_facturas' => (float) ($fila['max_facturas'] ?? 0),
+            'max_notas_venta' => (float) ($fila['max_notas_venta'] ?? 0),
+        ];
+    }
+
     // =========================================================================
     // HELPERS PRIVADOS
     // =========================================================================
