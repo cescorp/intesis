@@ -17,6 +17,9 @@ foreach ($ivaList as $iv) {
 $editFecha       = $esEdicion ? substr((string)($factura['ven_documento_fecha_emision'] ?? ''), 0, 10) : date('Y-m-d');
 $editObs         = $esEdicion ? htmlspecialchars((string)($factura['ven_documento_observacion'] ?? '')) : '';
 $editNumero      = $esEdicion ? htmlspecialchars((string)$factura['ven_documento_numero']) : '';
+$editSubtotal    = $esEdicion ? (float) ($factura['ven_documento_subtotal'] ?? 0) : 0;
+$editDescuentoValor = $esEdicion ? (float) ($factura['ven_documento_descuento'] ?? 0) : 0;
+$editDescuentoPct   = ($esEdicion && $editSubtotal > 0) ? round($editDescuentoValor / $editSubtotal * 100, 2) : 0;
 $editFormaPagoId = $esEdicion ? (int)($factura['ven_forma_pago_id'] ?? 0) : 0;
 if (!$esEdicion && empty($editFormaPagoId)) {
     foreach ($formasPago as $fp) {
@@ -176,7 +179,6 @@ foreach ($formasPago as $fp) {
                             <th style="width:8%" class="text-center">Stock</th>
                             <th style="width:9%" class="text-center">Cant.</th>
                             <th style="width:10%">Precio</th>
-                            <th style="width:9%" class="text-center">Desc%</th>
                             <th style="width:90px">IVA</th>
                             <th style="width:10%" class="text-end">Total</th>
                             <th style="width:32px"></th>
@@ -194,7 +196,15 @@ foreach ($formasPago as $fp) {
                 <table class="table table-sm table-bordered mb-0" style="font-size:.82rem">
                     <tr><td class="text-muted ps-2">Subtotal base 0%</td>  <td class="text-end pe-2 fw-semibold" id="resBase0">$ 0.00</td></tr>
                     <tr><td class="text-muted ps-2">Subtotal base IVA</td> <td class="text-end pe-2 fw-semibold" id="resBaseIva">$ 0.00</td></tr>
-                    <tr><td class="text-muted ps-2">Descuento</td>         <td class="text-end pe-2 fw-semibold" id="resDescuento">$ 0.00</td></tr>
+                    <tr>
+                        <td class="text-muted ps-2 align-middle">Descuento</td>
+                        <td class="text-end pe-2">
+                            <div class="input-group input-group-sm justify-content-end" style="width:110px;margin-left:auto">
+                                <input type="number" class="form-control form-control-sm text-end" id="inp_descuento" value="<?= number_format($editDescuentoPct, 2, '.', '') ?>" min="0" max="100" step="0.01">
+                                <span class="input-group-text px-1">%</span>
+                            </div>
+                        </td>
+                    </tr>
                     <tr><td class="text-muted ps-2">IVA</td>               <td class="text-end pe-2 fw-semibold" id="resIva">$ 0.00</td></tr>
                     <tr class="table-light"><td class="fw-bold ps-2">Total</td><td class="text-end pe-2 fw-bold" id="resTotal">$ 0.00</td></tr>
                 </table>
@@ -435,6 +445,37 @@ const ivaDefault     = <?= (int) $ivaDefault ?>;
 const ivaDefaultVal  = <?= (float) $ivaDefaultValor ?>;
 const lineasIni      = <?= $lineasJson ?>;
 const permisosFormaPago = <?= json_encode($permisosFormaPago ?? [], JSON_UNESCAPED_UNICODE) ?>;
+const configDescuento = <?= json_encode($configDescuento ?? ['formula' => 'C', 'max_facturas' => 0, 'max_notas_venta' => 0], JSON_UNESCAPED_UNICODE) ?>;
+
+/* ── Calcula subtotal/iva/total aplicando la formula A/B/C de descuento ──── */
+/* ivaSinDescuento ya viene sumado linea por linea (puede mezclar tasas distintas);      */
+/* al escalar por el mismo factor (1 - pct/100) el resultado sigue siendo exacto,        */
+/* sin necesidad de adivinar una tasa "representativa".                                  */
+function aplicarFormulaDescuento(base0, baseIva, ivaSinDescuento, pct, formula) {
+    const factor = 1 - pct / 100;
+    switch (formula) {
+        case 'A': {
+            const base0Dto   = base0   * factor;
+            const baseIvaDto = baseIva * factor;
+            const ivaDto     = ivaSinDescuento * factor;
+            return { base0: base0Dto, baseIva: baseIvaDto, iva: ivaDto, total: base0Dto + baseIvaDto + ivaDto };
+        }
+        case 'B': {
+            const totalSinDto = base0 + baseIva + ivaSinDescuento;
+            return { base0, baseIva, iva: ivaSinDescuento, total: totalSinDto * factor };
+        }
+        case 'C':
+        default: {
+            const baseDto = (base0 + baseIva) * factor;
+            return { base0, baseIva, iva: ivaSinDescuento, total: baseDto + ivaSinDescuento };
+        }
+    }
+}
+
+function maximoDescuentoActual() {
+    const tipo = esEdicion ? tipoDocFijo : (q('#selTipoDoc')?.value || 'FACTURA_VENTA');
+    return tipo === 'NOTA_VENTA' ? configDescuento.max_notas_venta : configDescuento.max_facturas;
+}
 
 let lineaIdx   = 0;
 let filaActual = null;
@@ -494,7 +535,6 @@ function crearFila(datos) {
       <td class="text-center align-middle inp-stock-display" data-label="Stock" style="font-size:.79rem;color:#666">${datos.inv_stock_cantidad_disponible !== undefined ? parseFloat(datos.inv_stock_cantidad_disponible).toFixed(2) : '—'}</td>
       <td class="text-center" data-label="Cant."><input type="number" class="form-control form-control-sm text-center inp-cantidad" value="${datos.cantidad||1}" min="0.0001" step="0.0001"></td>
       <td data-label="Precio"><input type="number" class="form-control form-control-sm inp-precio" value="${parseFloat(datos.precio||datos.pvp||0).toFixed(4)}" min="0" step="0.000001"></td>
-      <td class="text-center" data-label="Desc%"><input type="number" class="form-control form-control-sm text-center inp-descuento" value="${parseFloat(datos.descuento||0).toFixed(2)}" min="0" max="100" step="0.01"></td>
       <td data-label="IVA">
         <select class="form-control form-control-sm inp-iva">
           ${opcionesIva(parseInt(datos.iva_id) || ivaDefault)}
@@ -586,13 +626,11 @@ function crearFila(datos) {
 function calcularFila(tr) {
     const qty   = parseFloat(tr.querySelector('.inp-cantidad')?.value) || 0;
     const precio= parseFloat(tr.querySelector('.inp-precio')?.value)   || 0;
-    const desc  = parseFloat(tr.querySelector('.inp-descuento')?.value)|| 0;
     const ivaS  = tr.querySelector('.inp-iva');
     const opt   = ivaS?.options[ivaS?.selectedIndex];
     const ivaV  = parseFloat(opt?.dataset?.valor || 0);
     tr.querySelector('.inp-iva-valor').value = ivaV;
-    const dtoVal= parseFloat((qty * precio * desc / 100).toFixed(4));
-    const base  = Math.max(0, qty * precio - dtoVal);
+    const base  = Math.max(0, qty * precio);
     const iva   = base * ivaV / 100;
     tr.querySelector('.inp-total-display').textContent = '$ ' + fmt2(base + iva);
     calcularTotales();
@@ -600,26 +638,23 @@ function calcularFila(tr) {
 
 /* ── Calcular totales ───────────────────────────────────────────────────── */
 function calcularTotales() {
-    let base0 = 0, baseIva = 0, totalDesc = 0, totalIva = 0;
+    let base0 = 0, baseIva = 0, totalIva = 0;
     document.querySelectorAll('#cuerpoDetalle tr').forEach(tr => {
         const qty   = parseFloat(tr.querySelector('.inp-cantidad')?.value) || 0;
         const precio= parseFloat(tr.querySelector('.inp-precio')?.value)   || 0;
-        const desc  = parseFloat(tr.querySelector('.inp-descuento')?.value)|| 0;
         const ivaS  = tr.querySelector('.inp-iva');
         const opt   = ivaS?.options[ivaS?.selectedIndex];
         const ivaV  = parseFloat(opt?.dataset?.valor || 0);
-        const dtoVal= parseFloat((qty * precio * desc / 100).toFixed(4));
-        const base  = Math.max(0, qty * precio - dtoVal);
-        totalDesc  += dtoVal;
+        const base  = Math.max(0, qty * precio);
         if (ivaV > 0) baseIva += base; else base0 += base;
         totalIva   += base * ivaV / 100;
     });
-    const total = base0 + baseIva + totalIva;
-    q('#resBase0').textContent     = '$ ' + fmt2(base0);
-    q('#resBaseIva').textContent   = '$ ' + fmt2(baseIva);
-    q('#resDescuento').textContent = '$ ' + fmt2(totalDesc);
-    q('#resIva').textContent       = '$ ' + fmt2(totalIva);
-    q('#resTotal').textContent     = '$ ' + fmt2(total);
+    const pct = parseFloat(q('#inp_descuento')?.value) || 0;
+    const r = aplicarFormulaDescuento(base0, baseIva, totalIva, pct, configDescuento.formula);
+    q('#resBase0').textContent     = '$ ' + fmt2(r.base0);
+    q('#resBaseIva').textContent   = '$ ' + fmt2(r.baseIva);
+    q('#resIva').textContent       = '$ ' + fmt2(r.iva);
+    q('#resTotal').textContent     = '$ ' + fmt2(r.total);
 }
 
 function actualizarNumeros() {
@@ -635,7 +670,7 @@ const cuerpoDetalle = document.getElementById('cuerpoDetalle');
 cuerpoDetalle.addEventListener('input', (e) => {
     const tr = e.target.closest('tr');
     if (!tr) return;
-    if (e.target.matches('.inp-cantidad,.inp-descuento')) calcularFila(tr);
+    if (e.target.matches('.inp-cantidad')) calcularFila(tr);
 });
 cuerpoDetalle.addEventListener('change', (e) => {
     const tr = e.target.closest('tr');
@@ -650,6 +685,8 @@ cuerpoDetalle.addEventListener('click', (e) => {
 });
 
 q('#btnAgregarLinea').addEventListener('click', () => crearFila({}));
+
+q('#inp_descuento').addEventListener('input', calcularTotales);
 
 /* ── Cargar producto en fila ────────────────────────────────────────────── */
 function cargarProductoEnFila(tr, prod) {
@@ -668,7 +705,6 @@ function cargarProductoEnFila(tr, prod) {
     tr.querySelector('.inp-descripcion').value      = prod.inv_producto_nombre || '';
     tr.querySelector('.inp-pvp-ref').value          = pvp.toFixed(4);
     tr.querySelector('.inp-precio').value           = pvp.toFixed(4);
-    tr.querySelector('.inp-descuento').value         = '0.00';
     tr.querySelector('.inp-precio-min').value        = precioMin.toFixed(6);
     tr.querySelector('.inp-aprobado-por').value      = '0';
     tr.querySelector('.inp-producto-id').value       = String(prod.inv_producto_id || '');
@@ -1007,7 +1043,7 @@ function construirPayload() {
     const filas = document.querySelectorAll('#cuerpoDetalle tr');
     if (!filas.length) return null;
 
-    let base0 = 0, baseIva = 0, totalDesc = 0, totalIva = 0;
+    let base0 = 0, baseIva = 0, totalIva = 0;
     const lineas = [];
     filas.forEach(tr => {
         const productoId = tr.querySelector('.inp-producto-id').value;
@@ -1015,25 +1051,24 @@ function construirPayload() {
         const descripcion= tr.querySelector('.inp-descripcion').value.trim();
         const cantidad   = parseFloat(tr.querySelector('.inp-cantidad').value) || 0;
         const precio     = parseFloat(tr.querySelector('.inp-precio').value)   || 0;
-        const descPct    = parseFloat(tr.querySelector('.inp-descuento').value)|| 0;
         const ivaS       = tr.querySelector('.inp-iva');
         const ivaId      = ivaS?.value ? parseInt(ivaS.value) : 0;
         const ivaV       = parseFloat(ivaS?.options[ivaS?.selectedIndex]?.dataset?.valor || 0);
         const pvp        = parseFloat(tr.querySelector('.inp-pvp-ref').value)  || 0;
         const precioMin  = parseFloat(tr.querySelector('.inp-precio-min').value) || 0;
         const aprobadoPor= parseInt(tr.querySelector('.inp-aprobado-por').value) || 0;
-        const dtoVal     = parseFloat((cantidad * precio * descPct / 100).toFixed(4));
-        const base       = Math.max(0, cantidad * precio - dtoVal);
+        const base       = Math.max(0, cantidad * precio);
         const iva        = base * ivaV / 100;
-        totalDesc += dtoVal;
         if (ivaV > 0) baseIva += base; else base0 += base;
         totalIva  += iva;
         lineas.push({ producto_id: parseInt(productoId)||0, codigo, descripcion, cantidad, precio,
-            descuento: descPct, descuento_valor: dtoVal, total: parseFloat(base.toFixed(4)),
+            total: parseFloat(base.toFixed(4)),
             iva_id: ivaId, iva_valor: parseFloat(iva.toFixed(4)), pvp, precio_min: precioMin, aprobado_por: aprobadoPor });
     });
-    const total    = base0 + baseIva + totalIva;
+    const pct      = parseFloat(q('#inp_descuento')?.value) || 0;
+    const r        = aplicarFormulaDescuento(base0, baseIva, totalIva, pct, configDescuento.formula);
     const subtotal = base0 + baseIva;
+    const descuento = (subtotal + totalIva) - r.total;
 
     return {
         factura_id:    esEdicion ? facturaId : 0,
@@ -1044,9 +1079,10 @@ function construirPayload() {
         tipo_doc:      esEdicion ? tipoDocFijo : (q('#selTipoDoc')?.value || 'FACTURA_VENTA'),
         forma_pago_id: parseInt(q('#selFormaPago').value || 0),
         subtotal:      parseFloat(subtotal.toFixed(4)),
-        descuento:     parseFloat(totalDesc.toFixed(4)),
-        iva:           parseFloat(totalIva.toFixed(4)),
-        total:         parseFloat(total.toFixed(4)),
+        descuento:     parseFloat(descuento.toFixed(4)),
+        descuento_porcentaje: pct,
+        iva:           parseFloat(r.iva.toFixed(4)),
+        total:         parseFloat(r.total.toFixed(4)),
         lineas,
     };
 }
@@ -1090,6 +1126,15 @@ q('#btnGuardar').addEventListener('click', async () => {
         return;
     }
 
+    const pctDescuento = parseFloat(q('#inp_descuento')?.value) || 0;
+    const maximoDescuento = maximoDescuentoActual();
+    if (pctDescuento > maximoDescuento) {
+        const tipoLabel = (esEdicion ? tipoDocFijo : (q('#selTipoDoc')?.value || 'FACTURA_VENTA')) === 'NOTA_VENTA' ? 'notas de venta' : 'facturas';
+        Swal.fire({ icon: 'warning', title: 'Descuento fuera de rango', text: `El descuento (${pctDescuento}%) supera el máximo permitido para ${tipoLabel} (${maximoDescuento}%).` });
+        q('#inp_descuento').focus();
+        return;
+    }
+
     const payload = construirPayload();
     if (!payload) return;
 
@@ -1127,7 +1172,6 @@ crearFila(<?= json_encode([
     'descripcion'                       => (string)($linea['ven_documento_detalle_descripcion']   ?? $linea['producto_nombre'] ?? ''),
     'cantidad'                          => (float)  $linea['ven_documento_detalle_cantidad'],
     'precio'                            => (float)  ($linea['ven_documento_detalle_precio_unitario'] ?? $linea['ven_documento_detalle_precio'] ?? 0),
-    'descuento'                         => (float)  $linea['ven_documento_detalle_descuento'],
     'pvp'                               => (float)  ($linea['ven_documento_detalle_pvp']       ?? 0),
     'precio_min'                        => (float)  ($linea['ven_documento_detalle_precio_min'] ?? 0),
     'iva_id'                            => (int)    ($linea['sis_iva_id']                       ?? 0),

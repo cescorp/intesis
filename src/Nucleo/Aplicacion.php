@@ -153,7 +153,7 @@ final class Aplicacion
             new ProveedorControlador($vista, $sesion, $proveedorModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
             new CodigoProveedorControlador($vista, $sesion, $codigoProveedorModelo, $documentoCompraModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
             new DocumentoCompraControlador($vista, $sesion, $documentoCompraModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores, $sriXmlServicio, $sriImportacionModelo, $marcaModelo, $categoriaModelo, $productoModelo),
-            new ClienteControlador($vista, $sesion, $clienteModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
+            new ClienteControlador($vista, $sesion, $clienteModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores, $facturaModelo, $proformaModelo),
             new ProformaControlador($vista, $sesion, $proformaModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores, $generadorPdf),
             new FacturaControlador($vista, $sesion, $facturaModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores, $generadorPdf, $facturacionElectronicaServicio, $formaPagoModelo),
             new LicenciaControlador($vista, $sesion, $licenciaModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),

@@ -57,6 +57,12 @@ $tiposId   = [
                             data-direccion="<?= htmlspecialchars($cli['ven_cliente_direccion']) ?>">
                             <i class="bi bi-eye"></i>
                         </button>
+                        <button type="button" class="btn btn-accion btn-historial-cliente" title="Historial de ventas"
+                            data-bs-toggle="modal" data-bs-target="#modalHistorialVentas"
+                            data-id="<?= (int) $cli['ven_cliente_id'] ?>"
+                            data-razon="<?= htmlspecialchars($cli['ven_cliente_razon_social']) ?>">
+                            <i class="bi bi-clock-history"></i>
+                        </button>
                         <?php if ($permisos['editar']): ?>
                         <button type="button" class="btn btn-accion btn-fila-cliente" title="Editar cliente"
                             data-bs-toggle="modal" data-bs-target="#modalCliente" data-modo="editar"
@@ -161,6 +167,79 @@ $tiposId   = [
     </div>
 </div>
 
+<!-- MODAL HISTORIAL DE VENTAS -->
+<div class="modal fade modal-intesis" id="modalHistorialVentas" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <p class="modal-etiqueta">Ventas</p>
+                    <h2 class="modal-title">Historial de ventas — <span id="historialClienteNombre"></span></h2>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-2 align-items-end mb-3">
+                    <div class="col-auto">
+                        <label class="form-label mb-0 small">Desde</label>
+                        <input type="date" id="historialDesde" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-auto">
+                        <label class="form-label mb-0 small">Hasta</label>
+                        <input type="date" id="historialHasta" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-auto">
+                        <button type="button" class="btn btn-secundario btn-sm" id="btnFiltrarHistorial"><i class="bi bi-search"></i> Filtrar</button>
+                    </div>
+                </div>
+                <ul class="nav nav-tabs" id="tabsHistorial" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabHistorialFacturas" type="button" role="tab">Facturas</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabHistorialNotas" type="button" role="tab">Notas de Venta</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabHistorialProformas" type="button" role="tab">Proformas</button>
+                    </li>
+                </ul>
+                <div class="tab-content pt-3">
+                    <div class="tab-pane fade show active" id="tabHistorialFacturas" role="tabpanel">
+                        <div class="fw-semibold small mb-2">Total filtrado: <span class="text-intesis" id="totalHistorialFacturas">$ 0.00</span></div>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover w-100" id="tablaHistorialFacturas">
+                                <thead><tr><th style="width:36px" class="text-center col-num-historial">#</th><th>Numero</th><th>Fecha</th><th class="text-end">Total</th><th>Estado</th><th class="text-end">Acciones</th></tr></thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="tabHistorialNotas" role="tabpanel">
+                        <div class="fw-semibold small mb-2">Total filtrado: <span class="text-intesis" id="totalHistorialNotas">$ 0.00</span></div>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover w-100" id="tablaHistorialNotas">
+                                <thead><tr><th style="width:36px" class="text-center col-num-historial">#</th><th>Numero</th><th>Fecha</th><th class="text-end">Total</th><th>Estado</th><th class="text-end">Acciones</th></tr></thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="tabHistorialProformas" role="tabpanel">
+                        <div class="fw-semibold small mb-2">Total filtrado: <span class="text-intesis" id="totalHistorialProformas">$ 0.00</span></div>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover w-100" id="tablaHistorialProformas">
+                                <thead><tr><th style="width:36px" class="text-center col-num-historial">#</th><th>Numero</th><th>Fecha</th><th class="text-end">Total</th><th>Estado</th><th class="text-end">Acciones</th></tr></thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secundario" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i> Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <?php if (!empty($mensaje)): ?><script>window.INTESIS_MENSAJE = <?= json_encode($mensaje, JSON_UNESCAPED_UNICODE) ?>;</script><?php endif; ?>
 <script>window.INTESIS_MENSAJES = <?= json_encode($mensajesSistema ?? [], JSON_UNESCAPED_UNICODE) ?>;</script>
 <script>
@@ -253,5 +332,139 @@ $tiposId   = [
         if (inputId) inputId.disabled = false;
     });
 }());
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    'use strict';
+
+    const appUrl = <?= json_encode($appUrl) ?>;
+    const modal = document.getElementById('modalHistorialVentas');
+    if (!modal) return;
+
+    const q = (sel) => document.querySelector(sel);
+    const esc = (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const fmt2 = (n) => parseFloat(n || 0).toFixed(2);
+
+    const claseEstado = (codigo) => ({
+        CREADA: 'estado-activo',
+        AUTORIZADA: 'bg-primary text-white',
+        ERROR: 'bg-warning text-dark',
+        ANULADA: 'estado-inactivo',
+    }[codigo] || 'bg-secondary text-white');
+
+    const tablas = {
+        facturas:    { id: 'tablaHistorialFacturas',  totalId: 'totalHistorialFacturas', pdfUrl: '/ventas/facturas/pdf' },
+        notas_venta: { id: 'tablaHistorialNotas',      totalId: 'totalHistorialNotas',    pdfUrl: '/ventas/facturas/pdf' },
+        proformas:   { id: 'tablaHistorialProformas',  totalId: 'totalHistorialProformas', pdfUrl: '/ventas/proformas/pdf' },
+    };
+
+    function renderFilas(clave, lista) {
+        const cfg = tablas[clave];
+        const tbody = document.querySelector('#' + cfg.id + ' tbody');
+        tbody.innerHTML = lista.length ? lista.map(d => `
+            <tr data-fecha="${esc(d.ven_documento_fecha_emision)}" data-total="${parseFloat(d.ven_documento_valor_total || 0)}">
+                <td class="text-center num-fila"></td>
+                <td>${esc(d.ven_documento_numero)}</td>
+                <td>${esc(d.ven_documento_fecha_emision)}</td>
+                <td class="text-end">$ ${fmt2(d.ven_documento_valor_total)}</td>
+                <td><span class="badge estado-badge ${claseEstado(d.sis_estado_codigo)}">${esc(d.sis_estado_nombre)}</span></td>
+                <td class="text-end">
+                    <a href="${appUrl}${cfg.pdfUrl}?id=${d.ven_documento_id}" class="btn btn-sm btn-outline-secondary" title="Ver PDF" target="_blank">
+                        <i class="bi bi-file-earmark-pdf"></i>
+                    </a>
+                </td>
+            </tr>`).join('') : '';
+
+        const tabla = jQuery('#' + cfg.id);
+        if (jQuery.fn.DataTable.isDataTable(tabla)) {
+            tabla.DataTable().destroy();
+        }
+        const dt = tabla.DataTable({
+            language: {
+                search: 'Filtrar:',
+                lengthMenu: 'Mostrar _MENU_ registros',
+                info: 'Mostrando _START_ a _END_ de _TOTAL_ registros',
+                infoEmpty: 'Sin registros disponibles',
+                infoFiltered: '(filtrado de _MAX_ registros)',
+                zeroRecords: 'No se encontraron resultados',
+                paginate: { first: 'Primero', last: 'Ultimo', next: 'Siguiente', previous: 'Anterior' },
+            },
+            order: [[2, 'desc']],
+            columnDefs: [{ targets: 0, orderable: false, searchable: false }],
+        });
+        dt.on('draw', () => actualizarResumen(clave));
+        actualizarResumen(clave);
+    }
+
+    function actualizarResumen(clave) {
+        const cfg = tablas[clave];
+        const dt = jQuery('#' + cfg.id).DataTable();
+        const nodos = dt.rows({ search: 'applied', order: 'applied' }).nodes();
+        let total = 0;
+        nodos.each((tr, i) => {
+            total += parseFloat(tr.dataset.total || 0);
+            const celda = tr.querySelector('.num-fila');
+            if (celda) celda.textContent = i + 1;
+        });
+        document.getElementById(cfg.totalId).textContent = '$ ' + fmt2(total);
+        const encabezado = document.querySelector('#' + cfg.id + ' thead .col-num-historial');
+        if (encabezado) encabezado.textContent = String(nodos.length);
+    }
+
+    if (!window.INTESIS_HISTORIAL_FILTRO_REGISTRADO) {
+        window.INTESIS_HISTORIAL_FILTRO_REGISTRADO = true;
+        jQuery.fn.dataTable.ext.search.push(function (settings, _data, dataIndex) {
+            const idsHistorial = ['tablaHistorialFacturas', 'tablaHistorialNotas', 'tablaHistorialProformas'];
+            const tableId = settings.nTable?.id;
+            if (!idsHistorial.includes(tableId)) return true;
+            const fila = settings.aoData[dataIndex]?.nTr;
+            const fechaFila = fila ? (fila.dataset.fecha || '') : '';
+            const desde = q('#historialDesde')?.value || '';
+            const hasta = q('#historialHasta')?.value || '';
+            if (desde && fechaFila < desde) return false;
+            if (hasta && fechaFila > hasta) return false;
+            return true;
+        });
+    }
+
+    const isoFecha = (d) => d.toISOString().slice(0, 10);
+
+    modal.addEventListener('show.bs.modal', async (evento) => {
+        const boton = evento.relatedTarget;
+        if (!boton) return;
+        const clienteId = boton.dataset.id;
+        document.getElementById('historialClienteNombre').textContent = boton.dataset.razon || '';
+
+        const hoy = new Date();
+        const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+        q('#historialDesde').value = isoFecha(inicioMes);
+        q('#historialHasta').value = isoFecha(hoy);
+
+        Object.values(tablas).forEach(cfg => {
+            document.querySelector('#' + cfg.id + ' tbody').innerHTML =
+                '<tr><td colspan="6" class="text-center text-muted py-3">Cargando...</td></tr>';
+        });
+
+        try {
+            const resp = await fetch(appUrl + '/ventas/clientes/historial?cliente_id=' + encodeURIComponent(clienteId));
+            const json = await resp.json();
+            const data = json.ok ? (json.data || {}) : {};
+            renderFilas('facturas', data.facturas || []);
+            renderFilas('notas_venta', data.notas_venta || []);
+            renderFilas('proformas', data.proformas || []);
+        } catch {
+            Object.keys(tablas).forEach(clave => renderFilas(clave, []));
+        }
+    });
+
+    function refiltrar() {
+        Object.keys(tablas).forEach(clave => jQuery('#' + tablas[clave].id).DataTable().draw());
+    }
+
+    ['historialDesde', 'historialHasta'].forEach((id) => {
+        document.getElementById(id)?.addEventListener('change', refiltrar);
+    });
+    document.getElementById('btnFiltrarHistorial')?.addEventListener('click', refiltrar);
+});
 </script>
 <?php require $configuracion->raiz() . '/src/Vistas/plantillas/pie.php'; ?>

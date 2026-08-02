@@ -60,6 +60,30 @@ final class FacturaModelo
         return $sentencia->fetchAll();
     }
 
+    public function listarPorCliente(int $clienteId, int $empresaId, bool $verTodas): array
+    {
+        $filtroEmpresa = $verTodas ? '' : 'AND d.sis_empresa_id = :empresa_id';
+
+        $sentencia = $this->pdo()->prepare("
+            SELECT d.ven_documento_id, d.ven_documento_numero, d.ven_documento_fecha_emision,
+                   d.ven_documento_valor_total, td.sis_tipo_documento_codigo AS tipo_codigo,
+                   es.sis_estado_codigo, es.sis_estado_nombre
+            FROM ven_documento d
+            INNER JOIN sis_tipo_documento td ON td.sis_tipo_documento_id = d.sis_tipo_documento_id
+            INNER JOIN sis_estado es         ON es.sis_estado_id         = d.sis_estado_id
+            WHERE td.sis_tipo_documento_codigo IN ('FACTURA_VENTA', 'NOTA_VENTA')
+              AND es.sis_estado_codigo <> 'ELIMINADO'
+              AND d.ven_cliente_id = :cliente_id
+              {$filtroEmpresa}
+            ORDER BY d.ven_documento_fecha_emision DESC
+        ");
+
+        $params = ['cliente_id' => $clienteId];
+        if (!$verTodas) $params['empresa_id'] = $empresaId;
+        $sentencia->execute($params);
+        return $sentencia->fetchAll();
+    }
+
     public function buscar(int $facturaId, int $empresaId): ?array
     {
         $sentencia = $this->pdo()->prepare("
@@ -358,10 +382,10 @@ final class FacturaModelo
     public function listarIva(int $empresaId): array
     {
         $sentencia = $this->pdo()->prepare("
-            SELECT sis_iva_id, sis_iva_valor
+            SELECT sis_iva_id, sis_iva_valor, sis_iva_predeterminado
             FROM sis_iva
             WHERE sis_empresa_id = :empresa_id AND sis_iva_estado = 1
-            ORDER BY sis_iva_valor
+            ORDER BY sis_iva_predeterminado DESC, sis_iva_valor
         ");
         $sentencia->execute(['empresa_id' => $empresaId]);
         return $sentencia->fetchAll();
