@@ -785,6 +785,11 @@ final class Enrutador
             return;
         }
 
+        if ($metodo === 'GET' && $ruta === '/ventas/clientes/historial') {
+            $this->clienteControlador->historialVentas();
+            return;
+        }
+
         if ($metodo === 'GET' && $ruta === '/ventas/proformas') {
             $this->proformaControlador->listar();
             return;

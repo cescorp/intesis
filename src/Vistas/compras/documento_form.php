@@ -286,11 +286,21 @@ $editDescuentoPct   = ($modoEditar && $editSubtotal > 0) ? round($editDescuentoV
                         </div>
                         <div class="col-md-6">
                             <label class="form-label mb-0 small">Categoria</label>
-                            <select id="np_categoria" class="form-control form-control-sm"></select>
+                            <div class="input-group input-group-sm">
+                                <select id="np_categoria" class="form-control form-control-sm"></select>
+                                <?php if ($permisos['crear_categoria'] ?? false): ?>
+                                <button type="button" class="btn btn-outline-secondary" id="btnNuevaCategoriaRapida" title="Nueva categoria"><i class="bi bi-plus-lg"></i></button>
+                                <?php endif; ?>
+                            </div>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label mb-0 small">Marca</label>
-                            <select id="np_marca" class="form-control form-control-sm"></select>
+                            <div class="input-group input-group-sm">
+                                <select id="np_marca" class="form-control form-control-sm"></select>
+                                <?php if ($permisos['crear_marca'] ?? false): ?>
+                                <button type="button" class="btn btn-outline-secondary" id="btnNuevaMarcaRapida" title="Nueva marca"><i class="bi bi-plus-lg"></i></button>
+                                <?php endif; ?>
+                            </div>
                         </div>
                     </div>
                     <div class="text-end mt-2">
@@ -300,6 +310,36 @@ $editDescuentoPct   = ($modoEditar && $editSubtotal > 0) ? round($editDescuentoV
                 </div>
             </div>
         </div>
+    </div>
+</div>
+
+<!-- ═══ MODAL NUEVA CATEGORIA RAPIDA (desde Crear producto) ═══ -->
+<div class="modal fade modal-intesis" id="modalCategoriaRapidaCompra" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-md modal-dialog-centered">
+        <form class="modal-content" id="formularioCategoriaRapidaCompra">
+            <div class="modal-header"><div><p class="modal-etiqueta">Inventario</p><h2 class="modal-title">Nueva categoria</h2></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button></div>
+            <div class="modal-body formulario-compacto">
+                <label class="form-label" for="categoria_rapida_compra_nombre">Nombre</label>
+                <input class="form-control form-control-sm" id="categoria_rapida_compra_nombre" name="nombre" required>
+                <label class="form-label mt-2" for="categoria_rapida_compra_descripcion">Descripcion</label>
+                <textarea class="form-control form-control-sm" id="categoria_rapida_compra_descripcion" name="descripcion" rows="2"></textarea>
+            </div>
+            <div class="modal-footer"><button type="button" class="btn btn-secundario" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i> Cancelar</button><button type="submit" class="btn btn-intesis"><i class="bi bi-save2"></i> Guardar</button></div>
+        </form>
+    </div>
+</div>
+
+<!-- ═══ MODAL NUEVA MARCA RAPIDA (desde Crear producto) ═══ -->
+<div class="modal fade modal-intesis" id="modalMarcaRapidaCompra" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-md modal-dialog-centered">
+        <form class="modal-content" id="formularioMarcaRapidaCompra">
+            <div class="modal-header"><div><p class="modal-etiqueta">Inventario</p><h2 class="modal-title">Nueva marca</h2></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button></div>
+            <div class="modal-body formulario-compacto">
+                <label class="form-label" for="marca_rapida_compra_nombre">Nombre</label>
+                <input class="form-control form-control-sm" id="marca_rapida_compra_nombre" name="nombre" required>
+            </div>
+            <div class="modal-footer"><button type="button" class="btn btn-secundario" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i> Cancelar</button><button type="submit" class="btn btn-intesis"><i class="bi bi-save2"></i> Guardar</button></div>
+        </form>
     </div>
 </div>
 
@@ -789,6 +829,48 @@ q('#btnGuardarNuevoProducto').addEventListener('click', async () => {
         btn.disabled = false;
     }
 });
+
+/* ── Categoria/Marca rapida dentro del panel "Crear producto" ─────────────── */
+function guardarCatalogoRapidoCompra(formulario, selectId, modalId, lista, endpoint, idField, nombreField) {
+    formulario?.addEventListener('submit', async (evento) => {
+        evento.preventDefault();
+        const nombre = formulario.querySelector('[name="nombre"]').value.trim();
+        if (!nombre) {
+            Swal.fire({ icon: 'warning', title: 'Datos incompletos', text: 'Ingrese el nombre.' });
+            return;
+        }
+        const btn = formulario.querySelector('button[type="submit"]');
+        btn.disabled = true;
+        try {
+            const fd = new FormData(formulario);
+            const empresaIdInput = q('input[name="empresa_id"]');
+            if (empresaIdInput) fd.append('empresa_id', empresaIdInput.value);
+            const resultado = await fetch(appUrl + endpoint, {
+                method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            });
+            const json = await resultado.json();
+            if (!json.ok) throw new Error(json.mensaje || 'No se pudo guardar.');
+            lista.push({ [idField]: json.data.id, [nombreField]: json.data.nombre, sis_empresa_id: json.data.empresa_id });
+            q(selectId).innerHTML = selectId === '#np_categoria' ? opcionesCategoria(json.data.id) : opcionesMarca(json.data.id);
+            bootstrap.Modal.getInstance(q(modalId))?.hide();
+            formulario.reset();
+        } catch (error) {
+            Swal.fire({ icon: 'error', title: 'No se pudo guardar', text: error.message || 'Revise los datos.' });
+        } finally {
+            btn.disabled = false;
+        }
+    });
+}
+q('#btnNuevaCategoriaRapida')?.addEventListener('click', () => {
+    q('#formularioCategoriaRapidaCompra').reset();
+    bootstrap.Modal.getOrCreateInstance(q('#modalCategoriaRapidaCompra')).show();
+});
+q('#btnNuevaMarcaRapida')?.addEventListener('click', () => {
+    q('#formularioMarcaRapidaCompra').reset();
+    bootstrap.Modal.getOrCreateInstance(q('#modalMarcaRapidaCompra')).show();
+});
+guardarCatalogoRapidoCompra(q('#formularioCategoriaRapidaCompra'), '#np_categoria', '#modalCategoriaRapidaCompra', categoriasList, '/inventario/categorias/ajax-crear', 'inv_categoria_id', 'inv_categoria_nombre');
+guardarCatalogoRapidoCompra(q('#formularioMarcaRapidaCompra'), '#np_marca', '#modalMarcaRapidaCompra', marcasList, '/inventario/marcas/ajax-crear', 'inv_marca_id', 'inv_marca_nombre');
 
 /* ── Render tabla productos: modal Cod. Proveedor ─────────────────────────── */
 function renderProductosCodProv(tbody, lista) {

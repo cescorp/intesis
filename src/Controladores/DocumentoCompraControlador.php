@@ -111,6 +111,7 @@ final class DocumentoCompraControlador
             'categoriasList'  => $this->categoriaModelo->listar($empresaId, false, true),
             'siguienteCodigoSugerido' => $this->productoModelo->sugerirSiguienteCodigo($this->productoModelo->obtenerUltimoCodigo($empresaId)),
             'esSuperusuario'  => $verTodas,
+            'permisos'        => $this->obtenerPermisos($usuario),
             'mensaje'         => $this->sesion->consumirMensaje(),
         ]);
     }
@@ -145,6 +146,7 @@ final class DocumentoCompraControlador
             'categoriasList' => $this->categoriaModelo->listar($empresaId, false, true),
             'siguienteCodigoSugerido' => $this->productoModelo->sugerirSiguienteCodigo($this->productoModelo->obtenerUltimoCodigo($empresaId)),
             'esSuperusuario' => $verTodas,
+            'permisos'       => $this->obtenerPermisos($usuario),
             'documento'      => $doc,
             'lineas'         => $lineas,
             'mensaje'        => $this->sesion->consumirMensaje(),
@@ -958,6 +960,8 @@ final class DocumentoCompraControlador
             'anular'      => $this->menuModelo->tienePermiso($eId, $pId, '/compras/documentos/anular'),
             'subir_xml'   => $this->menuModelo->tienePermiso($eId, $pId, '/compras/documentos/subir-xml'),
             'procesar_txt' => $this->menuModelo->tienePermiso($eId, $pId, '/compras/documentos/procesar-txt'),
+            'crear_categoria' => $this->menuModelo->tienePermiso($eId, $pId, '/inventario/categorias/crear'),
+            'crear_marca'     => $this->menuModelo->tienePermiso($eId, $pId, '/inventario/marcas/crear'),
         ];
     }
 
