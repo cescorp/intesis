@@ -167,8 +167,8 @@ $editDescuentoPct   = ($modoEditar && $editSubtotal > 0) ? round($editDescuentoV
                     <table id="tablaDetalle" class="table table-sm table-bordered mb-0" style="font-size:.81rem">
                         <thead class="table-light"><tr>
                             <th style="width:26px">#</th>
-                            <th style="min-width:105px">Cod. Interno</th>
-                            <th style="min-width:105px">Cod. Proveedor</th>
+                            <th style="width:85px">Cod. Proveedor</th>
+                            <th style="width:85px">Cod. Interno</th>
                             <th>Descripcion</th>
                             <th style="min-width:110px">Marca</th>
                             <th style="width:70px" class="text-center">Cant.</th>
@@ -253,34 +253,17 @@ $editDescuentoPct   = ($modoEditar && $editSubtotal > 0) ? round($editDescuentoV
                         <tbody id="cuerpoCodProvModal"><tr><td colspan="5" class="text-center text-muted py-3">Cargando...</td></tr></tbody>
                     </table>
                 </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- ═══ MODAL PRODUCTOS CODIGO INTERNO ═══ -->
-<div class="modal fade modal-intesis" id="modalProductosCodigo" tabindex="-1" data-bs-backdrop="static">
-    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content">
-            <div class="modal-header py-2">
-                <div><p class="modal-etiqueta mb-0">Inventario</p><h2 class="modal-title h6 mb-0">Buscar por Codigo Interno</h2></div>
-                <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body py-2">
-                <input type="text" id="buscarCodigoInput" class="form-control form-control-sm mb-2" placeholder="Codigo o descripcion...">
-                <div class="table-responsive" style="max-height:380px;overflow-y:auto">
-                    <table class="table table-sm table-hover mb-0" style="font-size:.82rem">
-                        <thead class="table-light" style="position:sticky;top:0"><tr><th>#</th><th>Codigo</th><th>Nombre Producto</th><th>Marca</th><th class="text-end">Stock</th></tr></thead>
-                        <tbody id="cuerpoCodigoModal"><tr><td colspan="5" class="text-center text-muted py-3">Cargando...</td></tr></tbody>
-                    </table>
-                </div>
                 <div id="panelNuevoProducto" class="d-none border rounded p-2 mt-2">
                     <div class="row g-2">
                         <div class="col-md-3">
-                            <label class="form-label mb-0 small">Codigo</label>
+                            <label class="form-label mb-0 small">Cod. Interno</label>
                             <input type="text" id="np_codigo" class="form-control form-control-sm">
                         </div>
-                        <div class="col-md-9">
+                        <div class="col-md-3">
+                            <label class="form-label mb-0 small">Cod. Proveedor</label>
+                            <input type="text" id="np_cod_proveedor" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-6">
                             <label class="form-label mb-0 small">Nombre</label>
                             <input type="text" id="np_nombre" class="form-control form-control-sm">
                         </div>
@@ -307,6 +290,27 @@ $editDescuentoPct   = ($modoEditar && $editSubtotal > 0) ? round($editDescuentoV
                         <button type="button" class="btn btn-sm btn-secundario" id="btnCancelarNuevoProducto">Cancelar</button>
                         <button type="button" class="btn btn-sm btn-intesis" id="btnGuardarNuevoProducto">Guardar</button>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ MODAL PRODUCTOS CODIGO INTERNO ═══ -->
+<div class="modal fade modal-intesis" id="modalProductosCodigo" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <div><p class="modal-etiqueta mb-0">Inventario</p><h2 class="modal-title h6 mb-0">Buscar por Codigo Interno</h2></div>
+                <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body py-2">
+                <input type="text" id="buscarCodigoInput" class="form-control form-control-sm mb-2" placeholder="Codigo o descripcion...">
+                <div class="table-responsive" style="max-height:380px;overflow-y:auto">
+                    <table class="table table-sm table-hover mb-0" style="font-size:.82rem">
+                        <thead class="table-light" style="position:sticky;top:0"><tr><th>#</th><th>Codigo</th><th>Nombre Producto</th><th>Marca</th><th class="text-end">Stock</th></tr></thead>
+                        <tbody id="cuerpoCodigoModal"><tr><td colspan="5" class="text-center text-muted py-3">Cargando...</td></tr></tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -427,8 +431,8 @@ function crearFila(datos) {
 
     tr.innerHTML = `
       <td class="text-center text-muted small align-middle num-linea">${num}</td>
-      <td><input type="text"   class="form-control form-control-sm inp-cod-interno" placeholder="Codigo"      autocomplete="off" value="${esc(datos.codigo_interno||'')}"></td>
       <td><input type="text"   class="form-control form-control-sm inp-cod-prov"    placeholder="Cod. prov."  autocomplete="off" name="lineas[${idx}][cod_proveedor]" value="${esc(datos.cod_proveedor||'')}"></td>
+      <td><input type="text"   class="form-control form-control-sm inp-cod-interno" placeholder="Codigo"      autocomplete="off" value="${esc(datos.codigo_interno||'')}"></td>
       <td><input type="text"   class="form-control form-control-sm inp-descripcion" value="${esc(datos.producto_nombre||'')}" disabled></td>
       <td><select class="form-control form-control-sm inp-marca" name="lineas[${idx}][marca_id]">${opcionesMarca(parseInt(datos.marca_id) || 0)}</select></td>
       <td class="text-center"><input type="number" class="form-control form-control-sm text-center inp-cantidad" name="lineas[${idx}][cantidad]" value="${datos.cantidad}" min="1" step="1"></td>
@@ -624,7 +628,7 @@ cuerpoDetalle.addEventListener('keydown', (e) => {
     e.stopPropagation();
 
     const nuevaFila = crearFila({});
-    nuevaFila.querySelector('.inp-cod-interno')?.focus();
+    nuevaFila.querySelector('.inp-cod-prov')?.focus();
 });
 
 /* ── RUC ─────────────────────────────────────────────────────────────────── */
@@ -710,10 +714,11 @@ function abrirModalCodProv(texto) {
 
 async function buscarPorCodProv(term) {
     const tbody = q('#cuerpoCodProvModal');
+    ocultarPanelNuevoProducto();
     tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Buscando...</td></tr>';
     try {
         const json = await fetchJson(appUrl + '/compras/documentos/productos?tipo=cod_proveedor&q=' + encodeURIComponent(term));
-        renderProductosCodProv(tbody, json.productos || []);
+        renderProductosCodProv(tbody, json.productos || [], term);
     } catch { tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Error</td></tr>'; }
 }
 q('#buscarCodProvInput').addEventListener('input', (e) => {
@@ -727,8 +732,7 @@ q('#cuerpoCodProvModal').addEventListener('click', (e) => {
     filaActual = null;
     bootstrap.Modal.getInstance(q('#modalProductosCodProv'))?.hide();
 });
-// Limpiar filaActual si se cierra sin seleccionar
-q('#modalProductosCodProv').addEventListener('hidden.bs.modal',  () => { filaActual = null; });
+q('#modalProductosCodProv').addEventListener('hidden.bs.modal', () => { filaActual = null; ocultarPanelNuevoProducto(); });
 
 /* ── Modal productos: Codigo Interno ─────────────────────────────────────── */
 let timerCodInterno = null;
@@ -742,7 +746,6 @@ function abrirModalCodInterno(texto) {
 
 async function buscarPorCodigo(term) {
     const tbody = q('#cuerpoCodigoModal');
-    ocultarPanelNuevoProducto();
     tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Buscando...</td></tr>';
     try {
         const json = await fetchJson(appUrl + '/compras/documentos/productos?tipo=codigo&q=' + encodeURIComponent(term));
@@ -760,9 +763,9 @@ q('#cuerpoCodigoModal').addEventListener('click', (e) => {
     filaActual = null;
     bootstrap.Modal.getInstance(q('#modalProductosCodigo'))?.hide();
 });
-q('#modalProductosCodigo').addEventListener('hidden.bs.modal', () => { filaActual = null; ocultarPanelNuevoProducto(); });
+q('#modalProductosCodigo').addEventListener('hidden.bs.modal', () => { filaActual = null; });
 
-/* ── Panel "Crear producto" dentro del modal Codigo Interno ──────────────── */
+/* ── Panel "Crear producto" dentro del modal Cod. Proveedor ───────────────── */
 function ocultarPanelNuevoProducto() {
     q('#panelNuevoProducto').classList.add('d-none');
 }
@@ -770,8 +773,9 @@ function ocultarPanelNuevoProducto() {
 function mostrarPanelNuevoProducto(terminoBuscado) {
     q('#btnAbrirNuevoProducto')?.classList.add('d-none');
     q('#panelNuevoProducto').classList.remove('d-none');
-    q('#np_codigo').value    = siguienteCodigoSugerido;
-    q('#np_nombre').value    = /\d/.test(terminoBuscado || '') ? '' : (terminoBuscado || '');
+    q('#np_codigo').value        = siguienteCodigoSugerido;
+    q('#np_cod_proveedor').value = terminoBuscado || '';
+    q('#np_nombre').value        = '';
     q('#np_categoria').innerHTML = opcionesCategoria(0);
     q('#np_marca').innerHTML     = opcionesMarca(0);
     setTimeout(() => q('#np_nombre')?.focus(), 50);
@@ -779,14 +783,15 @@ function mostrarPanelNuevoProducto(terminoBuscado) {
 
 q('#btnCancelarNuevoProducto').addEventListener('click', () => {
     ocultarPanelNuevoProducto();
-    buscarPorCodigo(q('#buscarCodigoInput').value);
+    buscarPorCodProv(q('#buscarCodProvInput').value);
 });
 
 q('#btnGuardarNuevoProducto').addEventListener('click', async () => {
-    const codigo    = q('#np_codigo').value.trim();
-    const nombre    = q('#np_nombre').value.trim();
-    const categoria = q('#np_categoria').value;
-    const marca     = q('#np_marca').value;
+    const codigo      = q('#np_codigo').value.trim();
+    const codProveedor = q('#np_cod_proveedor').value.trim();
+    const nombre      = q('#np_nombre').value.trim();
+    const categoria   = q('#np_categoria').value;
+    const marca       = q('#np_marca').value;
     if (!codigo || !nombre || !categoria || !marca) {
         Swal.fire({ icon: 'warning', title: 'Datos incompletos', text: 'Codigo, nombre, categoria y marca son obligatorios.' });
         return;
@@ -816,13 +821,13 @@ q('#btnGuardarNuevoProducto').addEventListener('click', async () => {
                 marca_id: marca,
                 costo: 0,
                 pvp: 0,
-                cod_proveedor: '',
+                cod_proveedor: codProveedor,
             });
         }
         siguienteCodigoSugerido = siguienteCodigoDesdeActual(codigo);
         filaActual = null;
         ocultarPanelNuevoProducto();
-        bootstrap.Modal.getInstance(q('#modalProductosCodigo'))?.hide();
+        bootstrap.Modal.getInstance(q('#modalProductosCodProv'))?.hide();
     } catch (error) {
         Swal.fire({ icon: 'error', title: 'No se pudo crear', text: error.message || 'Revise los datos.' });
     } finally {
@@ -873,11 +878,18 @@ guardarCatalogoRapidoCompra(q('#formularioCategoriaRapidaCompra'), '#np_categori
 guardarCatalogoRapidoCompra(q('#formularioMarcaRapidaCompra'), '#np_marca', '#modalMarcaRapidaCompra', marcasList, '/inventario/marcas/ajax-crear', 'inv_marca_id', 'inv_marca_nombre');
 
 /* ── Render tabla productos: modal Cod. Proveedor ─────────────────────────── */
-function renderProductosCodProv(tbody, lista) {
+function renderProductosCodProv(tbody, lista, termino) {
     if (!lista.length) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">Sin resultados</td></tr>';
+        tbody.innerHTML = `<tr><td colspan="5" class="py-2 text-center">
+            <span class="text-muted me-2">Sin resultados${termino ? ` para "<strong>${esc(termino)}</strong>"` : ''}</span>
+            <button type="button" class="btn btn-sm btn-intesis" id="btnAbrirNuevoProducto">
+                <i class="bi bi-plus-lg me-1"></i>Crear producto
+            </button>
+        </td></tr>`;
+        q('#btnAbrirNuevoProducto')?.addEventListener('click', () => mostrarPanelNuevoProducto(termino));
         return;
     }
+    ocultarPanelNuevoProducto();
     tbody.innerHTML = lista.map((p, i) => {
         const safeJson = JSON.stringify(p).replace(/'/g, '&#39;');
         return `<tr style="cursor:pointer" data-prod='${safeJson}'>
@@ -893,16 +905,9 @@ function renderProductosCodProv(tbody, lista) {
 /* ── Render tabla productos: modal Cod. Interno ───────────────────────────── */
 function renderProductos(tbody, lista, termino) {
     if (!lista.length) {
-        tbody.innerHTML = `<tr><td colspan="5" class="py-2 text-center">
-            <span class="text-muted me-2">Sin resultados${termino ? ` para "<strong>${esc(termino)}</strong>"` : ''}</span>
-            <button type="button" class="btn btn-sm btn-intesis" id="btnAbrirNuevoProducto">
-                <i class="bi bi-plus-lg me-1"></i>Crear producto
-            </button>
-        </td></tr>`;
-        q('#btnAbrirNuevoProducto')?.addEventListener('click', () => mostrarPanelNuevoProducto(termino));
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-3">Sin resultados${termino ? ` para "${esc(termino)}"` : ''}</td></tr>`;
         return;
     }
-    ocultarPanelNuevoProducto();
     tbody.innerHTML = lista.map((p, i) => {
         const safeJson = JSON.stringify(p).replace(/'/g, '&#39;');
         return `<tr style="cursor:pointer" data-prod='${safeJson}'>
