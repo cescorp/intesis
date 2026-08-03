@@ -170,7 +170,7 @@ $appUrl = rtrim($configuracion->obtener('APP_URL', ''), '/');
                 </div>
                 <div class="table-responsive stock-tabla-contenedor">
                     <table class="table table-sm align-middle" id="tablaLineasMovimiento">
-                        <thead><tr><th>Codigo</th><th>Descripcion</th><th>PVP</th><th>Accion</th><th class="th-origen-linea">Origen</th><th class="th-stock-origen text-center">Stock origen</th><th class="th-destino-linea">Destino</th><th class="text-center">Cantidad</th><th>Total</th><th></th></tr></thead>
+                        <thead><tr><th>Codigo</th><th>Descripcion</th><th>PVP</th><th>Accion</th><th class="th-bodega-linea">Bodega</th><th class="th-stock-origen text-center">Stock</th><th class="text-center">Cantidad</th><th>Total</th><th></th></tr></thead>
                         <tbody></tbody>
                     </table>
                 </div>

@@ -112,8 +112,10 @@ final class KardexModelo
                 k.inv_kardex_saldo_cantidad,
                 k.inv_kardex_observacion,
                 k.inv_kardex_fecha_movimiento::date AS fecha,
-                to_char(k.inv_kardex_fecha_movimiento, 'HH24:MI:SS') AS hora
+                to_char(k.inv_kardex_fecha_movimiento, 'HH24:MI:SS') AS hora,
+                u.sis_usuarios_nombre AS usuario_nombre
             FROM inv_kardex k
+            LEFT JOIN sis_usuarios u ON u.sis_usuarios_id = k.usuario_crea
             WHERE k.sis_empresa_id = :empresa_id
               AND k.inv_producto_id = :producto_id
               {$filtroDesde}

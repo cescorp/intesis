@@ -126,7 +126,7 @@ $editDescuentoPct   = ($modoEditar && $editSubtotal > 0) ? round($editDescuentoV
                             <option value="">Seleccione</option>
                             <?php foreach ($bodegas as $b): ?>
                             <option value="<?= (int) $b['inv_bodega_id'] ?>" <?= (int) $b['inv_bodega_id'] === $editBodegaId ? 'selected' : '' ?>>
-                                <?= htmlspecialchars($b['inv_bodega_codigo']) ?> — <?= htmlspecialchars($b['inv_bodega_nombre']) ?>
+                                <?= htmlspecialchars($b['inv_bodega_nombre']) ?>
                             </option>
                             <?php endforeach; ?>
                         </select>

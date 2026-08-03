@@ -142,6 +142,7 @@ final class KardexControlador
             'observacion' => (string) ($fila['inv_kardex_observacion'] ?? ''),
             'fecha' => (string) $fila['fecha'],
             'hora' => (string) $fila['hora'],
+            'usuario' => (string) ($fila['usuario_nombre'] ?? ''),
         ];
     }
 

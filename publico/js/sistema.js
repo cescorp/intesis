@@ -1089,6 +1089,14 @@
         }
     });
 
+    let siguienteCodigoProducto = window.INTESIS_SIGUIENTE_CODIGO_PRODUCTO || '1';
+    const siguienteCodigoProductoDesdeActual = (codigo) => {
+        const m = String(codigo || '').match(/^(.*?)(\d+)$/);
+        if (!m) return '1';
+        const [, prefijo, numero] = m;
+        return prefijo + String(parseInt(numero, 10) + 1).padStart(numero.length, '0');
+    };
+
     const obtenerEmpresaProducto = () => document.getElementById('producto_empresa_id')?.value || String(window.INTESIS_EMPRESA_ACTIVA || '');
 
     const filtrarSelectsProductoPorEmpresa = () => {
@@ -1166,9 +1174,12 @@
                 document.getElementById('producto_marca_id').value = boton.dataset.marca || '';
                 habilitarGaleriaProducto(boton.dataset.id || '', boton.dataset.empresa || '');
             } else {
+                document.getElementById('producto_codigo_principal').value = siguienteCodigoProducto;
                 filtrarSelectsProductoPorEmpresa();
                 habilitarGaleriaProducto('', obtenerEmpresaProducto());
             }
+            document.getElementById('filaProveedorProducto')?.classList.toggle('d-none', modo !== 'crear');
+            document.getElementById('filaCodProveedorProducto')?.classList.toggle('d-none', modo !== 'crear');
             const soloVer = modo === 'ver';
             formulario.querySelectorAll('input, select, textarea').forEach((campo) => {
                 if (campo.type !== 'hidden') campo.disabled = soloVer;
@@ -1183,6 +1194,7 @@
     if (formularioProducto) {
         formularioProducto.addEventListener('submit', async (evento) => {
             evento.preventDefault();
+            const esCreacion = !document.getElementById('producto_id').value;
             const empresa = obtenerEmpresaProducto();
             const codigo = document.getElementById('producto_codigo_principal').value.trim();
             const nombre = document.getElementById('producto_nombre').value.trim();
@@ -1216,6 +1228,11 @@
                 formularioProducto.action = `${window.location.origin}${document.body.dataset.baseUrl || ''}/inventario/productos/editar`;
                 document.getElementById('modalProductoTitulo').textContent = 'Editar producto';
                 habilitarGaleriaProducto(json.data.producto_id || '', json.data.empresa_id || empresa);
+                if (esCreacion) {
+                    siguienteCodigoProducto = siguienteCodigoProductoDesdeActual(codigo);
+                    document.getElementById('filaProveedorProducto')?.classList.add('d-none');
+                    document.getElementById('filaCodProveedorProducto')?.classList.add('d-none');
+                }
                 await mostrarAlerta({
                     icono: 'success',
                     titulo: 'Producto guardado',
@@ -1986,7 +2003,7 @@
         const movimientos = json.data?.movimientos || [];
         const bodegas = json.data?.bodegas || [];
         const columnasBodega = bodegas.flatMap((bodega) => [`Cant ${bodega.inv_bodega_codigo}`, `Saldo ${bodega.inv_bodega_codigo}`]);
-        const columnas = [ `${movimientos.length}`, 'Detalle', 'No. Documento', ...columnasBodega, 'Fecha', 'Hora'];
+        const columnas = [ `${movimientos.length}`, 'Detalle', 'No. Documento', ...columnasBodega, 'Fecha', 'Hora', 'Usuario'];
         tabla.querySelector('thead').innerHTML = `<tr>${columnas.map((columna) => `<th class="text-center">${escaparHtml(columna)}</th>`).join('')}</tr>`;
 
         tabla.querySelector('tbody').innerHTML = movimientos.length
@@ -2006,6 +2023,7 @@
                         ${celdasBodega}
                         <td class="text-center">${escaparHtml(movimiento.fecha)}</td>
                         <td class="text-center">${escaparHtml(movimiento.hora)}</td>
+                        <td class="text-center">${escaparHtml(movimiento.usuario)}</td>
                     </tr>
                 `;
             }).join('')
@@ -2072,8 +2090,8 @@
     const bodegasDestino    = window.INTESIS_BODEGAS_DESTINO    || [];
     const permisosMovimiento = window.INTESIS_MOVIMIENTO_PERMISOS || {};
 
-    const opcionesBodegaMovimiento = (seleccionado = '') => bodegasMovimiento.map((bodega) => `<option value="${bodega.inv_bodega_id}" ${String(seleccionado) === String(bodega.inv_bodega_id) ? 'selected' : ''}>${escaparHtml(bodega.inv_bodega_codigo)} - ${escaparHtml(bodega.inv_bodega_nombre)}</option>`).join('');
-    const opcionesBodegaDestino    = (seleccionado = '') => bodegasDestino.map((bodega)    => `<option value="${bodega.inv_bodega_id}" ${String(seleccionado) === String(bodega.inv_bodega_id) ? 'selected' : ''}>${escaparHtml(bodega.inv_bodega_codigo)} - ${escaparHtml(bodega.inv_bodega_nombre)}</option>`).join('');
+    const opcionesBodegaMovimiento = (seleccionado = '') => bodegasMovimiento.map((bodega) => `<option value="${bodega.inv_bodega_id}" ${String(seleccionado) === String(bodega.inv_bodega_id) ? 'selected' : ''}>${escaparHtml(bodega.inv_bodega_nombre)}</option>`).join('');
+    const opcionesBodegaDestino    = (seleccionado = '') => bodegasDestino.map((bodega)    => `<option value="${bodega.inv_bodega_id}" ${String(seleccionado) === String(bodega.inv_bodega_id) ? 'selected' : ''}>${escaparHtml(bodega.inv_bodega_nombre)}</option>`).join('');
 
     const accionesMovimiento = (tipo) => {
         if (tipo === 'AJUSTE') {
@@ -2092,11 +2110,15 @@
         const destino = fila.querySelector('.mov-linea-destino');
         origen.disabled = tipo === 'AJUSTE' && accion === 'INGRESO';
         destino.disabled = tipo === 'AJUSTE' && accion === 'EGRESO';
+        origen.classList.toggle('d-none', origen.disabled);
+        destino.classList.toggle('d-none', destino.disabled);
         if (tipo === 'AJUSTE' && accion === 'INGRESO') origen.value = '';
         if (tipo === 'AJUSTE' && accion === 'EGRESO') destino.value = '';
         if (tipo === 'TRANSFERENCIA') {
             origen.disabled = false;
             destino.disabled = false;
+            origen.classList.remove('d-none');
+            destino.classList.remove('d-none');
         }
         if (tipo === 'AJUSTE' && bodegasMovimiento.length === 1) {
             const unicaBodegaId = String(bodegasMovimiento[0].inv_bodega_id);
@@ -2136,9 +2158,11 @@
             <td><input class="form-control form-control-sm mov-linea-descripcion" value="${escaparHtml(producto.inv_producto_nombre || '')}" disabled></td>
             <td><input class="form-control form-control-sm text-end mov-linea-pvp" value="${Number(producto.pvp || 0).toFixed(2)}" disabled></td>
             <td><select class="form-control form-control-sm mov-linea-accion" ${tipo === 'TRANSFERENCIA' ? 'disabled' : ''}>${accionesMovimiento(tipo)}</select></td>
-            <td class="td-origen-linea"><select class="form-control form-control-sm mov-linea-origen"><option value="">Origen</option>${opcionesBodegaMovimiento(tipo === 'TRANSFERENCIA' ? document.getElementById('movimiento_origen_id')?.value || '' : '')}</select></td>
+            <td class="td-bodega-linea">
+                <select class="form-control form-control-sm mov-linea-origen"><option value="">Seleccione Bodega</option>${opcionesBodegaMovimiento(tipo === 'TRANSFERENCIA' ? document.getElementById('movimiento_origen_id')?.value || '' : '')}</select>
+                <select class="form-control form-control-sm mov-linea-destino"><option value="">Seleccione Bodega</option>${tipo === 'TRANSFERENCIA' ? opcionesBodegaDestino(document.getElementById('movimiento_destino_id')?.value || '') : opcionesBodegaMovimiento()}</select>
+            </td>
             <td class="text-center mov-linea-stock-origen text-muted">—</td>
-            <td class="td-destino-linea"><select class="form-control form-control-sm mov-linea-destino"><option value="">Destino</option>${tipo === 'TRANSFERENCIA' ? opcionesBodegaDestino(document.getElementById('movimiento_destino_id')?.value || '') : opcionesBodegaMovimiento()}</select></td>
             <td class="text-center"><input type="number" min="1" step="1" class="form-control form-control-sm text-center mov-linea-cantidad" value="1"></td>
             <td class="text-end mov-linea-total">0.00</td>
             <td><button type="button" class="btn btn-accion btn-eliminar-linea-movimiento"><i class="bi bi-trash3"></i></button></td>
