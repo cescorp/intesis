@@ -203,6 +203,7 @@ $editDescuentoPct   = ($modoEditar && $editSubtotal > 0) ? round($editDescuentoV
                     </tr>
                     <tr><td class="text-muted ps-2">IVA</td>               <td class="text-end pe-2 fw-semibold" id="resIva">$ 0.00</td></tr>
                     <tr class="table-light"><td class="fw-bold ps-2">Total</td><td class="text-end pe-2 fw-bold" id="resTotal">$ 0.00</td></tr>
+                    <tr><td class="text-muted ps-2">% Ganancia</td>          <td class="text-end pe-2 fw-semibold" id="resGanancia">0.00 %</td></tr>
                 </table>
             </div>
         </div>
@@ -436,7 +437,7 @@ function crearFila(datos) {
       <td><input type="text"   class="form-control form-control-sm inp-descripcion" value="${esc(datos.producto_nombre||'')}" disabled></td>
       <td><select class="form-control form-control-sm inp-marca" name="lineas[${idx}][marca_id]">${opcionesMarca(parseInt(datos.marca_id) || 0)}</select></td>
       <td class="text-center"><input type="number" class="form-control form-control-sm text-center inp-cantidad" name="lineas[${idx}][cantidad]" value="${datos.cantidad}" min="1" step="1"></td>
-      <td><input type="number" class="form-control form-control-sm inp-costo"       name="lineas[${idx}][costo]"     value="${datos.costo||0}"    min="0"       step="0.000001"></td>
+      <td><input type="number" class="form-control form-control-sm inp-costo"       name="lineas[${idx}][costo]"     value="${parseFloat(datos.costo||0).toFixed(2)}"    min="0"       step="0.01"></td>
       <td>
         <select class="form-control form-control-sm inp-iva" name="lineas[${idx}][iva_id]">
           ${opcionesIva(parseInt(datos.iva_id) || ivaDefault)}
@@ -480,25 +481,30 @@ function calcularFila(tr) {
 
 /* ── Calcular totales generales ───────────────────────────────────────────── */
 function calcularTotales() {
-    let base0 = 0, baseIva = 0, totalIva = 0;
+    let base0 = 0, baseIva = 0, totalIva = 0, totalCosto = 0, totalPvp = 0;
     document.querySelectorAll('#cuerpoDetalle tr').forEach(tr => {
         const qty  = parseFloat(tr.querySelector('.inp-cantidad')?.value)  || 0;
         const cost = parseFloat(tr.querySelector('.inp-costo')?.value)     || 0;
+        const pvp  = parseFloat(tr.querySelector('.inp-pvp')?.value)       || 0;
         const ivaS = tr.querySelector('.inp-iva');
         const opt  = ivaS?.options[ivaS?.selectedIndex];
         const ivaV = parseFloat(opt?.dataset?.valor || 0);
         const base = Math.max(0, qty * cost);
         if (ivaV > 0) baseIva += base; else base0 += base;
         totalIva  += base * ivaV / 100;
+        totalCosto += qty * cost;
+        totalPvp   += qty * pvp;
     });
     const pct = parseFloat(q('#inp_descuento_pct')?.value) || 0;
     const subtotal = base0 + baseIva;
     const total = subtotal * (1 - pct / 100) + totalIva;
     const descuento = (subtotal + totalIva) - total;
+    const pctGanancia = totalCosto > 0 ? ((totalPvp - totalCosto) / totalCosto) * 100 : 0;
     q('#resBase0').textContent     = '$ ' + fmt2(base0);
     q('#resBaseIva').textContent   = '$ ' + fmt2(baseIva);
     q('#resIva').textContent       = '$ ' + fmt2(totalIva);
     q('#resTotal').textContent     = '$ ' + fmt2(total);
+    q('#resGanancia').textContent  = fmt2(pctGanancia) + ' %';
     q('#inp_subtotal').value  = fmt2(subtotal);
     q('#inp_descuento').value = fmt2(descuento);
     q('#inp_iva_total').value = fmt2(totalIva);
@@ -527,7 +533,7 @@ function cargarProductoEnFila(tr, prod) {
     tr.querySelector('.inp-cod-interno').value = prod.codigo_interno      || '';
     tr.querySelector('.inp-descripcion').value = prod.inv_producto_nombre || '';
     tr.querySelector('.inp-marca').value       = String(prod.marca_id || '');
-    tr.querySelector('.inp-costo').value       = costo.toFixed(6);
+    tr.querySelector('.inp-costo').value       = costo.toFixed(2);
     tr.querySelector('.inp-pvp-pct').value     = calcularPvpPct(costo, pvp).toFixed(2);
     tr.querySelector('.inp-pvp').value         = pvp.toFixed(2);
     tr.querySelector('.inp-producto-id').value = String(prod.inv_producto_id || '');
