@@ -185,6 +185,8 @@ final class FacturaModelo
 
             $this->validarStock($pdo, $empresaId, $lineas, $ventaTodasBodegas ? null : $bodegaId);
 
+            $diasCredito = $this->obtenerDiasCredito($cabecera['formas_pago']);
+
             $stmt = $pdo->prepare("
                 INSERT INTO ven_documento (
                     sis_empresa_id, ven_cliente_id, sis_tipo_documento_id,
@@ -195,7 +197,7 @@ final class FacturaModelo
                     ven_documento_subtotal_sin_impuestos,
                     ven_documento_impuesto_total,
                     ven_documento_valor_total,
-                    ven_forma_pago_id,
+                    ven_forma_pago_id, ven_documento_plazo_pago_dias,
                     ven_documento_observacion, sis_estado_id, usuario_crea
                 ) VALUES (
                     :empresa_id, :cliente_id, :tipo_id,
@@ -203,7 +205,7 @@ final class FacturaModelo
                     :numero, :fecha_emision,
                     :subtotal, :descuento, :iva, :total,
                     :subtotal_sin_impuestos, :impuesto_total, :valor_total,
-                    :forma_pago_id,
+                    :forma_pago_id, :plazo_pago_dias,
                     :observacion, :estado_id, :usuario_crea
                 ) RETURNING ven_documento_id
             ");
@@ -223,6 +225,7 @@ final class FacturaModelo
                 'impuesto_total'         => $cabecera['iva'],
                 'valor_total'            => $cabecera['total'],
                 'forma_pago_id'          => $cabecera['forma_pago_id'],
+                'plazo_pago_dias'        => $diasCredito,
                 'observacion'            => $cabecera['observacion'] !== '' ? $cabecera['observacion'] : null,
                 'estado_id'              => $this->obtenerEstadoId('CREADA'),
                 'usuario_crea'           => $usuarioId,
@@ -230,6 +233,7 @@ final class FacturaModelo
             $facturaId = (int) $stmt->fetchColumn();
 
             $this->insertarLineasYDescontarStock($pdo, $facturaId, $empresaId, $bodegaId, $numero, $lineas, $usuarioId);
+            $this->guardarFormasPago($pdo, $facturaId, $cabecera['formas_pago'], $usuarioId);
 
             $this->generarCxcSiAplica($pdo, $facturaId, $empresaId, (int) $cabecera['cliente_id'], $cabecera['forma_pago_id'], $cabecera['total'], $usuarioId);
 
@@ -238,6 +242,53 @@ final class FacturaModelo
         } catch (\Throwable $e) {
             $pdo->rollBack();
             throw $e;
+        }
+    }
+
+    /**
+     * ***************************************************************************
+     * * OBTIENE LOS DIAS DE CREDITO DE LA FORMA DE PAGO TIPO CREDITO, SI EXISTE.
+     * ***************************************************************************
+     */
+    private function obtenerDiasCredito(array $formasPago): int
+    {
+        foreach ($formasPago as $f) {
+            if ((int) ($f['dias'] ?? 0) > 0) {
+                return (int) $f['dias'];
+            }
+        }
+        return 0;
+    }
+
+    /**
+     * ***************************************************************************
+     * * REEMPLAZA EL DETALLE DE FORMAS DE PAGO DE UN DOCUMENTO (SOPORTA MIXTO).
+     * ***************************************************************************
+     */
+    private function guardarFormasPago(\PDO $pdo, int $documentoId, array $formasPago, int $usuarioId): void
+    {
+        $pdo->prepare('DELETE FROM ven_documento_forma_pago WHERE ven_documento_id = :id')
+            ->execute(['id' => $documentoId]);
+
+        $stmt = $pdo->prepare("
+            INSERT INTO ven_documento_forma_pago (
+                ven_documento_id, ven_forma_pago_id, ven_documento_forma_pago_monto,
+                ven_documento_forma_pago_nombre, ven_documento_forma_pago_comprobante,
+                ven_documento_forma_pago_dias, usuario_crea
+            ) VALUES (
+                :documento_id, :forma_pago_id, :monto, :nombre, :comprobante, :dias, :usuario
+            )
+        ");
+        foreach ($formasPago as $f) {
+            $stmt->execute([
+                'documento_id' => $documentoId,
+                'forma_pago_id' => $f['forma_pago_id'],
+                'monto'        => $f['monto'],
+                'nombre'       => $f['nombre'] !== '' ? $f['nombre'] : null,
+                'comprobante'  => $f['comprobante'] !== '' ? $f['comprobante'] : null,
+                'dias'         => $f['dias'] > 0 ? $f['dias'] : null,
+                'usuario'      => $usuarioId,
+            ]);
         }
     }
 
@@ -261,6 +312,8 @@ final class FacturaModelo
             $bodegaId  = $this->obtenerBodegaId($pdo, $empresaId, $usuarioId);
             $this->validarStock($pdo, $empresaId, $lineas, $ventaTodasBodegas ? null : $bodegaId);
 
+            $diasCredito = $this->obtenerDiasCredito($cabecera['formas_pago']);
+
             $pdo->prepare("
                 UPDATE ven_documento
                 SET ven_cliente_id              = :cliente_id,
@@ -273,6 +326,7 @@ final class FacturaModelo
                     ven_documento_impuesto_total         = :iva,
                     ven_documento_valor_total            = :total,
                     ven_forma_pago_id           = :forma_pago_id,
+                    ven_documento_plazo_pago_dias = :plazo_pago_dias,
                     ven_documento_observacion   = :observacion,
                     usuario_modifica            = :usuario,
                     fecha_modifica              = now()
@@ -285,6 +339,7 @@ final class FacturaModelo
                 'iva'           => $cabecera['iva'],
                 'total'         => $cabecera['total'],
                 'forma_pago_id' => $cabecera['forma_pago_id'],
+                'plazo_pago_dias' => $diasCredito,
                 'observacion'   => $cabecera['observacion'] !== '' ? $cabecera['observacion'] : null,
                 'usuario'       => $usuarioId,
                 'id'            => $facturaId,
@@ -298,6 +353,7 @@ final class FacturaModelo
 
             $numero = $doc['ven_documento_numero'];
             $this->insertarLineasYDescontarStock($pdo, $facturaId, $empresaId, $bodegaId, $numero, $lineas, $usuarioId);
+            $this->guardarFormasPago($pdo, $facturaId, $cabecera['formas_pago'], $usuarioId);
 
             $pdo->commit();
         } catch (\Throwable $e) {
@@ -356,7 +412,7 @@ final class FacturaModelo
     public function listarFormasPago(int $empresaId): array
     {
         $sentencia = $this->pdo()->prepare("
-            SELECT ven_forma_pago_id, ven_forma_pago_nombre, ven_forma_pago_calculadora
+            SELECT ven_forma_pago_id, ven_forma_pago_nombre, ven_forma_pago_calculadora, ven_forma_pago_tipo
             FROM ven_forma_pago
             WHERE sis_empresa_id = :empresa_id AND ven_forma_pago_estado = 'A'
             ORDER BY ven_forma_pago_nombre
@@ -731,19 +787,12 @@ final class FacturaModelo
 
     private function generarCxcSiAplica(\PDO $pdo, int $facturaId, int $empresaId, int $clienteId, int $formaPagoId, float $total, int $usuarioId): void
     {
-        $stmt = $pdo->prepare("
-            SELECT ven_forma_pago_solicitar_datos FROM ven_forma_pago
-            WHERE ven_forma_pago_id = :id LIMIT 1
-        ");
+        $stmt = $pdo->prepare("SELECT ven_forma_pago_tipo FROM ven_forma_pago WHERE ven_forma_pago_id = :id LIMIT 1");
         $stmt->execute(['id' => $formaPagoId]);
-        $fp = $stmt->fetch();
+        $tipoFp = (string) $stmt->fetchColumn();
 
-        // Solo genera CXC si la forma de pago solicita datos (ej. Crédito) pero no es Efectivo
-        $nombre = $pdo->prepare("SELECT ven_forma_pago_nombre FROM ven_forma_pago WHERE ven_forma_pago_id = :id LIMIT 1");
-        $nombre->execute(['id' => $formaPagoId]);
-        $nombreFp = strtoupper((string)$nombre->fetchColumn());
-
-        if (!in_array($nombreFp, ['EFECTIVO', 'TARJETA DE CRÉDITO', 'TARJETA DE DEBITO', 'TRANSFERENCIA'], true)) {
+        // Solo genera CXC cuando la forma de pago principal es CREDITO (Credito es exclusivo, no se combina en Mixto)
+        if ($tipoFp === 'CREDITO') {
             $pdo->prepare("
                 INSERT INTO ven_cxc (
                     sis_empresa_id, ven_documento_id, ven_cliente_id,

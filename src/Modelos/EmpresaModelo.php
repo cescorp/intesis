@@ -358,19 +358,19 @@ final class EmpresaModelo
     private function crearFormasPagoBase(int $empresaId, int $usuarioId): void
     {
         $formas = [
-            ['nombre' => 'EFECTIVO', 'codigo_sri' => '01', 'calculadora' => 'S'],
-            ['nombre' => 'TRANSFERENCIA', 'codigo_sri' => '16', 'calculadora' => 'N'],
-            ['nombre' => 'TARJETA CRÉDITO', 'codigo_sri' => '19', 'calculadora' => 'N'],
+            ['nombre' => 'EFECTIVO', 'codigo_sri' => '01', 'calculadora' => 'S', 'tipo' => 'EFECTIVO'],
+            ['nombre' => 'TRANSFERENCIA', 'codigo_sri' => '16', 'calculadora' => 'N', 'tipo' => 'TRANSFERENCIA'],
+            ['nombre' => 'TARJETA CRÉDITO', 'codigo_sri' => '19', 'calculadora' => 'N', 'tipo' => 'TARJETA_CREDITO'],
         ];
 
         $sentencia = $this->conexionBaseDatos->obtener()->prepare("
             INSERT INTO ven_forma_pago (
                 sis_empresa_id, ven_forma_pago_nombre, ven_forma_pago_codigo_sri,
-                ven_forma_pago_calculadora, ven_forma_pago_estado, usuario_crea
+                ven_forma_pago_calculadora, ven_forma_pago_tipo, ven_forma_pago_estado, usuario_crea
             )
             SELECT CAST(:empresa_id_insert AS INTEGER), CAST(:nombre_insert AS VARCHAR(100)),
                    CAST(:codigo_sri AS VARCHAR(2)), CAST(:calculadora AS CHAR(1)),
-                   'A', CAST(:usuario_crea AS INTEGER)
+                   CAST(:tipo AS VARCHAR(20)), 'A', CAST(:usuario_crea AS INTEGER)
             WHERE NOT EXISTS (
                 SELECT 1 FROM ven_forma_pago
                 WHERE sis_empresa_id = CAST(:empresa_id_buscar AS INTEGER)
@@ -386,6 +386,7 @@ final class EmpresaModelo
                 'nombre_buscar' => $forma['nombre'],
                 'codigo_sri' => $forma['codigo_sri'],
                 'calculadora' => $forma['calculadora'],
+                'tipo' => $forma['tipo'],
                 'usuario_crea' => $usuarioId,
             ]);
         }

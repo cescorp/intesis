@@ -307,9 +307,9 @@ final class FacturaControlador
         $empresaId = (int) $usuario['empresa_id'];
 
         try {
-            [$nombre, $codigoSri, $calculadora] = $this->normalizarDatosFormaPago();
+            [$nombre, $codigoSri, $calculadora, $tipo] = $this->normalizarDatosFormaPago();
             $this->validarDatosFormaPago($empresaId, $nombre, null);
-            $id = $this->formaPagoModelo->crear($empresaId, $nombre, $codigoSri, $calculadora, (int) $usuario['id']);
+            $id = $this->formaPagoModelo->crear($empresaId, $nombre, $codigoSri, $calculadora, $tipo, (int) $usuario['id']);
             $this->responderJson(true, 'OK', 'Forma de pago creada correctamente.', ['forma_pago' => $this->formaPagoModelo->buscar($id)]);
         } catch (Throwable $excepcion) {
             $this->registrarErrorCrud('CREAR FORMA DE PAGO', $excepcion);
@@ -326,9 +326,9 @@ final class FacturaControlador
         try {
             $id = (int) ($_POST['forma_pago_id'] ?? 0);
             $registro = $this->obtenerFormaPagoPermitida($id, $empresaId);
-            [$nombre, $codigoSri, $calculadora] = $this->normalizarDatosFormaPago();
+            [$nombre, $codigoSri, $calculadora, $tipo] = $this->normalizarDatosFormaPago();
             $this->validarDatosFormaPago($empresaId, $nombre, (int) $registro['ven_forma_pago_id']);
-            $this->formaPagoModelo->actualizar($id, $nombre, $codigoSri, $calculadora, (int) $usuario['id']);
+            $this->formaPagoModelo->actualizar($id, $nombre, $codigoSri, $calculadora, $tipo, (int) $usuario['id']);
             $this->responderJson(true, 'OK', 'Forma de pago actualizada correctamente.', ['forma_pago' => $this->formaPagoModelo->buscar($id)]);
         } catch (Throwable $excepcion) {
             $this->registrarErrorCrud('EDITAR FORMA DE PAGO', $excepcion);
@@ -385,10 +385,17 @@ final class FacturaControlador
 
     private function normalizarDatosFormaPago(): array
     {
+        $tiposValidos = ['EFECTIVO', 'TARJETA_CREDITO', 'TRANSFERENCIA', 'CREDITO', 'DEPOSITO', 'DEUNA', 'OTRO'];
+        $tipo = strtoupper(trim((string) ($_POST['tipo'] ?? 'OTRO')));
+        if (!in_array($tipo, $tiposValidos, true)) {
+            $tipo = 'OTRO';
+        }
+
         return [
             mb_strtoupper(trim((string) ($_POST['nombre'] ?? '')), 'UTF-8'),
             trim((string) ($_POST['codigo_sri'] ?? '')),
             !empty($_POST['calculadora']) ? 'S' : 'N',
+            $tipo,
         ];
     }
 
@@ -494,11 +501,27 @@ final class FacturaControlador
             'total'         => round((float) ($body['total']         ?? 0), 4),
             'observacion'   => trim((string) ($body['observacion']   ?? '')),
             'forma_pago_id' => (int)   ($body['forma_pago_id']  ?? 0),
+            'formas_pago'   => $this->normalizarFormasPago($body['formas_pago'] ?? []),
             'tipo_doc'      => in_array(trim((string)($body['tipo_doc'] ?? '')), ['FACTURA_VENTA', 'NOTA_VENTA'], true)
                                 ? trim((string)$body['tipo_doc'])
                                 : 'FACTURA_VENTA',
             'descuento_porcentaje' => round((float) ($body['descuento_porcentaje'] ?? 0), 2),
         ];
+    }
+
+    private function normalizarFormasPago(array $raw): array
+    {
+        $formas = [];
+        foreach ($raw as $f) {
+            $formas[] = [
+                'forma_pago_id' => (int)   ($f['forma_pago_id'] ?? 0),
+                'monto'         => round((float) ($f['monto']   ?? 0), 2),
+                'nombre'        => trim((string) ($f['nombre']       ?? '')),
+                'comprobante'   => trim((string) ($f['comprobante']  ?? '')),
+                'dias'          => (int)   ($f['dias']          ?? 0),
+            ];
+        }
+        return $formas;
     }
 
     private function normalizarLineas(array $raw): array
@@ -529,6 +552,18 @@ final class FacturaControlador
         if ($c['forma_pago_id'] <= 0) throw new \InvalidArgumentException('Seleccione una forma de pago.');
         if ($c['fecha_emision'] !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $c['fecha_emision'])) {
             throw new \InvalidArgumentException('Formato de fecha inválido.');
+        }
+        if (empty($c['formas_pago'])) {
+            throw new \InvalidArgumentException('Debe especificar al menos una forma de pago.');
+        }
+        $suma = 0.0;
+        foreach ($c['formas_pago'] as $f) {
+            if ($f['forma_pago_id'] <= 0) throw new \InvalidArgumentException('Forma de pago inválida.');
+            if ($f['monto'] < 0) throw new \InvalidArgumentException('El monto de la forma de pago no puede ser negativo.');
+            $suma += $f['monto'];
+        }
+        if (abs($suma - $c['total']) > 0.01) {
+            throw new \InvalidArgumentException('La suma de las formas de pago no coincide con el total del documento.');
         }
     }
 
