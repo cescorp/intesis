@@ -85,7 +85,6 @@ final class ProformaControlador
             'menus'         => $this->menuModelo->listarMenusPorPerfil($empresaId, (int) $usuario['perfil_id']),
             'empresas'      => $this->proformaModelo->listarEmpresasActivas($verTodas, $empresaId),
             'ivaList'       => $this->proformaModelo->listarIva($empresaId),
-            'formasPago'    => $this->proformaModelo->listarFormasPago($empresaId),
             'esSuperusuario'=> $verTodas,
             'permisos'      => $this->obtenerPermisos($usuario),
             'mensaje'       => $this->sesion->consumirMensaje(),
@@ -120,7 +119,6 @@ final class ProformaControlador
             'menus'         => $this->menuModelo->listarMenusPorPerfil($empresaId, (int) $usuario['perfil_id']),
             'empresas'      => $this->proformaModelo->listarEmpresasActivas($verTodas, $empresaId),
             'ivaList'       => $this->proformaModelo->listarIva($empresaId),
-            'formasPago'    => $this->proformaModelo->listarFormasPago($empresaId),
             'esSuperusuario'=> $verTodas,
             'permisos'      => $this->obtenerPermisos($usuario),
             'proforma'      => $proforma,
@@ -178,13 +176,17 @@ final class ProformaControlador
         try {
             $body       = json_decode(file_get_contents('php://input') ?: '{}', true) ?? [];
             $proformaId = (int) ($body['proforma_id'] ?? 0);
+            $motivo     = trim((string) ($body['motivo'] ?? ''));
             $empresaId  = (int) $usuario['empresa_id'];
 
             if ($proformaId <= 0) {
                 $this->responderJson(false, 'ERROR_VALIDACION', 'ID de proforma inválido.');
             }
+            if ($motivo === '') {
+                $this->responderJson(false, 'ERROR_VALIDACION', 'Debe indicar el motivo de anulación.');
+            }
 
-            $this->proformaModelo->anular($proformaId, $empresaId, (int) $usuario['id']);
+            $this->proformaModelo->anular($proformaId, $empresaId, (int) $usuario['id'], $motivo);
             $this->responderJson(true, 'OK', 'Proforma anulada correctamente.');
         } catch (Throwable $excepcion) {
             $this->registrarErrorCrud('ANULAR PROFORMA', $excepcion);
@@ -267,10 +269,6 @@ final class ProformaControlador
         $empresaId = (int) $usuario['empresa_id'];
         $termino   = trim((string) ($_GET['q'] ?? ''));
 
-        if (strlen($termino) < 2) {
-            $this->responderJson(true, 'OK', '', ['clientes' => []]);
-        }
-
         $clientes = $this->proformaModelo->buscarClientes($empresaId, $termino);
         $this->responderJson(true, 'OK', '', ['clientes' => $clientes]);
     }
@@ -333,7 +331,6 @@ final class ProformaControlador
             'iva'           => round((float) ($body['iva'] ?? 0), 4),
             'total'         => round((float) ($body['total'] ?? 0), 4),
             'observacion'   => trim((string) ($body['observacion'] ?? '')),
-            'forma_pago_id' => (int) ($body['forma_pago_id'] ?? 0),
         ];
     }
 
@@ -364,9 +361,6 @@ final class ProformaControlador
     {
         if ($c['cliente_id'] <= 0) {
             throw new \InvalidArgumentException('Seleccione un cliente.');
-        }
-        if ($c['forma_pago_id'] <= 0) {
-            throw new \InvalidArgumentException('Seleccione una forma de pago.');
         }
         if ($c['fecha_emision'] !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $c['fecha_emision'])) {
             throw new \InvalidArgumentException('Formato de fecha inválido.');

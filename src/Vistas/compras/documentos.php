@@ -111,8 +111,9 @@ $pendSri      = $pendientesSri ?? [];
                             <i class="bi bi-file-pdf"></i>
                         </button>
                         <?php if ($doc['sis_estado_codigo'] === 'BORRADOR' && $permisos['anular']): ?>
-                        <form action="<?= $appUrl ?>/compras/documentos/anular" method="post" class="d-inline formulario-confirmar" data-codigo-mensaje="CONFIRMAR_ANULAR_DOCUMENTO">
+                        <form action="<?= $appUrl ?>/compras/documentos/anular" method="post" class="d-inline formulario-confirmar" data-codigo-mensaje="CONFIRMAR_ANULAR_DOCUMENTO" data-pedir-motivo="1">
                             <input type="hidden" name="documento_id" value="<?= (int) $doc['com_documento_id'] ?>">
+                            <input type="hidden" name="motivo" value="">
                             <button class="btn btn-accion btn-inactivar" type="submit" title="Anular documento"><i class="bi bi-x-circle"></i></button>
                         </form>
                         <?php endif; ?>
@@ -458,7 +459,8 @@ $pendSri      = $pendientesSri ?? [];
                 <div class="col-md-3"><label class="form-label">Tipo</label><div class="d-flex align-items-center gap-1"><input class="form-control form-control-sm" value="${esc(d.tipo_nombre)}" disabled>${sriBadge}</div></div>
                 <div class="col-md-3"><label class="form-label">Numero</label><input class="form-control form-control-sm" value="${esc(d.com_documento_numero)}" disabled></div>
                 <div class="col-md-3"><label class="form-label">Fecha emision</label><input class="form-control form-control-sm" value="${String(d.com_documento_fecha_emision).substring(0,10)}" disabled></div>
-                <div class="col-md-3"><label class="form-label">Estado</label><input class="form-control form-control-sm" value="${esc(d.sis_estado_nombre)}" disabled></div>
+                <div class="col-md-3"><label class="form-label">Estado</label><input class="form-control form-control-sm${d.sis_estado_codigo === 'ANULADO' ? ' text-danger fw-bold' : ''}" value="${esc(d.sis_estado_nombre)}" disabled></div>
+                ${d.sis_estado_codigo === 'ANULADO' ? `<div class="col-md-6"><label class="form-label">Motivo anulación</label><input class="form-control form-control-sm text-danger" value="${esc(d.com_documento_motivo_anulacion||'')}" disabled></div>` : ''}
                 <div class="col-md-6"><label class="form-label">Proveedor</label><input class="form-control form-control-sm" value="${esc(d.com_proveedor_razon_social)} (${esc(d.com_proveedor_identificacion)})" disabled></div>
                 <div class="col-md-3"><label class="form-label">Bodega</label><input class="form-control form-control-sm" value="${esc(d.inv_bodega_nombre)}" disabled></div>
                 ${d.com_documento_observacion ? `<div class="col-6"><label class="form-label">Observacion</label><input class="form-control form-control-sm" value="${esc(d.com_documento_observacion)}" disabled></div>` : ''}
@@ -519,12 +521,22 @@ $pendSri      = $pendientesSri ?? [];
     if (btnAnulModal) {
         btnAnulModal.addEventListener('click', async () => {
             if (!documentoIdActual) return;
-            if (!confirm('¿Anular este documento? Esta acción no se puede deshacer.')) return;
+            const res0 = await Swal.fire({
+                title: 'Anular documento',
+                text: 'Esta acción no se puede deshacer.',
+                icon: 'warning',
+                input: 'text', inputLabel: 'Motivo', inputPlaceholder: 'Escriba el motivo de anulación...',
+                inputValidator: (valor) => !valor?.trim() ? 'El motivo es obligatorio.' : undefined,
+                showCancelButton: true, confirmButtonText: 'Sí, anular', cancelButtonText: 'Cancelar', confirmButtonColor: '#dc3545',
+            });
+            if (!res0.isConfirmed) return;
+            const motivo = res0.value.trim();
             btnAnulModal.disabled = true;
             btnAnulModal.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Anulando...';
             try {
                 const fd = new FormData();
                 fd.append('documento_id', documentoIdActual);
+                fd.append('motivo', motivo);
                 const res = await fetch(appUrl + '/compras/documentos/anular', { method: 'POST', body: fd });
                 if (!res.ok && !res.redirected) throw new Error('Error al anular');
                 getModal('modalDetalleDocumento').hide();

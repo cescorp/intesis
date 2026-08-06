@@ -16,16 +16,6 @@ foreach ($ivaList as $iv) {
 $editFecha       = $esEdicion ? substr((string)($proforma['ven_documento_fecha_emision'] ?? ''), 0, 10) : date('Y-m-d');
 $editObs         = $esEdicion ? htmlspecialchars((string)($proforma['ven_documento_observacion'] ?? '')) : '';
 $editNumero      = $esEdicion ? htmlspecialchars((string)$proforma['ven_documento_numero']) : '';
-$editFormaPagoId = $esEdicion ? (int)($proforma['ven_forma_pago_id'] ?? 0) : 0;
-// Predeterminado EFECTIVO al crear
-if (!$esEdicion && empty($editFormaPagoId)) {
-    foreach ($formasPago as $fp) {
-        if (strtoupper($fp['ven_forma_pago_nombre']) === 'EFECTIVO') {
-            $editFormaPagoId = (int) $fp['ven_forma_pago_id'];
-            break;
-        }
-    }
-}
 ?>
 <div class="app-wrapper">
     <!-- NAVBAR -->
@@ -104,17 +94,6 @@ if (!$esEdicion && empty($editFormaPagoId)) {
                         <input type="text" id="razon_social_display" class="form-control form-control-sm" disabled
                             placeholder="Se carga al ingresar el RUC"
                             value="<?= $esEdicion ? htmlspecialchars($proforma['ven_cliente_razon_social'] ?? '') : '' ?>">
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label mb-0 small">Forma de pago <span class="text-danger">*</span></label>
-                        <select id="selFormaPago" class="form-select form-select-sm">
-                            <?php foreach ($formasPago as $fp): ?>
-                            <option value="<?= $fp['ven_forma_pago_id'] ?>"
-                                <?= $editFormaPagoId === (int)$fp['ven_forma_pago_id'] ? 'selected' : '' ?>>
-                                <?= htmlspecialchars($fp['ven_forma_pago_nombre']) ?>
-                            </option>
-                            <?php endforeach; ?>
-                        </select>
                     </div>
                     <div class="col-md-2">
                         <label class="form-label mb-0 small">Observacion</label>
@@ -917,7 +896,6 @@ q('#btnGuardar').addEventListener('click', async () => {
         cliente_id:    clienteId,
         fecha_emision: q('#inpFecha').value,
         observacion:   q('#inpObservacion').value.trim(),
-        forma_pago_id: parseInt(q('#selFormaPago').value || 0),
         subtotal:      parseFloat(subtotal.toFixed(4)),
         descuento:     parseFloat(totalDesc.toFixed(4)),
         iva:           parseFloat(totalIva.toFixed(4)),

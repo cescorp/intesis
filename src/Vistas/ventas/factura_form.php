@@ -106,6 +106,20 @@ foreach ($formasPago as $fp) {
                         <label class="form-label mb-0 small">Fecha</label>
                         <input type="date" id="inpFecha" class="form-control form-control-sm bg-light" value="<?= $editFecha ?>" readonly tabindex="-1">
                     </div>
+                    <?php if (count($bodegas ?? []) > 1): ?>
+                    <div class="col-md-2">
+                        <label class="form-label mb-0 small">Bodega</label>
+                        <select id="selBodega" class="form-control form-control-sm">
+                            <?php foreach ($bodegas as $b): ?>
+                            <option value="<?= (int) $b['inv_bodega_id'] ?>" <?= ($esEdicion && (int)($factura['inv_bodega_id'] ?? 0) === (int)$b['inv_bodega_id']) ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($b['inv_bodega_nombre']) ?>
+                            </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <?php elseif (!empty($bodegas)): ?>
+                    <input type="hidden" id="selBodega" value="<?= (int) $bodegas[0]['inv_bodega_id'] ?>">
+                    <?php endif; ?>
                     <div class="col-md-2">
                         <label class="form-label mb-0 small">RUC / Identificacion <span class="text-danger">*</span></label>
                         <div class="input-group input-group-sm">
@@ -137,6 +151,7 @@ foreach ($formasPago as $fp) {
                                 <?php foreach ($formasPago as $fp): ?>
                                 <option value="<?= $fp['ven_forma_pago_id'] ?>"
                                     data-calculadora="<?= $fp['ven_forma_pago_calculadora'] ?? 'N' ?>"
+                                    data-tipo="<?= htmlspecialchars($fp['ven_forma_pago_tipo'] ?? 'OTRO') ?>"
                                     <?= $editFormaPagoId === (int)$fp['ven_forma_pago_id'] ? 'selected' : '' ?>>
                                     <?= htmlspecialchars($fp['ven_forma_pago_nombre']) ?>
                                 </option>
@@ -159,6 +174,37 @@ foreach ($formasPago as $fp) {
                             placeholder="—"
                             value="<?= $esEdicion ? htmlspecialchars($factura['ven_cliente_telefono'] ?? '') : '' ?>">
                     </div>
+                    <div class="col-md-2 d-none" id="fp_campo_nombre_cont">
+                        <label class="form-label mb-0 small">Nombre</label>
+                        <input type="text" id="fp_datos_nombre" class="form-control form-control-sm" maxlength="120">
+                    </div>
+                    <div class="col-md-2 d-none" id="fp_campo_comprobante_cont">
+                        <label class="form-label mb-0 small">No. Comprobante</label>
+                        <input type="text" id="fp_datos_comprobante" class="form-control form-control-sm" maxlength="60">
+                    </div>
+                    <div class="col-md-1 d-none" id="fp_campo_dias_cont">
+                        <label class="form-label mb-0 small">Días</label>
+                        <input type="number" id="fp_datos_dias" class="form-control form-control-sm" min="1" step="1" value="30">
+                    </div>
+                </div>
+                <!-- Panel Mixto: solo visible cuando la forma de pago elegida es "Mixto" -->
+                <div class="row g-2 mt-1 d-none" id="fp_panel_mixto">
+                    <div class="col-12">
+                        <div class="border rounded p-2">
+                            <div id="fp_mixto_checklist" class="d-flex flex-wrap gap-3 mb-2"></div>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered mb-1" style="font-size:.8rem">
+                                    <thead class="table-light"><tr><th>Forma de pago</th><th style="width:20%">Nombre</th><th style="width:20%">No. Comprobante</th><th style="width:15%" class="text-end">Monto</th></tr></thead>
+                                    <tbody id="fp_mixto_filas"><tr><td colspan="4" class="text-center text-muted py-2">Marque al menos una forma de pago arriba</td></tr></tbody>
+                                </table>
+                            </div>
+                            <div class="text-end small">
+                                Suma: <span id="fp_mixto_suma" class="fw-semibold">0.00</span> /
+                                Total: <span id="fp_mixto_total" class="fw-semibold">0.00</span>
+                                <span id="fp_mixto_check" class="ms-1"></span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -176,8 +222,7 @@ foreach ($formasPago as $fp) {
                             <th style="width:26px">#</th>
                             <th style="width:15%">Codigo</th>
                             <th>Descripcion</th>
-                            <th style="width:8%" class="text-center">Stock</th>
-                            <th style="width:9%" class="text-center">Cant.</th>
+                            <th style="width:12%" class="text-center">Cant.</th>
                             <th style="width:10%">Precio</th>
                             <th style="width:90px">IVA</th>
                             <th style="width:10%" class="text-end">Total</th>
@@ -289,8 +334,28 @@ foreach ($formasPago as $fp) {
                 <input type="text" id="buscarCodigoInput" class="form-control form-control-sm mb-2" placeholder="Codigo o descripcion...">
                 <div class="table-responsive" style="max-height:420px;overflow-y:auto">
                     <table class="table table-sm table-hover mb-0" style="font-size:.82rem">
-                        <thead class="table-light" style="position:sticky;top:0"><tr><th style="width:26px">#</th><th style="width:56px">Foto</th><th>Codigo</th><th>Nombre Producto</th><th class="text-end">PVP</th><th class="text-end">Stock</th></tr></thead>
-                        <tbody id="cuerpoCodigoModal"><tr><td colspan="6" class="text-center text-muted py-3">Escriba para buscar...</td></tr></tbody>
+                        <thead class="table-light" style="position:sticky;top:0"><tr><th style="width:26px">#</th><th style="width:56px">Foto</th><th>Codigo</th><th>Nombre Producto</th><th class="text-end">PVP</th><th class="text-end">Stock mi bodega</th><th class="text-end">Stock todas</th></tr></thead>
+                        <tbody id="cuerpoCodigoModal"><tr><td colspan="7" class="text-center text-muted py-3">Escriba para buscar...</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ MODAL STOCK POR BODEGA ═══ -->
+<div class="modal fade modal-intesis" id="modalStockBodegas" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <div><p class="modal-etiqueta mb-0">Inventario</p><h2 class="modal-title h6 mb-0">Stock por bodega</h2></div>
+                <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body py-2">
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered mb-0 text-center" style="font-size:.82rem">
+                        <thead class="table-light" id="theadStockBodegas"><tr><th>Codigo</th><th>Producto</th><th>PVP</th></tr></thead>
+                        <tbody id="cuerpoStockBodegas"><tr><td colspan="3" class="text-center text-muted py-3">Cargando...</td></tr></tbody>
                     </table>
                 </div>
             </div>
@@ -402,18 +467,30 @@ foreach ($formasPago as $fp) {
             <div class="modal-body py-2">
                 <form id="formFormaPago" class="row g-2 align-items-end mb-3 border-bottom pb-3">
                     <input type="hidden" id="fp_id">
-                    <div class="col-md-5">
+                    <div class="col-md-4">
                         <label class="form-label mb-0 small">Nombre</label>
                         <input type="text" id="fp_nombre" class="form-control form-control-sm" maxlength="100">
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <label class="form-label mb-0 small">Cod. SRI</label>
                         <input type="text" id="fp_codigo_sri" class="form-control form-control-sm" maxlength="2">
                     </div>
-                    <div class="col-md-2">
+                    <div class="col-md-3">
+                        <label class="form-label mb-0 small">Tipo</label>
+                        <select id="fp_tipo" class="form-control form-control-sm">
+                            <option value="OTRO">Otro (sin campos extra)</option>
+                            <option value="EFECTIVO">Efectivo</option>
+                            <option value="TARJETA_CREDITO">Tarjeta Crédito</option>
+                            <option value="TRANSFERENCIA">Transferencia</option>
+                            <option value="CREDITO">Crédito</option>
+                            <option value="DEPOSITO">Depósito</option>
+                            <option value="DEUNA">DeUna</option>
+                        </select>
+                    </div>
+                    <div class="col-md-1">
                         <div class="form-check form-switch switch-intesis mt-4">
                             <input class="form-check-input" type="checkbox" role="switch" id="fp_calculadora">
-                            <label class="form-check-label small" for="fp_calculadora">Calculadora</label>
+                            <label class="form-check-label small" for="fp_calculadora">Calc.</label>
                         </div>
                     </div>
                     <div class="col-md-2 d-flex gap-1">
@@ -423,8 +500,8 @@ foreach ($formasPago as $fp) {
                 </form>
                 <div class="table-responsive">
                     <table class="table table-sm table-hover mb-0" style="font-size:.82rem">
-                        <thead class="table-light"><tr><th>Nombre</th><th>Cod. SRI</th><th class="text-center">Calculadora</th><th class="text-center">Estado</th><th class="text-end">Acciones</th></tr></thead>
-                        <tbody id="cuerpoFormasPagoModal"><tr><td colspan="5" class="text-center text-muted py-3">Cargando...</td></tr></tbody>
+                        <thead class="table-light"><tr><th>Nombre</th><th>Cod. SRI</th><th>Tipo</th><th class="text-center">Calculadora</th><th class="text-center">Estado</th><th class="text-end">Acciones</th></tr></thead>
+                        <tbody id="cuerpoFormasPagoModal"><tr><td colspan="6" class="text-center text-muted py-3">Cargando...</td></tr></tbody>
                     </table>
                 </div>
             </div>
@@ -489,6 +566,95 @@ function esc(s) {
 const fmt2    = (n) => parseFloat(n || 0).toFixed(2);
 const q       = (sel) => document.querySelector(sel);
 const fetchJson = async (url) => { const r = await fetch(url); if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); };
+const bodegaParam = () => { const v = q('#selBodega')?.value; return v ? '&bodega_id=' + encodeURIComponent(v) : ''; };
+
+/* ── Forma de pago: tipos con campos extra y panel Mixto ──────────────────── */
+const TIPOS_CON_NOMBRE_COMPROBANTE = ['TARJETA_CREDITO', 'TRANSFERENCIA', 'DEPOSITO', 'DEUNA'];
+
+function agregarOpcionMixto(select) {
+    if ([...select.options].some(o => o.dataset.tipo === 'MIXTO')) return;
+    const opcion = new Option('Mixto', '0');
+    opcion.dataset.tipo = 'MIXTO';
+    select.add(opcion);
+}
+
+function opcionesFormaPagoParaMixto() {
+    return [...q('#selFormaPago').options].filter(o => o.dataset.tipo !== 'MIXTO' && o.dataset.tipo !== 'CREDITO');
+}
+
+function actualizarCamposFormaPago() {
+    const select = q('#selFormaPago');
+    const opt = select.options[select.selectedIndex];
+    const tipo = opt?.dataset?.tipo || 'OTRO';
+    q('#fp_campo_nombre_cont').classList.toggle('d-none', !TIPOS_CON_NOMBRE_COMPROBANTE.includes(tipo));
+    q('#fp_campo_comprobante_cont').classList.toggle('d-none', !TIPOS_CON_NOMBRE_COMPROBANTE.includes(tipo));
+    q('#fp_campo_dias_cont').classList.toggle('d-none', tipo !== 'CREDITO');
+    const esMixto = tipo === 'MIXTO';
+    q('#fp_panel_mixto').classList.toggle('d-none', !esMixto);
+    if (esMixto) renderizarChecklistMixto();
+}
+
+function renderizarChecklistMixto() {
+    const cont = q('#fp_mixto_checklist');
+    cont.innerHTML = opcionesFormaPagoParaMixto().map(o => `
+        <div class="form-check">
+            <input class="form-check-input chk-mixto-fp" type="checkbox" value="${o.value}" data-nombre="${esc(o.text)}" data-tipo="${o.dataset.tipo}" id="chk_mixto_${o.value}">
+            <label class="form-check-label small" for="chk_mixto_${o.value}">${esc(o.text)}</label>
+        </div>
+    `).join('');
+    actualizarFilasMixto();
+}
+
+function actualizarFilasMixto() {
+    const tbody = q('#fp_mixto_filas');
+    const previos = {};
+    tbody.querySelectorAll('tr[data-fp]').forEach(tr => {
+        previos[tr.dataset.fp] = {
+            nombre: tr.querySelector('.mx-nombre')?.value || '',
+            comprobante: tr.querySelector('.mx-comprobante')?.value || '',
+            monto: tr.querySelector('.mx-monto')?.value || '',
+        };
+    });
+    const marcados = [...q('#fp_mixto_checklist').querySelectorAll('.chk-mixto-fp:checked')];
+    if (!marcados.length) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-2">Marque al menos una forma de pago arriba</td></tr>';
+        actualizarSumaMixto();
+        return;
+    }
+    tbody.innerHTML = marcados.map(chk => {
+        const conDatos = TIPOS_CON_NOMBRE_COMPROBANTE.includes(chk.dataset.tipo);
+        const prev = previos[chk.value] || {};
+        return `<tr data-fp="${chk.value}">
+            <td class="align-middle">${esc(chk.dataset.nombre)}</td>
+            <td>${conDatos ? `<input type="text" class="form-control form-control-sm mx-nombre" value="${esc(prev.nombre || '')}">` : '<span class="text-muted">—</span>'}</td>
+            <td>${conDatos ? `<input type="text" class="form-control form-control-sm mx-comprobante" value="${esc(prev.comprobante || '')}">` : '<span class="text-muted">—</span>'}</td>
+            <td><input type="number" class="form-control form-control-sm text-end mx-monto" min="0" step="0.01" value="${esc(prev.monto || '')}"></td>
+        </tr>`;
+    }).join('');
+    actualizarSumaMixto();
+}
+
+function actualizarSumaMixto() {
+    let suma = 0;
+    q('#fp_mixto_filas').querySelectorAll('.mx-monto').forEach(inp => { suma += parseFloat(inp.value) || 0; });
+    const total = parseFloat((q('#resTotal')?.textContent || '').replace(/[^0-9.-]/g, '')) || 0;
+    q('#fp_mixto_suma').textContent = suma.toFixed(2);
+    q('#fp_mixto_total').textContent = total.toFixed(2);
+    const ok = Math.abs(suma - total) < 0.01 && total > 0;
+    q('#fp_mixto_check').innerHTML = ok
+        ? '<i class="bi bi-check-circle-fill text-success"></i>'
+        : '<i class="bi bi-exclamation-circle-fill text-danger"></i>';
+}
+
+q('#selFormaPago').addEventListener('change', actualizarCamposFormaPago);
+q('#fp_mixto_checklist').addEventListener('change', (e) => {
+    if (e.target.classList.contains('chk-mixto-fp')) actualizarFilasMixto();
+});
+q('#fp_mixto_filas').addEventListener('input', (e) => {
+    if (e.target.classList.contains('mx-monto')) actualizarSumaMixto();
+});
+agregarOpcionMixto(q('#selFormaPago'));
+actualizarCamposFormaPago();
 
 /* ── Tipo documento: título dinámico ────────────────────────────────────── */
 const titulosDoc = { FACTURA_VENTA: ['Nueva Factura', 'Editar Factura'], NOTA_VENTA: ['Nueva Nota de Venta', 'Editar Nota de Venta'] };
@@ -532,8 +698,12 @@ function crearFila(datos) {
         </div>
       </td>
       <td data-label="Descripcion"><input type="text" class="form-control form-control-sm inp-descripcion" value="${esc(datos.producto_nombre||datos.descripcion||'')}" disabled></td>
-      <td class="text-center align-middle inp-stock-display" data-label="Stock" style="font-size:.79rem;color:#666">${datos.inv_stock_cantidad_disponible !== undefined ? parseFloat(datos.inv_stock_cantidad_disponible).toFixed(2) : '—'}</td>
-      <td class="text-center" data-label="Cant."><input type="number" class="form-control form-control-sm text-center inp-cantidad" value="${datos.cantidad||1}" min="0.0001" step="0.0001"></td>
+      <td data-label="Cant.">
+        <div class="input-group input-group-sm">
+          <button type="button" class="input-group-text inp-stock-display btn-ver-stock-bodegas" style="color:#6c757d;cursor:pointer;font-size:.72rem" title="Ver stock por bodega">${datos.inv_stock_cantidad_disponible !== undefined ? Math.round(parseFloat(datos.inv_stock_cantidad_disponible)) : '—'}</button>
+          <input type="number" class="form-control form-control-sm text-center inp-cantidad" value="${datos.cantidad||1}" min="0.01" step="1">
+        </div>
+      </td>
       <td data-label="Precio"><input type="number" class="form-control form-control-sm inp-precio" value="${parseFloat(datos.precio||datos.pvp||0).toFixed(4)}" min="0" step="0.000001"></td>
       <td data-label="IVA">
         <select class="form-control form-control-sm inp-iva">
@@ -577,7 +747,7 @@ function crearFila(datos) {
         busquedaDirecta = true;
         filaActual = tr;
         try {
-            const json = await fetchJson(appUrl + '/ventas/facturas/productos?q=' + encodeURIComponent(val));
+            const json = await fetchJson(appUrl + '/ventas/facturas/productos?q=' + encodeURIComponent(val) + bodegaParam());
             const lista = json.ok ? (json.data?.productos || []) : [];
             if (lista.length === 1) {
                 cargarProductoEnFila(tr, lista[0]);
@@ -655,6 +825,7 @@ function calcularTotales() {
     q('#resBaseIva').textContent   = '$ ' + fmt2(r.baseIva);
     q('#resIva').textContent       = '$ ' + fmt2(r.iva);
     q('#resTotal').textContent     = '$ ' + fmt2(r.total);
+    if (!q('#fp_panel_mixto').classList.contains('d-none')) actualizarSumaMixto();
 }
 
 function actualizarNumeros() {
@@ -682,7 +853,49 @@ cuerpoDetalle.addEventListener('click', (e) => {
         actualizarNumeros();
         calcularTotales();
     }
+    const btnStock = e.target.closest('.btn-ver-stock-bodegas');
+    if (btnStock) {
+        const tr = btnStock.closest('tr');
+        abrirModalStockBodegas(tr);
+    }
 });
+
+cuerpoDetalle.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' || !e.target.matches('.inp-precio')) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const nuevaFila = crearFila({});
+    nuevaFila.querySelector('.inp-codigo')?.focus();
+});
+
+async function abrirModalStockBodegas(tr) {
+    const productoId = tr.dataset.productoId || '';
+    const tbody = q('#cuerpoStockBodegas');
+    const thead = q('#theadStockBodegas');
+    if (!productoId) {
+        Swal.fire({ icon: 'warning', title: 'Atención', text: 'Seleccione un producto en esta línea primero.' });
+        return;
+    }
+    bootstrap.Modal.getOrCreateInstance(q('#modalStockBodegas')).show();
+    tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted py-3">Cargando...</td></tr>';
+    try {
+        const json = await fetchJson(appUrl + '/ventas/facturas/stock-bodegas?producto_id=' + encodeURIComponent(productoId));
+        if (!json.ok) throw new Error(json.mensaje || 'No se pudo cargar el stock.');
+        const bodegas = json.data?.bodegas || [];
+        thead.innerHTML = `<tr><th>Codigo</th><th>Producto</th><th>PVP</th>${bodegas.map(b => `<th>${esc(b.inv_bodega_nombre)}</th>`).join('')}</tr>`;
+        const codigo = tr.querySelector('.inp-codigo')?.value || '';
+        const nombre = tr.querySelector('.inp-descripcion')?.value || '';
+        const pvp    = parseFloat(tr.querySelector('.inp-precio')?.value) || 0;
+        tbody.innerHTML = `<tr>
+            <td>${esc(codigo)}</td>
+            <td>${esc(nombre)}</td>
+            <td>${pvp.toFixed(2)}</td>
+            ${bodegas.map(b => `<td>${Math.round(parseFloat(b.cantidad) || 0)}</td>`).join('')}
+        </tr>`;
+    } catch (error) {
+        tbody.innerHTML = `<tr><td colspan="3" class="text-center text-danger py-3">${esc(error.message || 'Error al cargar')}</td></tr>`;
+    }
+}
 
 q('#btnAgregarLinea').addEventListener('click', () => crearFila({}));
 
@@ -694,7 +907,7 @@ function cargarProductoEnFila(tr, prod) {
     const pvp       = parseFloat(prod.pvp || 0);
     const descMax   = parseFloat(prod.descuento_max || 0);
     const precioMin = descMax > 0 ? parseFloat((pvp * (1 - descMax / 100)).toFixed(6)) : 0;
-    const stock     = parseFloat(prod.stock_total || prod.inv_stock_cantidad_disponible || 0);
+    const stock     = parseFloat(prod.stock_mi_bodega ?? prod.stock_total ?? prod.inv_stock_cantidad_disponible ?? 0);
     tr.dataset.pvp       = pvp;
     tr.dataset.precioMin = precioMin;
     const inpCodigo = tr.querySelector('.inp-codigo');
@@ -709,7 +922,7 @@ function cargarProductoEnFila(tr, prod) {
     tr.querySelector('.inp-aprobado-por').value      = '0';
     tr.querySelector('.inp-producto-id').value       = String(prod.inv_producto_id || '');
     tr.querySelector('.inp-stock').value             = stock;
-    tr.querySelector('.inp-stock-display').textContent = stock.toFixed(2);
+    tr.querySelector('.inp-stock-display').textContent = Math.round(stock);
     calcularFila(tr);
 }
 
@@ -900,12 +1113,12 @@ function abrirModalCodigo(texto) {
 
 async function buscarPorCodigo(term) {
     const tbody = q('#cuerpoCodigoModal');
-    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Buscando...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Buscando...</td></tr>';
     try {
-        const json = await fetchJson(appUrl + '/ventas/facturas/productos?q=' + encodeURIComponent(term));
+        const json = await fetchJson(appUrl + '/ventas/facturas/productos?q=' + encodeURIComponent(term) + bodegaParam());
         const lista = json.ok ? (json.data?.productos || []) : [];
         if (!lista.length) {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">Sin resultados</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-3">Sin resultados</td></tr>';
             return;
         }
         tbody.innerHTML = lista.map((p, i) => {
@@ -923,11 +1136,12 @@ async function buscarPorCodigo(term) {
               <td>${esc(p.codigo_interno||'')}</td>
               <td>${esc(p.inv_producto_nombre||'')}</td>
               <td class="text-end">$ ${parseFloat(p.pvp||0).toFixed(2)}</td>
-              <td class="text-end">${parseFloat(p.stock_total||0).toFixed(2)}</td>
+              <td class="text-end">${Math.round(parseFloat(p.stock_mi_bodega||0))}</td>
+              <td class="text-end">${Math.round(parseFloat(p.stock_total||0))}</td>
             </tr>`;
         }).join('');
     } catch {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Error al buscar</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-danger">Error al buscar</td></tr>';
     }
 }
 q('#buscarCodigoInput').addEventListener('input', (e) => {
@@ -1037,6 +1251,40 @@ q('#cfmRecibido').addEventListener('input', () => {
 });
 
 /* ── Construir payload para guardar ─────────────────────────────────────── */
+function construirFormasPago(total) {
+    const select = q('#selFormaPago');
+    const opt = select.options[select.selectedIndex];
+    const tipo = opt?.dataset?.tipo || 'OTRO';
+
+    if (tipo === 'MIXTO') {
+        const filas = [...q('#fp_mixto_filas').querySelectorAll('tr[data-fp]')];
+        if (!filas.length) return { ok: false, mensaje: 'Marque al menos una forma de pago en el pago Mixto.' };
+        const formas = filas.map(tr => ({
+            forma_pago_id: parseInt(tr.dataset.fp) || 0,
+            monto: parseFloat((parseFloat(tr.querySelector('.mx-monto')?.value) || 0).toFixed(2)),
+            nombre: tr.querySelector('.mx-nombre')?.value.trim() || '',
+            comprobante: tr.querySelector('.mx-comprobante')?.value.trim() || '',
+            dias: 0,
+        }));
+        const suma = formas.reduce((acc, f) => acc + f.monto, 0);
+        if (Math.abs(suma - total) > 0.01) {
+            return { ok: false, mensaje: `La suma de los montos (${suma.toFixed(2)}) debe ser igual al Total (${total.toFixed(2)}).` };
+        }
+        return { ok: true, formas };
+    }
+
+    const fpId = parseInt(select.value) || 0;
+    if (!fpId) return { ok: false, mensaje: 'Seleccione una forma de pago.' };
+    const conDatos = TIPOS_CON_NOMBRE_COMPROBANTE.includes(tipo);
+    const nombre = conDatos ? q('#fp_datos_nombre').value.trim() : '';
+    const comprobante = conDatos ? q('#fp_datos_comprobante').value.trim() : '';
+    const dias = tipo === 'CREDITO' ? (parseInt(q('#fp_datos_dias').value) || 0) : 0;
+    if (tipo === 'CREDITO' && dias <= 0) {
+        return { ok: false, mensaje: 'Ingrese los días de crédito.' };
+    }
+    return { ok: true, formas: [{ forma_pago_id: fpId, monto: parseFloat(total.toFixed(2)), nombre, comprobante, dias }] };
+}
+
 function construirPayload() {
     const clienteId = parseInt(q('#cliente_id').value || 0);
     if (!clienteId) return null;
@@ -1049,7 +1297,7 @@ function construirPayload() {
         const productoId = tr.querySelector('.inp-producto-id').value;
         const codigo     = tr.querySelector('.inp-codigo').value.trim();
         const descripcion= tr.querySelector('.inp-descripcion').value.trim();
-        const cantidad   = parseFloat(tr.querySelector('.inp-cantidad').value) || 0;
+        const cantidad   = parseFloat((parseFloat(tr.querySelector('.inp-cantidad').value) || 0).toFixed(2));
         const precio     = parseFloat(tr.querySelector('.inp-precio').value)   || 0;
         const ivaS       = tr.querySelector('.inp-iva');
         const ivaId      = ivaS?.value ? parseInt(ivaS.value) : 0;
@@ -1077,6 +1325,7 @@ function construirPayload() {
         fecha_emision: q('#inpFecha').value,
         observacion:   q('#inpObservacion').value.trim(),
         tipo_doc:      esEdicion ? tipoDocFijo : (q('#selTipoDoc')?.value || 'FACTURA_VENTA'),
+        bodega_id:     parseInt(q('#selBodega')?.value || 0),
         forma_pago_id: parseInt(q('#selFormaPago').value || 0),
         subtotal:      parseFloat(subtotal.toFixed(4)),
         descuento:     parseFloat(descuento.toFixed(4)),
@@ -1137,6 +1386,14 @@ q('#btnGuardar').addEventListener('click', async () => {
 
     const payload = construirPayload();
     if (!payload) return;
+
+    const formasPagoResultado = construirFormasPago(payload.total);
+    if (!formasPagoResultado.ok) {
+        Swal.fire({ icon: 'warning', title: 'Forma de pago incompleta', text: formasPagoResultado.mensaje });
+        return;
+    }
+    payload.formas_pago = formasPagoResultado.formas;
+    payload.forma_pago_id = formasPagoResultado.formas[0].forma_pago_id;
 
     /* Verificar si la forma de pago tiene calculadora */
     const selFP  = q('#selFormaPago');
@@ -1205,6 +1462,7 @@ if (btnAbrirFormasPago) {
         q('#fp_id').value = '';
         q('#fp_nombre').value = '';
         q('#fp_codigo_sri').value = '';
+        q('#fp_tipo').value = 'OTRO';
         q('#fp_calculadora').checked = false;
         q('#btnCancelarFormaPago').classList.add('d-none');
         q('#btnGuardarFormaPago').innerHTML = 'Guardar';
@@ -1217,18 +1475,31 @@ if (btnAbrirFormasPago) {
         lista.filter(fp => fp.ven_forma_pago_estado === 'A').forEach(fp => {
             const opcion = new Option(fp.ven_forma_pago_nombre, fp.ven_forma_pago_id);
             opcion.dataset.calculadora = fp.ven_forma_pago_calculadora || 'N';
+            opcion.dataset.tipo = fp.ven_forma_pago_tipo || 'OTRO';
             select.add(opcion);
         });
+        agregarOpcionMixto(select);
         const idFinal = seleccionarId ? String(seleccionarId) : valorPrevio;
         if ([...select.options].some(o => o.value === idFinal)) {
             select.value = idFinal;
         }
+        actualizarCamposFormaPago();
     }
+
+    const etiquetasTipoFormaPago = {
+        EFECTIVO: 'Efectivo',
+        TARJETA_CREDITO: 'Tarjeta Crédito',
+        TRANSFERENCIA: 'Transferencia',
+        CREDITO: 'Crédito',
+        DEPOSITO: 'Depósito',
+        DEUNA: 'DeUna',
+        OTRO: 'Otro',
+    };
 
     function renderFormasPago(lista) {
         const tbody = q('#cuerpoFormasPagoModal');
         if (!lista.length) {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">Sin formas de pago</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">Sin formas de pago</td></tr>';
             return;
         }
         tbody.innerHTML = lista.map(fp => {
@@ -1246,6 +1517,7 @@ if (btnAbrirFormasPago) {
             return `<tr>
               <td>${esc(fp.ven_forma_pago_nombre)}</td>
               <td>${esc(fp.ven_forma_pago_codigo_sri || '—')}</td>
+              <td>${esc(etiquetasTipoFormaPago[fp.ven_forma_pago_tipo] || 'Otro')}</td>
               <td class="text-center">${fp.ven_forma_pago_calculadora === 'S' ? 'Si' : 'No'}</td>
               <td class="text-center"><span class="badge ${activo ? 'bg-success' : 'bg-secondary'}">${activo ? 'Activo' : 'Inactivo'}</span></td>
               <td class="text-end">${acciones}</td>
@@ -1257,14 +1529,14 @@ if (btnAbrirFormasPago) {
 
     async function cargarFormasPago(seleccionarId) {
         const tbody = q('#cuerpoFormasPagoModal');
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">Cargando...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">Cargando...</td></tr>';
         try {
             const json = await fetchJson(appUrl + '/ventas/formas-pago');
             listaFormasPagoActual = json.data?.formasPago || [];
             renderFormasPago(listaFormasPagoActual);
             sincronizarSelectFormaPago(listaFormasPagoActual, seleccionarId);
         } catch {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger py-3">Error al cargar</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger py-3">Error al cargar</td></tr>';
         }
     }
 
@@ -1286,6 +1558,7 @@ if (btnAbrirFormasPago) {
         const form = new FormData();
         form.append('nombre', nombre);
         form.append('codigo_sri', q('#fp_codigo_sri').value.trim());
+        form.append('tipo', q('#fp_tipo').value);
         if (q('#fp_calculadora').checked) form.append('calculadora', '1');
         if (formaPagoEditandoId) form.append('forma_pago_id', String(formaPagoEditandoId));
 
@@ -1315,6 +1588,7 @@ if (btnAbrirFormasPago) {
             q('#fp_id').value = fp.ven_forma_pago_id;
             q('#fp_nombre').value = fp.ven_forma_pago_nombre;
             q('#fp_codigo_sri').value = fp.ven_forma_pago_codigo_sri || '';
+            q('#fp_tipo').value = fp.ven_forma_pago_tipo || 'OTRO';
             q('#fp_calculadora').checked = fp.ven_forma_pago_calculadora === 'S';
             q('#btnCancelarFormaPago').classList.remove('d-none');
             q('#btnGuardarFormaPago').innerHTML = 'Actualizar';

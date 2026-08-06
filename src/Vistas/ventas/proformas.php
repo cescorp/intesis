@@ -272,6 +272,7 @@ $msgFacturar  = $msgs['CONFIRMAR_FACTURAR_PROFORMA'] ?? null;
             <div class="col-md-3"><span class="text-muted">RUC/ID:</span> ${fe(p.ven_cliente_identificacion||'')}</div>
             <div class="col-md-2"><span class="text-muted">Fecha:</span> ${fe(fecha)}</div>
             <div class="col-md-3"><span class="text-muted">Estado:</span> <span class="badge estado-badge estado-${(p.sis_estado_codigo||'').toLowerCase()}">${fe(p.sis_estado_nombre||'')}</span></div>
+            ${p.sis_estado_codigo === 'ANULADA' ? `<div class="col-12"><span class="text-muted">Motivo:</span> <span class="text-danger">${fe(p.ven_documento_motivo_anulacion||'')}</span></div>` : ''}
             ${obs ? `<div class="col-12"><span class="text-muted">Obs:</span> ${fe(obs)}</div>` : ''}
         </div>
         <div class="table-responsive">
@@ -309,6 +310,8 @@ $msgFacturar  = $msgs['CONFIRMAR_FACTURAR_PROFORMA'] ?? null;
             title:  msgAnular.sis_mensaje_errores_titulo,
             text:   `${msgAnular.sis_mensaje_errores_mensaje}\nProforma: ${numero}`,
             icon:   msgAnular.sis_mensaje_errores_icono,
+            input: 'text', inputLabel: 'Motivo', inputPlaceholder: 'Escriba el motivo de anulación...',
+            inputValidator: (valor) => !valor?.trim() ? 'El motivo es obligatorio.' : undefined,
             showCancelButton: true, confirmButtonText: 'Sí, anular',
             cancelButtonText: 'Cancelar', confirmButtonColor: '#dc3545',
         });
@@ -316,7 +319,7 @@ $msgFacturar  = $msgs['CONFIRMAR_FACTURAR_PROFORMA'] ?? null;
         try {
             const resp = await fetch(appUrl + '/ventas/proformas/anular', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ proforma_id: id }),
+                body: JSON.stringify({ proforma_id: id, motivo: res.value.trim() }),
             });
             const data = await resp.json();
             if (data.ok) {
@@ -338,6 +341,8 @@ $msgFacturar  = $msgs['CONFIRMAR_FACTURAR_PROFORMA'] ?? null;
             title:  msgAnular.sis_mensaje_errores_titulo,
             text:   `${msgAnular.sis_mensaje_errores_mensaje}\nProforma: ${numero}`,
             icon:   msgAnular.sis_mensaje_errores_icono,
+            input: 'text', inputLabel: 'Motivo', inputPlaceholder: 'Escriba el motivo de anulación...',
+            inputValidator: (valor) => !valor?.trim() ? 'El motivo es obligatorio.' : undefined,
             showCancelButton: true,
             confirmButtonText: 'Sí, anular',
             cancelButtonText: 'Cancelar',
@@ -348,7 +353,7 @@ $msgFacturar  = $msgs['CONFIRMAR_FACTURAR_PROFORMA'] ?? null;
             const resp = await fetch(appUrl + '/ventas/proformas/anular', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ proforma_id: parseInt(id) }),
+                body: JSON.stringify({ proforma_id: parseInt(id), motivo: res.value.trim() }),
             });
             const data = await resp.json();
             if (data.ok) {

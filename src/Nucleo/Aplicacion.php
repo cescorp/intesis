@@ -146,7 +146,7 @@ final class Aplicacion
             new ArchivoProductoControlador($sesion, $productoModelo, $archivoProductoModelo, $menuModelo, $configuracion, $registroErrores),
             new CategoriaControlador($vista, $sesion, $categoriaModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
             new MarcaControlador($vista, $sesion, $marcaModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
-            new ProductoControlador($vista, $sesion, $productoModelo, $categoriaModelo, $marcaModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
+            new ProductoControlador($vista, $sesion, $productoModelo, $categoriaModelo, $marcaModelo, $proveedorModelo, $codigoProveedorModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
             new StockControlador($vista, $sesion, $stockModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),
             new KardexControlador($vista, $sesion, $kardexModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores, $generadorPdf),
             new MovimientoInternoControlador($vista, $sesion, $movimientoInternoModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores),

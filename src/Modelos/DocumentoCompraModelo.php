@@ -423,7 +423,7 @@ final class DocumentoCompraModelo
     // ANULAR
     // =========================================================================
 
-    public function anular(int $documentoId, int $empresaId, int $usuarioId): void
+    public function anular(int $documentoId, int $empresaId, int $usuarioId, string $motivo): void
     {
         $pdo = $this->pdo();
         $pdo->beginTransaction();
@@ -455,11 +455,13 @@ final class DocumentoCompraModelo
             $pdo->prepare("
                 UPDATE com_documento
                 SET sis_estado_id    = :estado_id,
+                    com_documento_motivo_anulacion = :motivo,
                     usuario_modifica = :usuario,
                     fecha_modifica   = now()
                 WHERE com_documento_id = :id
             ")->execute([
                 'estado_id' => $this->obtenerEstadoId('ANULADO'),
+                'motivo'    => $motivo,
                 'usuario'   => $usuarioId,
                 'id'        => $documentoId,
             ]);
@@ -1188,10 +1190,13 @@ final class DocumentoCompraModelo
                    e.sis_empresa_razon_social,
                    e.sis_empresa_nombre_comercial  AS empresa_nombre_comercial,
                    e.sis_empresa_direccion,
-                   e.sis_empresa_obligado_contabilidad
+                   e.sis_empresa_obligado_contabilidad,
+                   es.sis_estado_codigo,
+                   d.com_documento_motivo_anulacion
             FROM com_documento d
             INNER JOIN com_proveedor p ON p.com_proveedor_id = d.com_proveedor_id
             INNER JOIN sis_empresa   e ON e.sis_empresa_id   = d.sis_empresa_id
+            INNER JOIN sis_estado    es ON es.sis_estado_id  = d.sis_estado_id
             WHERE d.com_documento_id = :id
               AND d.sis_empresa_id   = :empresa_id
             LIMIT 1
@@ -1296,6 +1301,8 @@ final class DocumentoCompraModelo
             'importe_total'           => (float) ($doc['com_documento_valor_total']  ?? 0),
             'subtotal_iva'            => round($subtotalIva, 2),
             'subtotal_0'              => round($subtotal0, 2),
+            'anulado'                 => ($doc['sis_estado_codigo'] ?? '') === 'ANULADO',
+            'motivo_anulacion'        => (string) ($doc['com_documento_motivo_anulacion'] ?? ''),
         ];
 
         return [

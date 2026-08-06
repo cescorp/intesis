@@ -1,0 +1,11 @@
+# Configuracion local (credenciales de BD, SRI, etc.)
+.env
+
+# Sesiones de usuario
+almacenamiento/sesiones/
+
+# Archivos adjuntos/generados en tiempo de ejecucion (imagenes, firmas .p12, stock CSV, XML/TXT SRI)
+almacenamiento/archivos/
+
+# Log de errores
+*.log

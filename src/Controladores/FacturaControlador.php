@@ -111,6 +111,7 @@ final class FacturaControlador
             'empresas'       => $this->facturaModelo->listarEmpresasActivas($verTodas, $empresaId),
             'ivaList'        => $this->facturaModelo->listarIva($empresaId),
             'formasPago'     => $this->facturaModelo->listarFormasPago($empresaId),
+            'bodegas'        => $verTodas ? [] : $this->facturaModelo->listarBodegasPermitidas($empresaId, (int) $usuario['id']),
             'esSuperusuario' => $verTodas,
             'permisos'       => $this->obtenerPermisos($usuario),
             'permisosFormaPago' => $this->obtenerPermisosFormaPago($usuario),
@@ -144,6 +145,7 @@ final class FacturaControlador
             'empresas'       => $this->facturaModelo->listarEmpresasActivas($verTodas, $empresaId),
             'ivaList'        => $this->facturaModelo->listarIva($empresaId),
             'formasPago'     => $this->facturaModelo->listarFormasPago($empresaId),
+            'bodegas'        => $verTodas ? [] : $this->facturaModelo->listarBodegasPermitidas($empresaId, (int) $usuario['id']),
             'esSuperusuario' => $verTodas,
             'permisos'       => $this->obtenerPermisos($usuario),
             'permisosFormaPago' => $this->obtenerPermisosFormaPago($usuario),
@@ -204,13 +206,17 @@ final class FacturaControlador
         try {
             $body      = json_decode(file_get_contents('php://input') ?: '{}', true) ?? [];
             $facturaId = (int) ($body['factura_id'] ?? 0);
+            $motivo    = trim((string) ($body['motivo'] ?? ''));
             $empresaId = (int) $usuario['empresa_id'];
 
             if ($facturaId <= 0) {
                 $this->responderJson(false, 'ERROR_VALIDACION', 'ID de factura inválido.');
             }
+            if ($motivo === '') {
+                $this->responderJson(false, 'ERROR_VALIDACION', 'Debe indicar el motivo de anulación.');
+            }
 
-            $this->facturaModelo->anular($facturaId, $empresaId, (int) $usuario['id']);
+            $this->facturaModelo->anular($facturaId, $empresaId, (int) $usuario['id'], $motivo);
             $this->responderJson(true, 'OK', 'Factura anulada correctamente.');
         } catch (Throwable $excepcion) {
             $this->registrarErrorCrud('ANULAR FACTURA', $excepcion);
@@ -276,12 +282,29 @@ final class FacturaControlador
             $this->responderJson(true, 'OK', '', ['productos' => []]);
         }
 
+        $bodegaSeleccionada = (int) ($_GET['bodega_id'] ?? 0);
         $bodegaId = ($this->esSuperusuario($usuario) || !empty($usuario['venta_todas_bodegas']))
             ? null
-            : $this->facturaModelo->obtenerBodegaUsuario($empresaId, (int) $usuario['id']);
+            : ($bodegaSeleccionada > 0 ? $bodegaSeleccionada : $this->facturaModelo->obtenerBodegaUsuario($empresaId, (int) $usuario['id']));
 
         $this->responderJson(true, 'OK', '', [
             'productos' => $this->facturaModelo->buscarProductos($empresaId, $termino, $bodegaId),
+        ]);
+    }
+
+    public function stockBodegas(): void
+    {
+        $usuario    = $this->exigirSesionJson();
+        $this->exigirPermisoJson('/ventas/facturas/crear');
+        $empresaId  = (int) $usuario['empresa_id'];
+        $productoId = (int) ($_GET['producto_id'] ?? 0);
+
+        if ($productoId <= 0) {
+            $this->responderJson(false, 'ERROR_VALIDACION', 'Producto no válido.');
+        }
+
+        $this->responderJson(true, 'OK', '', [
+            'bodegas' => $this->facturaModelo->listarStockPorBodega($empresaId, $productoId),
         ]);
     }
 
@@ -307,9 +330,9 @@ final class FacturaControlador
         $empresaId = (int) $usuario['empresa_id'];
 
         try {
-            [$nombre, $codigoSri, $calculadora] = $this->normalizarDatosFormaPago();
+            [$nombre, $codigoSri, $calculadora, $tipo] = $this->normalizarDatosFormaPago();
             $this->validarDatosFormaPago($empresaId, $nombre, null);
-            $id = $this->formaPagoModelo->crear($empresaId, $nombre, $codigoSri, $calculadora, (int) $usuario['id']);
+            $id = $this->formaPagoModelo->crear($empresaId, $nombre, $codigoSri, $calculadora, $tipo, (int) $usuario['id']);
             $this->responderJson(true, 'OK', 'Forma de pago creada correctamente.', ['forma_pago' => $this->formaPagoModelo->buscar($id)]);
         } catch (Throwable $excepcion) {
             $this->registrarErrorCrud('CREAR FORMA DE PAGO', $excepcion);
@@ -326,9 +349,9 @@ final class FacturaControlador
         try {
             $id = (int) ($_POST['forma_pago_id'] ?? 0);
             $registro = $this->obtenerFormaPagoPermitida($id, $empresaId);
-            [$nombre, $codigoSri, $calculadora] = $this->normalizarDatosFormaPago();
+            [$nombre, $codigoSri, $calculadora, $tipo] = $this->normalizarDatosFormaPago();
             $this->validarDatosFormaPago($empresaId, $nombre, (int) $registro['ven_forma_pago_id']);
-            $this->formaPagoModelo->actualizar($id, $nombre, $codigoSri, $calculadora, (int) $usuario['id']);
+            $this->formaPagoModelo->actualizar($id, $nombre, $codigoSri, $calculadora, $tipo, (int) $usuario['id']);
             $this->responderJson(true, 'OK', 'Forma de pago actualizada correctamente.', ['forma_pago' => $this->formaPagoModelo->buscar($id)]);
         } catch (Throwable $excepcion) {
             $this->registrarErrorCrud('EDITAR FORMA DE PAGO', $excepcion);
@@ -385,10 +408,17 @@ final class FacturaControlador
 
     private function normalizarDatosFormaPago(): array
     {
+        $tiposValidos = ['EFECTIVO', 'TARJETA_CREDITO', 'TRANSFERENCIA', 'CREDITO', 'DEPOSITO', 'DEUNA', 'OTRO'];
+        $tipo = strtoupper(trim((string) ($_POST['tipo'] ?? 'OTRO')));
+        if (!in_array($tipo, $tiposValidos, true)) {
+            $tipo = 'OTRO';
+        }
+
         return [
             mb_strtoupper(trim((string) ($_POST['nombre'] ?? '')), 'UTF-8'),
             trim((string) ($_POST['codigo_sri'] ?? '')),
             !empty($_POST['calculadora']) ? 'S' : 'N',
+            $tipo,
         ];
     }
 
@@ -494,11 +524,28 @@ final class FacturaControlador
             'total'         => round((float) ($body['total']         ?? 0), 4),
             'observacion'   => trim((string) ($body['observacion']   ?? '')),
             'forma_pago_id' => (int)   ($body['forma_pago_id']  ?? 0),
+            'formas_pago'   => $this->normalizarFormasPago($body['formas_pago'] ?? []),
+            'bodega_id'     => (int)   ($body['bodega_id']      ?? 0),
             'tipo_doc'      => in_array(trim((string)($body['tipo_doc'] ?? '')), ['FACTURA_VENTA', 'NOTA_VENTA'], true)
                                 ? trim((string)$body['tipo_doc'])
                                 : 'FACTURA_VENTA',
             'descuento_porcentaje' => round((float) ($body['descuento_porcentaje'] ?? 0), 2),
         ];
+    }
+
+    private function normalizarFormasPago(array $raw): array
+    {
+        $formas = [];
+        foreach ($raw as $f) {
+            $formas[] = [
+                'forma_pago_id' => (int)   ($f['forma_pago_id'] ?? 0),
+                'monto'         => round((float) ($f['monto']   ?? 0), 2),
+                'nombre'        => trim((string) ($f['nombre']       ?? '')),
+                'comprobante'   => trim((string) ($f['comprobante']  ?? '')),
+                'dias'          => (int)   ($f['dias']          ?? 0),
+            ];
+        }
+        return $formas;
     }
 
     private function normalizarLineas(array $raw): array
@@ -509,7 +556,7 @@ final class FacturaControlador
                 'producto_id'     => (int)   ($l['producto_id']    ?? 0),
                 'codigo'          => trim((string) ($l['codigo']   ?? '')),
                 'descripcion'     => trim((string) ($l['descripcion'] ?? '')),
-                'cantidad'        => round((float) ($l['cantidad']  ?? 0), 4),
+                'cantidad'        => round((float) ($l['cantidad']  ?? 0), 2),
                 'precio'          => round((float) ($l['precio']    ?? 0), 6),
                 'descuento'       => round((float) ($l['descuento'] ?? 0), 2),
                 'descuento_valor' => round((float) ($l['descuento_valor'] ?? 0), 4),
@@ -529,6 +576,18 @@ final class FacturaControlador
         if ($c['forma_pago_id'] <= 0) throw new \InvalidArgumentException('Seleccione una forma de pago.');
         if ($c['fecha_emision'] !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $c['fecha_emision'])) {
             throw new \InvalidArgumentException('Formato de fecha inválido.');
+        }
+        if (empty($c['formas_pago'])) {
+            throw new \InvalidArgumentException('Debe especificar al menos una forma de pago.');
+        }
+        $suma = 0.0;
+        foreach ($c['formas_pago'] as $f) {
+            if ($f['forma_pago_id'] <= 0) throw new \InvalidArgumentException('Forma de pago inválida.');
+            if ($f['monto'] < 0) throw new \InvalidArgumentException('El monto de la forma de pago no puede ser negativo.');
+            $suma += $f['monto'];
+        }
+        if (abs($suma - $c['total']) > 0.01) {
+            throw new \InvalidArgumentException('La suma de las formas de pago no coincide con el total del documento.');
         }
     }
 

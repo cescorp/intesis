@@ -555,7 +555,7 @@ final class MovimientoInternoModelo
      * * SOLO PERMITE LA ANULACION EL MISMO DIA DE PROCESADO/RECIBIDO.
      * ***************************************************************************
      */
-    public function anularProcesado(int $empresaId, int $movimientoId, int $usuarioId): void
+    public function anularProcesado(int $empresaId, int $movimientoId, int $usuarioId, string $motivo): void
     {
         $pdo = $this->conexionBaseDatos->obtener();
         $pdo->beginTransaction();
@@ -579,7 +579,7 @@ final class MovimientoInternoModelo
                 throw new \InvalidArgumentException('Solo se pueden anular movimientos en estado procesado o recibido.');
             }
 
-            $this->cambiarEstado($movimientoId, 'ANULADO', $usuarioId);
+            $this->cambiarEstado($movimientoId, 'ANULADO', $usuarioId, $motivo);
             $pdo->commit();
         } catch (\Throwable $excepcion) {
             $pdo->rollBack();
@@ -592,7 +592,7 @@ final class MovimientoInternoModelo
      * * ANULA MOVIMIENTO PENDIENTE O REVERSA TRANSFERENCIA EN TRANSITO.
      * ***************************************************************************
      */
-    public function anular(int $empresaId, int $movimientoId, int $usuarioId): void
+    public function anular(int $empresaId, int $movimientoId, int $usuarioId, string $motivo): void
     {
         $pdo = $this->conexionBaseDatos->obtener();
         $pdo->beginTransaction();
@@ -603,7 +603,7 @@ final class MovimientoInternoModelo
             } elseif ($movimiento['sis_estado_codigo'] !== 'PENDIENTE') {
                 throw new \InvalidArgumentException('Solo se anulan pendientes o transferencias en transito.');
             }
-            $this->cambiarEstado($movimientoId, 'ANULADO', $usuarioId);
+            $this->cambiarEstado($movimientoId, 'ANULADO', $usuarioId, $motivo);
             $pdo->commit();
         } catch (\Throwable $excepcion) {
             $pdo->rollBack();
@@ -854,16 +854,22 @@ final class MovimientoInternoModelo
         return $bodega;
     }
 
-    private function cambiarEstado(int $movimientoId, string $estado, int $usuarioId): void
+    private function cambiarEstado(int $movimientoId, string $estado, int $usuarioId, ?string $motivo = null): void
     {
+        $sqlMotivo = $motivo !== null ? ', inv_movimientos_motivo_anulacion = :motivo' : '';
         $sentencia = $this->conexionBaseDatos->obtener()->prepare("
             UPDATE inv_movimientos
             SET sis_estado_id = :estado_id,
                 usuario_modifica = :usuario,
                 fecha_modifica = now()
+                {$sqlMotivo}
             WHERE inv_movimientos_id = :movimiento_id
         ");
-        $sentencia->execute(['estado_id' => $this->obtenerEstadoId($estado), 'usuario' => $usuarioId, 'movimiento_id' => $movimientoId]);
+        $parametros = ['estado_id' => $this->obtenerEstadoId($estado), 'usuario' => $usuarioId, 'movimiento_id' => $movimientoId];
+        if ($motivo !== null) {
+            $parametros['motivo'] = $motivo;
+        }
+        $sentencia->execute($parametros);
     }
 
     private function obtenerEstadoId(string $codigo): int

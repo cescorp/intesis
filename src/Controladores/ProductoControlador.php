@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace Intesis\Controladores;
 
 use Intesis\Modelos\CategoriaModelo;
+use Intesis\Modelos\CodigoProveedorModelo;
 use Intesis\Modelos\MarcaModelo;
 use Intesis\Modelos\MenuModelo;
 use Intesis\Modelos\MensajeSistemaModelo;
 use Intesis\Modelos\ProductoModelo;
+use Intesis\Modelos\ProveedorModelo;
 use Intesis\Nucleo\Configuracion;
 use Intesis\Nucleo\ControladorComun;
 use Intesis\Nucleo\RegistroErrores;
@@ -25,6 +27,8 @@ final class ProductoControlador
         private ProductoModelo $productoModelo,
         private CategoriaModelo $categoriaModelo,
         private MarcaModelo $marcaModelo,
+        private ProveedorModelo $proveedorModelo,
+        private CodigoProveedorModelo $codigoProveedorModelo,
         private MenuModelo $menuModelo,
         private MensajeSistemaModelo $mensajeSistemaModelo,
         private Configuracion $configuracion,
@@ -52,6 +56,11 @@ final class ProductoControlador
             'empresas' => $this->productoModelo->listarEmpresasActivas($verTodas, $empresaId),
             'categorias' => $this->categoriaModelo->listar($empresaId, $verTodas, true),
             'marcas' => $this->marcaModelo->listar($empresaId, $verTodas, true),
+            'proveedores' => array_values(array_filter(
+                $this->proveedorModelo->listar($empresaId, $verTodas),
+                static fn (array $p): bool => $p['sis_estado_codigo'] === 'ACTIVO'
+            )),
+            'siguienteCodigoSugerido' => $this->productoModelo->sugerirSiguienteCodigo($this->productoModelo->obtenerUltimoCodigo($empresaId)),
             'esSuperusuario' => $verTodas,
             'permisos' => $this->obtenerPermisos($usuario),
             'mensaje' => $this->sesion->consumirMensaje(),
@@ -116,12 +125,24 @@ final class ProductoControlador
             $producto = $editar ? $this->obtenerProductoPermitido($productoId, $usuario) : null;
             $datos = $this->normalizarDatos($usuario);
             $this->validarDatos($datos, $editar ? $productoId : null);
+
+            $proveedorId  = (int) ($_POST['proveedor_id'] ?? 0);
+            $codProveedor = trim((string) ($_POST['cod_proveedor'] ?? ''));
+            if (!$editar && $proveedorId > 0 && $codProveedor !== '' && $this->codigoProveedorModelo->existeCodigo($proveedorId, $codProveedor)) {
+                throw new \InvalidArgumentException('El código de proveedor ya está asignado a otro producto.');
+            }
+
             if ($editar) {
                 $this->productoModelo->actualizar((int) $producto['inv_producto_id'], $datos, (int) $usuario['id']);
                 $productoGuardadoId = (int) $producto['inv_producto_id'];
             } else {
                 $productoGuardadoId = $this->productoModelo->crear($datos, (int) $usuario['id']);
             }
+
+            if (!$editar && $proveedorId > 0 && $codProveedor !== '') {
+                $this->codigoProveedorModelo->crear($proveedorId, $codProveedor, $productoGuardadoId, (int) $usuario['id']);
+            }
+
             if ($this->esSolicitudAjax()) {
                 $this->responderJson(true, 'REGISTRO_GUARDADO', 'Producto guardado correctamente.', [
                     'producto_id' => $productoGuardadoId,

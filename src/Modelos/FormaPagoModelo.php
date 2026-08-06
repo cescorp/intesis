@@ -14,7 +14,7 @@ final class FormaPagoModelo
     {
         $stmt = $this->pdo->prepare("
             SELECT ven_forma_pago_id, ven_forma_pago_nombre, ven_forma_pago_codigo_sri,
-                   ven_forma_pago_calculadora, ven_forma_pago_estado
+                   ven_forma_pago_calculadora, ven_forma_pago_tipo, ven_forma_pago_estado
             FROM ven_forma_pago
             WHERE sis_empresa_id = :empresa_id
             ORDER BY ven_forma_pago_nombre
@@ -27,7 +27,7 @@ final class FormaPagoModelo
     {
         $stmt = $this->pdo->prepare("
             SELECT ven_forma_pago_id, sis_empresa_id, ven_forma_pago_nombre,
-                   ven_forma_pago_codigo_sri, ven_forma_pago_calculadora, ven_forma_pago_estado
+                   ven_forma_pago_codigo_sri, ven_forma_pago_calculadora, ven_forma_pago_tipo, ven_forma_pago_estado
             FROM ven_forma_pago
             WHERE ven_forma_pago_id = :id
             LIMIT 1
@@ -50,13 +50,13 @@ final class FormaPagoModelo
         return (bool) $stmt->fetchColumn();
     }
 
-    public function crear(int $empresaId, string $nombre, string $codigoSri, string $calculadora, int $usuarioId): int
+    public function crear(int $empresaId, string $nombre, string $codigoSri, string $calculadora, string $tipo, int $usuarioId): int
     {
         $stmt = $this->pdo->prepare("
             INSERT INTO ven_forma_pago
                 (sis_empresa_id, ven_forma_pago_nombre, ven_forma_pago_codigo_sri,
-                 ven_forma_pago_calculadora, ven_forma_pago_estado, usuario_crea, fecha_crea)
-            VALUES (:empresa_id, :nombre, :codigo_sri, :calculadora, 'A', :usuario, now())
+                 ven_forma_pago_calculadora, ven_forma_pago_tipo, ven_forma_pago_estado, usuario_crea, fecha_crea)
+            VALUES (:empresa_id, :nombre, :codigo_sri, :calculadora, :tipo, 'A', :usuario, now())
             RETURNING ven_forma_pago_id
         ");
         $stmt->execute([
@@ -64,18 +64,20 @@ final class FormaPagoModelo
             'nombre'      => $nombre,
             'codigo_sri'  => $codigoSri,
             'calculadora' => $calculadora,
+            'tipo'        => $tipo,
             'usuario'     => $usuarioId,
         ]);
         return (int) $stmt->fetchColumn();
     }
 
-    public function actualizar(int $id, string $nombre, string $codigoSri, string $calculadora, int $usuarioId): void
+    public function actualizar(int $id, string $nombre, string $codigoSri, string $calculadora, string $tipo, int $usuarioId): void
     {
         $this->pdo->prepare("
             UPDATE ven_forma_pago
             SET ven_forma_pago_nombre      = :nombre,
                 ven_forma_pago_codigo_sri  = :codigo_sri,
                 ven_forma_pago_calculadora = :calculadora,
+                ven_forma_pago_tipo        = :tipo,
                 usuario_modifica           = :usuario,
                 fecha_modifica             = now()
             WHERE ven_forma_pago_id = :id
@@ -83,6 +85,7 @@ final class FormaPagoModelo
             'nombre'      => $nombre,
             'codigo_sri'  => $codigoSri,
             'calculadora' => $calculadora,
+            'tipo'        => $tipo,
             'usuario'     => $usuarioId,
             'id'          => $id,
         ]);

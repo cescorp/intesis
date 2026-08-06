@@ -76,6 +76,8 @@ final class GeneradorPdf
             $filas = '<tr><td colspan="' . $columnas . '" class="sin-registros">Sin detalles registrados.</td></tr>';
         }
 
+        $marcaAgua = $this->marcaAguaAnulado((bool) ($cabecera['anulado'] ?? false));
+
         return '<!doctype html>
 <html lang="es">
 <head>
@@ -105,6 +107,7 @@ final class GeneradorPdf
     </style>
 </head>
 <body>
+    ' . $marcaAgua . '
     <div class="cabecera">
         <div class="cabecera-bloque">
             <h1>' . $this->escapar(strtoupper((string) $cabecera['empresa_nombre'])) . '</h1>
@@ -321,6 +324,7 @@ final class GeneradorPdf
     {
         $filas = '';
         $num   = 0;
+        $hayLineaSinStock = false;
         foreach ($lineas as $l) {
             $num++;
             $cant   = (float) ($l['ven_documento_detalle_cantidad']      ?? 0);
@@ -328,8 +332,11 @@ final class GeneradorPdf
             $dto    = (float) ($l['ven_documento_detalle_descuento']      ?? 0);
             $total  = (float) ($l['ven_documento_detalle_precio_total_sin_impuestos'] ?? $l['ven_documento_detalle_precio_total'] ?? 0);
             $iva    = (float) ($l['ven_documento_detalle_impuesto_total'] ?? 0);
+            $stockLinea = $l['stock_total'] ?? $l['stock_disponible'] ?? null;
+            $sinStock   = $stockLinea !== null && (float) $stockLinea <= 0;
+            if ($sinStock) $hayLineaSinStock = true;
             $filas .= '<tr>'
-                . '<td class="text-center">' . $num . '</td>'
+                . '<td class="text-center">' . ($sinStock ? '*' : '') . $num . '</td>'
                 . '<td class="mono">' . $this->escapar((string) ($l['codigo_interno'] ?? $l['ven_documento_detalle_codigo'] ?? '')) . '</td>'
                 . '<td>' . $this->escapar((string) ($l['producto_nombre'] ?? $l['ven_documento_detalle_descripcion'] ?? '')) . '</td>'
                 . '<td class="numero">' . number_format($cant, 2, '.', '') . '</td>'
@@ -358,6 +365,12 @@ final class GeneradorPdf
         $numero   = $this->escapar((string) ($proforma['ven_documento_numero']         ?? ''));
         $fecha    = $this->escapar(substr((string) ($proforma['ven_documento_fecha_emision'] ?? ''), 0, 10));
         $obs      = $this->escapar((string) ($proforma['ven_documento_observacion']    ?? ''));
+        $tituloDoc = match ($proforma['tipo_codigo'] ?? 'PROFORMA') {
+            'FACTURA_VENTA' => 'FACTURA',
+            'NOTA_VENTA'    => 'NOTA DE VENTA',
+            default         => 'PROFORMA',
+        };
+        $marcaAgua = $this->marcaAguaAnulado(($proforma['sis_estado_codigo'] ?? '') === 'ANULADA');
 
         return '<!doctype html>
 <html lang="es">
@@ -391,6 +404,7 @@ final class GeneradorPdf
 </style>
 </head>
 <body>
+' . $marcaAgua . '
 <div class="cabecera">
     <div class="cab-izq">
         <h1>' . $nombreEmpresa . '</h1>
@@ -399,7 +413,7 @@ final class GeneradorPdf
         <div class="dato"><span class="etiqueta">Tel:</span> ' . $telEmpresa . '</div>
     </div>
     <div class="cab-der">
-        <h2>PROFORMA</h2>
+        <h2>' . $tituloDoc . '</h2>
         <div class="numero-doc">' . $numero . '</div>
         <div class="dato"><span class="etiqueta">Fecha:</span> ' . $fecha . '</div>
     </div>
@@ -425,6 +439,7 @@ final class GeneradorPdf
     </thead>
     <tbody>' . $filas . '</tbody>
 </table>
+' . ($hayLineaSinStock ? '<div class="obs">* Sin stock disponible</div>' : '') . '
 
 <table class="totales">
     <tr><td>Subtotal sin impuestos</td><td class="numero">$' . number_format($subtotal, 2, '.', ',') . '</td></tr>
@@ -440,6 +455,21 @@ final class GeneradorPdf
 </div>
 </body>
 </html>';
+    }
+
+    /**
+     * ***************************************************************************
+     * * MARCA DE AGUA DIAGONAL "ANULADO" PARA DOCUMENTOS EN ESTADO ANULADA.
+     * ***************************************************************************
+     */
+    private function marcaAguaAnulado(bool $anulado): string
+    {
+        if (!$anulado) {
+            return '';
+        }
+        return '<div style="position:fixed;top:40%;left:5%;width:90%;text-align:center;
+            transform:rotate(-30deg);font-size:70px;font-weight:bold;color:#dc3545;opacity:0.25;
+            z-index:1000;">ANULADO</div>';
     }
 
     private function escapar(string $valor): string

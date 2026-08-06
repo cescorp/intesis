@@ -180,10 +180,12 @@ final class FacturaModelo
         try {
             $empresaId = (int) $cabecera['empresa_id'];
             $tipoCodigo = $cabecera['tipo_doc'] === 'NOTA_VENTA' ? 'NOTA_VENTA' : 'FACTURA_VENTA';
-            $bodegaId  = $this->obtenerBodegaId($pdo, $empresaId, $usuarioId);
+            $bodegaId  = $this->resolverBodega($pdo, $empresaId, $usuarioId, (int) ($cabecera['bodega_id'] ?? 0));
             $numero    = $this->secuenciaModelo->obtenerSiguiente($pdo, $empresaId, $tipoCodigo, 'VENTAS', $bodegaId);
 
             $this->validarStock($pdo, $empresaId, $lineas, $ventaTodasBodegas ? null : $bodegaId);
+
+            $diasCredito = $this->obtenerDiasCredito($cabecera['formas_pago']);
 
             $stmt = $pdo->prepare("
                 INSERT INTO ven_documento (
@@ -195,7 +197,7 @@ final class FacturaModelo
                     ven_documento_subtotal_sin_impuestos,
                     ven_documento_impuesto_total,
                     ven_documento_valor_total,
-                    ven_forma_pago_id,
+                    ven_forma_pago_id, ven_documento_plazo_pago_dias,
                     ven_documento_observacion, sis_estado_id, usuario_crea
                 ) VALUES (
                     :empresa_id, :cliente_id, :tipo_id,
@@ -203,7 +205,7 @@ final class FacturaModelo
                     :numero, :fecha_emision,
                     :subtotal, :descuento, :iva, :total,
                     :subtotal_sin_impuestos, :impuesto_total, :valor_total,
-                    :forma_pago_id,
+                    :forma_pago_id, :plazo_pago_dias,
                     :observacion, :estado_id, :usuario_crea
                 ) RETURNING ven_documento_id
             ");
@@ -223,6 +225,7 @@ final class FacturaModelo
                 'impuesto_total'         => $cabecera['iva'],
                 'valor_total'            => $cabecera['total'],
                 'forma_pago_id'          => $cabecera['forma_pago_id'],
+                'plazo_pago_dias'        => $diasCredito,
                 'observacion'            => $cabecera['observacion'] !== '' ? $cabecera['observacion'] : null,
                 'estado_id'              => $this->obtenerEstadoId('CREADA'),
                 'usuario_crea'           => $usuarioId,
@@ -230,6 +233,7 @@ final class FacturaModelo
             $facturaId = (int) $stmt->fetchColumn();
 
             $this->insertarLineasYDescontarStock($pdo, $facturaId, $empresaId, $bodegaId, $numero, $lineas, $usuarioId);
+            $this->guardarFormasPago($pdo, $facturaId, $cabecera['formas_pago'], $usuarioId);
 
             $this->generarCxcSiAplica($pdo, $facturaId, $empresaId, (int) $cabecera['cliente_id'], $cabecera['forma_pago_id'], $cabecera['total'], $usuarioId);
 
@@ -238,6 +242,53 @@ final class FacturaModelo
         } catch (\Throwable $e) {
             $pdo->rollBack();
             throw $e;
+        }
+    }
+
+    /**
+     * ***************************************************************************
+     * * OBTIENE LOS DIAS DE CREDITO DE LA FORMA DE PAGO TIPO CREDITO, SI EXISTE.
+     * ***************************************************************************
+     */
+    private function obtenerDiasCredito(array $formasPago): int
+    {
+        foreach ($formasPago as $f) {
+            if ((int) ($f['dias'] ?? 0) > 0) {
+                return (int) $f['dias'];
+            }
+        }
+        return 0;
+    }
+
+    /**
+     * ***************************************************************************
+     * * REEMPLAZA EL DETALLE DE FORMAS DE PAGO DE UN DOCUMENTO (SOPORTA MIXTO).
+     * ***************************************************************************
+     */
+    private function guardarFormasPago(\PDO $pdo, int $documentoId, array $formasPago, int $usuarioId): void
+    {
+        $pdo->prepare('DELETE FROM ven_documento_forma_pago WHERE ven_documento_id = :id')
+            ->execute(['id' => $documentoId]);
+
+        $stmt = $pdo->prepare("
+            INSERT INTO ven_documento_forma_pago (
+                ven_documento_id, ven_forma_pago_id, ven_documento_forma_pago_monto,
+                ven_documento_forma_pago_nombre, ven_documento_forma_pago_comprobante,
+                ven_documento_forma_pago_dias, usuario_crea
+            ) VALUES (
+                :documento_id, :forma_pago_id, :monto, :nombre, :comprobante, :dias, :usuario
+            )
+        ");
+        foreach ($formasPago as $f) {
+            $stmt->execute([
+                'documento_id' => $documentoId,
+                'forma_pago_id' => $f['forma_pago_id'],
+                'monto'        => $f['monto'],
+                'nombre'       => $f['nombre'] !== '' ? $f['nombre'] : null,
+                'comprobante'  => $f['comprobante'] !== '' ? $f['comprobante'] : null,
+                'dias'         => $f['dias'] > 0 ? $f['dias'] : null,
+                'usuario'      => $usuarioId,
+            ]);
         }
     }
 
@@ -258,8 +309,10 @@ final class FacturaModelo
             $this->revertirStockYKardex($pdo, $facturaId, $usuarioId);
 
             $empresaId = (int) $cabecera['empresa_id'];
-            $bodegaId  = $this->obtenerBodegaId($pdo, $empresaId, $usuarioId);
+            $bodegaId  = $this->resolverBodega($pdo, $empresaId, $usuarioId, (int) ($cabecera['bodega_id'] ?? 0));
             $this->validarStock($pdo, $empresaId, $lineas, $ventaTodasBodegas ? null : $bodegaId);
+
+            $diasCredito = $this->obtenerDiasCredito($cabecera['formas_pago']);
 
             $pdo->prepare("
                 UPDATE ven_documento
@@ -273,6 +326,7 @@ final class FacturaModelo
                     ven_documento_impuesto_total         = :iva,
                     ven_documento_valor_total            = :total,
                     ven_forma_pago_id           = :forma_pago_id,
+                    ven_documento_plazo_pago_dias = :plazo_pago_dias,
                     ven_documento_observacion   = :observacion,
                     usuario_modifica            = :usuario,
                     fecha_modifica              = now()
@@ -285,6 +339,7 @@ final class FacturaModelo
                 'iva'           => $cabecera['iva'],
                 'total'         => $cabecera['total'],
                 'forma_pago_id' => $cabecera['forma_pago_id'],
+                'plazo_pago_dias' => $diasCredito,
                 'observacion'   => $cabecera['observacion'] !== '' ? $cabecera['observacion'] : null,
                 'usuario'       => $usuarioId,
                 'id'            => $facturaId,
@@ -298,6 +353,7 @@ final class FacturaModelo
 
             $numero = $doc['ven_documento_numero'];
             $this->insertarLineasYDescontarStock($pdo, $facturaId, $empresaId, $bodegaId, $numero, $lineas, $usuarioId);
+            $this->guardarFormasPago($pdo, $facturaId, $cabecera['formas_pago'], $usuarioId);
 
             $pdo->commit();
         } catch (\Throwable $e) {
@@ -310,7 +366,7 @@ final class FacturaModelo
     // ANULAR
     // =========================================================================
 
-    public function anular(int $facturaId, int $empresaId, int $usuarioId): void
+    public function anular(int $facturaId, int $empresaId, int $usuarioId, string $motivo): void
     {
         $pdo = $this->pdo();
         $pdo->beginTransaction();
@@ -325,11 +381,13 @@ final class FacturaModelo
             $pdo->prepare("
                 UPDATE ven_documento
                 SET sis_estado_id    = :estado_id,
+                    ven_documento_motivo_anulacion = :motivo,
                     usuario_modifica = :usuario,
                     fecha_modifica   = now()
                 WHERE ven_documento_id = :id
             ")->execute([
                 'estado_id' => $this->obtenerEstadoId('ANULADA'),
+                'motivo'    => $motivo,
                 'usuario'   => $usuarioId,
                 'id'        => $facturaId,
             ]);
@@ -356,7 +414,7 @@ final class FacturaModelo
     public function listarFormasPago(int $empresaId): array
     {
         $sentencia = $this->pdo()->prepare("
-            SELECT ven_forma_pago_id, ven_forma_pago_nombre, ven_forma_pago_calculadora
+            SELECT ven_forma_pago_id, ven_forma_pago_nombre, ven_forma_pago_calculadora, ven_forma_pago_tipo
             FROM ven_forma_pago
             WHERE sis_empresa_id = :empresa_id AND ven_forma_pago_estado = 'A'
             ORDER BY ven_forma_pago_nombre
@@ -432,13 +490,13 @@ final class FacturaModelo
     public function buscarProductos(int $empresaId, string $termino, ?int $bodegaId = null): array
     {
         $like = '%' . $termino . '%';
-        $filtroBodegaStock = $bodegaId !== null ? 'AND s.inv_bodega_id = :bodega_id' : '';
         $sentencia = $this->pdo()->prepare("
             SELECT p.inv_producto_id,
                    p.inv_producto_codigo_principal AS codigo_interno,
                    p.inv_producto_nombre,
                    COALESCE(m.inv_marca_nombre, '') AS marca_nombre,
                    COALESCE(SUM(s.inv_stock_cantidad_disponible), 0) AS stock_total,
+                   COALESCE(SUM(CASE WHEN s.inv_bodega_id = :bodega_id THEN s.inv_stock_cantidad_disponible ELSE 0 END), 0) AS stock_mi_bodega,
                    COALESCE(lpd.ven_lista_precio_detalle_valor, 0)   AS pvp,
                    COALESCE(lp.ven_lista_precio_descuento, 0)        AS descuento_max,
                    COALESCE(iv.sis_iva_id, NULL)  AS sis_iva_id,
@@ -447,7 +505,6 @@ final class FacturaModelo
             LEFT JOIN inv_marca m     ON m.inv_marca_id    = p.inv_marca_id
             LEFT JOIN inv_stock s     ON s.inv_producto_id = p.inv_producto_id
                                      AND s.sis_empresa_id  = :empresa_id
-                                     {$filtroBodegaStock}
             LEFT JOIN ven_lista_precio lp ON lp.sis_empresa_id = :empresa_id2
                                          AND lp.ven_lista_precio_predeterminado = 1
                                          AND lp.sis_estado = 1
@@ -468,17 +525,46 @@ final class FacturaModelo
             ORDER BY p.inv_producto_nombre
             LIMIT 30
         ");
-        $parametros = [
+        $sentencia->execute([
             'empresa_id'  => $empresaId, 'empresa_id2' => $empresaId,
             'empresa_id3' => $empresaId, 'empresa_id4' => $empresaId,
             'empresa_id5' => $empresaId,
+            'bodega_id'   => $bodegaId ?? 0,
             'like' => $like, 'like2' => $like,
-        ];
-        if ($bodegaId !== null) {
-            $parametros['bodega_id'] = $bodegaId;
+        ]);
+        $productos = $sentencia->fetchAll();
+
+        if ($bodegaId === null) {
+            foreach ($productos as &$p) {
+                $p['stock_mi_bodega'] = $p['stock_total'];
+            }
         }
-        $sentencia->execute($parametros);
-        return $sentencia->fetchAll();
+
+        return $productos;
+    }
+
+    /**
+     * ***************************************************************************
+     * * LISTA EL STOCK DE UN PRODUCTO EN CADA BODEGA ACTIVA DE LA EMPRESA.
+     * ***************************************************************************
+     */
+    public function listarStockPorBodega(int $empresaId, int $productoId): array
+    {
+        $stmt = $this->pdo()->prepare("
+            SELECT b.inv_bodega_id, b.inv_bodega_codigo, b.inv_bodega_nombre,
+                   COALESCE(s.inv_stock_cantidad_disponible, 0) AS cantidad
+            FROM inv_bodega b
+            INNER JOIN sis_estado es ON es.sis_estado_id = b.sis_estado_id
+            LEFT JOIN inv_stock s ON s.inv_bodega_id   = b.inv_bodega_id
+                                  AND s.inv_producto_id = :producto_id
+                                  AND s.sis_empresa_id   = :empresa_id
+            WHERE b.sis_empresa_id = :empresa_id2
+              AND es.sis_estado_codigo = 'ACTIVO'
+              AND b.inv_bodega_virtual = FALSE
+            ORDER BY b.inv_bodega_codigo
+        ");
+        $stmt->execute(['producto_id' => $productoId, 'empresa_id' => $empresaId, 'empresa_id2' => $empresaId]);
+        return $stmt->fetchAll();
     }
 
     public function obtenerDatosEmpresa(int $empresaId): array
@@ -731,19 +817,12 @@ final class FacturaModelo
 
     private function generarCxcSiAplica(\PDO $pdo, int $facturaId, int $empresaId, int $clienteId, int $formaPagoId, float $total, int $usuarioId): void
     {
-        $stmt = $pdo->prepare("
-            SELECT ven_forma_pago_solicitar_datos FROM ven_forma_pago
-            WHERE ven_forma_pago_id = :id LIMIT 1
-        ");
+        $stmt = $pdo->prepare("SELECT ven_forma_pago_tipo FROM ven_forma_pago WHERE ven_forma_pago_id = :id LIMIT 1");
         $stmt->execute(['id' => $formaPagoId]);
-        $fp = $stmt->fetch();
+        $tipoFp = (string) $stmt->fetchColumn();
 
-        // Solo genera CXC si la forma de pago solicita datos (ej. Crédito) pero no es Efectivo
-        $nombre = $pdo->prepare("SELECT ven_forma_pago_nombre FROM ven_forma_pago WHERE ven_forma_pago_id = :id LIMIT 1");
-        $nombre->execute(['id' => $formaPagoId]);
-        $nombreFp = strtoupper((string)$nombre->fetchColumn());
-
-        if (!in_array($nombreFp, ['EFECTIVO', 'TARJETA DE CRÉDITO', 'TARJETA DE DEBITO', 'TRANSFERENCIA'], true)) {
+        // Solo genera CXC cuando la forma de pago principal es CREDITO (Credito es exclusivo, no se combina en Mixto)
+        if ($tipoFp === 'CREDITO') {
             $pdo->prepare("
                 INSERT INTO ven_cxc (
                     sis_empresa_id, ven_documento_id, ven_cliente_id,
@@ -782,6 +861,62 @@ final class FacturaModelo
     public function obtenerBodegaUsuario(int $empresaId, int $usuarioId): int
     {
         return $this->obtenerBodegaId($this->pdo(), $empresaId, $usuarioId);
+    }
+
+    /**
+     * ***************************************************************************
+     * * LISTA LAS BODEGAS REALES (NO VIRTUALES) ASIGNADAS AL USUARIO PARA VENDER.
+     * ***************************************************************************
+     */
+    public function listarBodegasPermitidas(int $empresaId, int $usuarioId): array
+    {
+        $pdo = $this->pdo();
+        $stmt = $pdo->prepare("
+            SELECT b.inv_bodega_id, b.inv_bodega_codigo, b.inv_bodega_nombre
+            FROM inv_bodega_usuarios bu
+            INNER JOIN inv_bodega b  ON b.inv_bodega_id  = bu.inv_bodega_id
+            INNER JOIN sis_estado es ON es.sis_estado_id = b.sis_estado_id
+            WHERE bu.sis_empresa_id = :empresa_id
+              AND bu.sis_usuarios_id = :usuario_id
+              AND bu.inv_bodega_usuarios_estado = 1
+              AND es.sis_estado_codigo = 'ACTIVO'
+              AND b.inv_bodega_virtual = FALSE
+            ORDER BY b.inv_bodega_codigo
+        ");
+        $stmt->execute(['empresa_id' => $empresaId, 'usuario_id' => $usuarioId]);
+        $asignadas = $stmt->fetchAll();
+        if ($asignadas) {
+            return $asignadas;
+        }
+
+        $stmt2 = $pdo->prepare("
+            SELECT inv_bodega_id, inv_bodega_codigo, inv_bodega_nombre
+            FROM inv_bodega
+            WHERE sis_empresa_id = :empresa_id AND inv_bodega_virtual = FALSE
+            ORDER BY inv_bodega_codigo
+        ");
+        $stmt2->execute(['empresa_id' => $empresaId]);
+        return $stmt2->fetchAll();
+    }
+
+    /**
+     * ***************************************************************************
+     * * VALIDA QUE LA BODEGA ELEGIDA POR EL USUARIO ESTE ENTRE LAS PERMITIDAS;
+     * * SI NO SE ELIGIO NINGUNA O NO ES VALIDA, CAE A LA DETECCION AUTOMATICA.
+     * ***************************************************************************
+     */
+    private function resolverBodega(\PDO $pdo, int $empresaId, int $usuarioId, int $bodegaSolicitada): int
+    {
+        if ($bodegaSolicitada <= 0) {
+            return $this->obtenerBodegaId($pdo, $empresaId, $usuarioId);
+        }
+        $permitidas = $this->listarBodegasPermitidas($empresaId, $usuarioId);
+        foreach ($permitidas as $b) {
+            if ((int) $b['inv_bodega_id'] === $bodegaSolicitada) {
+                return $bodegaSolicitada;
+            }
+        }
+        return $this->obtenerBodegaId($pdo, $empresaId, $usuarioId);
     }
 
     private function obtenerBodegaId(\PDO $pdo, int $empresaId, int $usuarioId): int
