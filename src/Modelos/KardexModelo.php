@@ -158,10 +158,13 @@ final class KardexModelo
                 COALESCE(u.sis_usuarios_nombre, 'SIN RESPONSABLE') AS responsable,
                 ua.sis_usuarios_nombre AS aprobado_por,
                 bo.inv_bodega_nombre AS bodega_origen_nombre,
-                bd.inv_bodega_nombre AS bodega_destino_nombre
+                bd.inv_bodega_nombre AS bodega_destino_nombre,
+                es.sis_estado_codigo,
+                m.inv_movimientos_motivo_anulacion
             FROM inv_movimientos m
             INNER JOIN sis_empresa e ON e.sis_empresa_id = m.sis_empresa_id
             INNER JOIN sis_tipo_documento td ON td.sis_tipo_documento_id = m.sis_tipo_documento_id
+            INNER JOIN sis_estado es ON es.sis_estado_id = m.sis_estado_id
             LEFT JOIN sis_usuarios u ON u.sis_usuarios_id = m.usuario_crea
             LEFT JOIN sis_usuarios ua ON ua.sis_usuarios_id = m.usuario_modifica
             LEFT JOIN inv_bodega bo ON bo.inv_bodega_id = m.inv_bodega_origen_id

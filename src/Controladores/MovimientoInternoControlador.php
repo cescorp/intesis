@@ -128,7 +128,21 @@ final class MovimientoInternoControlador
 
     public function anular(): void
     {
-        $this->accionEstado('/inventario/movimientos/anular', 'anular', 'Movimiento anulado');
+        $usuario = $this->exigirSesion();
+        $this->exigirPermiso('/inventario/movimientos/anular');
+        try {
+            $movimientoId = (int) ($_POST['movimiento_id'] ?? 0);
+            $motivo       = trim((string) ($_POST['motivo'] ?? ''));
+            if ($motivo === '') {
+                throw new \InvalidArgumentException('Debe indicar el motivo de anulación.');
+            }
+            $this->movimientoInternoModelo->anular((int) $usuario['empresa_id'], $movimientoId, (int) $usuario['id'], $motivo);
+            $this->sesion->guardarMensaje('success', 'Movimiento anulado', 'La accion fue aplicada correctamente.');
+        } catch (Throwable $excepcion) {
+            $this->registroErrores->escribirExcepcion('ANULAR MOVIMIENTO', $excepcion);
+            $this->sesion->guardarMensaje('error', 'No se pudo procesar', $excepcion->getMessage());
+        }
+        $this->redirigir('/inventario/movimientos');
     }
 
     /**
@@ -175,7 +189,11 @@ final class MovimientoInternoControlador
         $this->exigirPermiso('/inventario/movimientos/anular-procesado');
         try {
             $movimientoId = (int) ($_POST['movimiento_id'] ?? 0);
-            $this->movimientoInternoModelo->anularProcesado((int) $usuario['empresa_id'], $movimientoId, (int) $usuario['id']);
+            $motivo       = trim((string) ($_POST['motivo'] ?? ''));
+            if ($motivo === '') {
+                throw new \InvalidArgumentException('Debe indicar el motivo de anulación.');
+            }
+            $this->movimientoInternoModelo->anularProcesado((int) $usuario['empresa_id'], $movimientoId, (int) $usuario['id'], $motivo);
             $this->sesion->guardarMensaje('success', 'Movimiento anulado', 'El movimiento fue anulado y el stock fue revertido.');
         } catch (Throwable $excepcion) {
             $this->registroErrores->escribirExcepcion('ANULAR PROCESADO MOVIMIENTO', $excepcion);

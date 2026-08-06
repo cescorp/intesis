@@ -223,8 +223,12 @@ final class DocumentoCompraControlador
         $this->exigirPermiso('/compras/documentos/anular');
         try {
             $documentoId = (int) ($_POST['documento_id'] ?? 0);
+            $motivo      = trim((string) ($_POST['motivo'] ?? ''));
+            if ($motivo === '') {
+                throw new \InvalidArgumentException('Debe indicar el motivo de anulación.');
+            }
             $doc = $this->obtenerDocumentoPermitido($documentoId, $usuario);
-            $this->documentoCompraModelo->anular((int) $doc['com_documento_id'], (int) $doc['sis_empresa_id'], (int) $usuario['id']);
+            $this->documentoCompraModelo->anular((int) $doc['com_documento_id'], (int) $doc['sis_empresa_id'], (int) $usuario['id'], $motivo);
             $this->sesion->guardarMensaje('success', 'Documento anulado', 'El documento fue anulado correctamente.');
         } catch (Throwable $excepcion) {
             $this->registroErrores->escribirExcepcion('ANULAR DOCUMENTO COMPRA', $excepcion);

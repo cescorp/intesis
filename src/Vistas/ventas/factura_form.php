@@ -106,6 +106,20 @@ foreach ($formasPago as $fp) {
                         <label class="form-label mb-0 small">Fecha</label>
                         <input type="date" id="inpFecha" class="form-control form-control-sm bg-light" value="<?= $editFecha ?>" readonly tabindex="-1">
                     </div>
+                    <?php if (count($bodegas ?? []) > 1): ?>
+                    <div class="col-md-2">
+                        <label class="form-label mb-0 small">Bodega</label>
+                        <select id="selBodega" class="form-control form-control-sm">
+                            <?php foreach ($bodegas as $b): ?>
+                            <option value="<?= (int) $b['inv_bodega_id'] ?>" <?= ($esEdicion && (int)($factura['inv_bodega_id'] ?? 0) === (int)$b['inv_bodega_id']) ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($b['inv_bodega_nombre']) ?>
+                            </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <?php elseif (!empty($bodegas)): ?>
+                    <input type="hidden" id="selBodega" value="<?= (int) $bodegas[0]['inv_bodega_id'] ?>">
+                    <?php endif; ?>
                     <div class="col-md-2">
                         <label class="form-label mb-0 small">RUC / Identificacion <span class="text-danger">*</span></label>
                         <div class="input-group input-group-sm">
@@ -208,8 +222,7 @@ foreach ($formasPago as $fp) {
                             <th style="width:26px">#</th>
                             <th style="width:15%">Codigo</th>
                             <th>Descripcion</th>
-                            <th style="width:8%" class="text-center">Stock</th>
-                            <th style="width:9%" class="text-center">Cant.</th>
+                            <th style="width:12%" class="text-center">Cant.</th>
                             <th style="width:10%">Precio</th>
                             <th style="width:90px">IVA</th>
                             <th style="width:10%" class="text-end">Total</th>
@@ -321,8 +334,28 @@ foreach ($formasPago as $fp) {
                 <input type="text" id="buscarCodigoInput" class="form-control form-control-sm mb-2" placeholder="Codigo o descripcion...">
                 <div class="table-responsive" style="max-height:420px;overflow-y:auto">
                     <table class="table table-sm table-hover mb-0" style="font-size:.82rem">
-                        <thead class="table-light" style="position:sticky;top:0"><tr><th style="width:26px">#</th><th style="width:56px">Foto</th><th>Codigo</th><th>Nombre Producto</th><th class="text-end">PVP</th><th class="text-end">Stock</th></tr></thead>
-                        <tbody id="cuerpoCodigoModal"><tr><td colspan="6" class="text-center text-muted py-3">Escriba para buscar...</td></tr></tbody>
+                        <thead class="table-light" style="position:sticky;top:0"><tr><th style="width:26px">#</th><th style="width:56px">Foto</th><th>Codigo</th><th>Nombre Producto</th><th class="text-end">PVP</th><th class="text-end">Stock mi bodega</th><th class="text-end">Stock todas</th></tr></thead>
+                        <tbody id="cuerpoCodigoModal"><tr><td colspan="7" class="text-center text-muted py-3">Escriba para buscar...</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ MODAL STOCK POR BODEGA ═══ -->
+<div class="modal fade modal-intesis" id="modalStockBodegas" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <div><p class="modal-etiqueta mb-0">Inventario</p><h2 class="modal-title h6 mb-0">Stock por bodega</h2></div>
+                <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body py-2">
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered mb-0 text-center" style="font-size:.82rem">
+                        <thead class="table-light" id="theadStockBodegas"><tr><th>Codigo</th><th>Producto</th><th>PVP</th></tr></thead>
+                        <tbody id="cuerpoStockBodegas"><tr><td colspan="3" class="text-center text-muted py-3">Cargando...</td></tr></tbody>
                     </table>
                 </div>
             </div>
@@ -533,6 +566,7 @@ function esc(s) {
 const fmt2    = (n) => parseFloat(n || 0).toFixed(2);
 const q       = (sel) => document.querySelector(sel);
 const fetchJson = async (url) => { const r = await fetch(url); if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); };
+const bodegaParam = () => { const v = q('#selBodega')?.value; return v ? '&bodega_id=' + encodeURIComponent(v) : ''; };
 
 /* ── Forma de pago: tipos con campos extra y panel Mixto ──────────────────── */
 const TIPOS_CON_NOMBRE_COMPROBANTE = ['TARJETA_CREDITO', 'TRANSFERENCIA', 'DEPOSITO', 'DEUNA'];
@@ -664,8 +698,12 @@ function crearFila(datos) {
         </div>
       </td>
       <td data-label="Descripcion"><input type="text" class="form-control form-control-sm inp-descripcion" value="${esc(datos.producto_nombre||datos.descripcion||'')}" disabled></td>
-      <td class="text-center align-middle inp-stock-display" data-label="Stock" style="font-size:.79rem;color:#666">${datos.inv_stock_cantidad_disponible !== undefined ? parseFloat(datos.inv_stock_cantidad_disponible).toFixed(2) : '—'}</td>
-      <td class="text-center" data-label="Cant."><input type="number" class="form-control form-control-sm text-center inp-cantidad" value="${datos.cantidad||1}" min="0.0001" step="0.0001"></td>
+      <td data-label="Cant.">
+        <div class="input-group input-group-sm">
+          <button type="button" class="input-group-text inp-stock-display btn-ver-stock-bodegas" style="color:#6c757d;cursor:pointer;font-size:.72rem" title="Ver stock por bodega">${datos.inv_stock_cantidad_disponible !== undefined ? Math.round(parseFloat(datos.inv_stock_cantidad_disponible)) : '—'}</button>
+          <input type="number" class="form-control form-control-sm text-center inp-cantidad" value="${datos.cantidad||1}" min="0.01" step="1">
+        </div>
+      </td>
       <td data-label="Precio"><input type="number" class="form-control form-control-sm inp-precio" value="${parseFloat(datos.precio||datos.pvp||0).toFixed(4)}" min="0" step="0.000001"></td>
       <td data-label="IVA">
         <select class="form-control form-control-sm inp-iva">
@@ -709,7 +747,7 @@ function crearFila(datos) {
         busquedaDirecta = true;
         filaActual = tr;
         try {
-            const json = await fetchJson(appUrl + '/ventas/facturas/productos?q=' + encodeURIComponent(val));
+            const json = await fetchJson(appUrl + '/ventas/facturas/productos?q=' + encodeURIComponent(val) + bodegaParam());
             const lista = json.ok ? (json.data?.productos || []) : [];
             if (lista.length === 1) {
                 cargarProductoEnFila(tr, lista[0]);
@@ -815,7 +853,49 @@ cuerpoDetalle.addEventListener('click', (e) => {
         actualizarNumeros();
         calcularTotales();
     }
+    const btnStock = e.target.closest('.btn-ver-stock-bodegas');
+    if (btnStock) {
+        const tr = btnStock.closest('tr');
+        abrirModalStockBodegas(tr);
+    }
 });
+
+cuerpoDetalle.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' || !e.target.matches('.inp-precio')) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const nuevaFila = crearFila({});
+    nuevaFila.querySelector('.inp-codigo')?.focus();
+});
+
+async function abrirModalStockBodegas(tr) {
+    const productoId = tr.dataset.productoId || '';
+    const tbody = q('#cuerpoStockBodegas');
+    const thead = q('#theadStockBodegas');
+    if (!productoId) {
+        Swal.fire({ icon: 'warning', title: 'Atención', text: 'Seleccione un producto en esta línea primero.' });
+        return;
+    }
+    bootstrap.Modal.getOrCreateInstance(q('#modalStockBodegas')).show();
+    tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted py-3">Cargando...</td></tr>';
+    try {
+        const json = await fetchJson(appUrl + '/ventas/facturas/stock-bodegas?producto_id=' + encodeURIComponent(productoId));
+        if (!json.ok) throw new Error(json.mensaje || 'No se pudo cargar el stock.');
+        const bodegas = json.data?.bodegas || [];
+        thead.innerHTML = `<tr><th>Codigo</th><th>Producto</th><th>PVP</th>${bodegas.map(b => `<th>${esc(b.inv_bodega_nombre)}</th>`).join('')}</tr>`;
+        const codigo = tr.querySelector('.inp-codigo')?.value || '';
+        const nombre = tr.querySelector('.inp-descripcion')?.value || '';
+        const pvp    = parseFloat(tr.querySelector('.inp-precio')?.value) || 0;
+        tbody.innerHTML = `<tr>
+            <td>${esc(codigo)}</td>
+            <td>${esc(nombre)}</td>
+            <td>${pvp.toFixed(2)}</td>
+            ${bodegas.map(b => `<td>${Math.round(parseFloat(b.cantidad) || 0)}</td>`).join('')}
+        </tr>`;
+    } catch (error) {
+        tbody.innerHTML = `<tr><td colspan="3" class="text-center text-danger py-3">${esc(error.message || 'Error al cargar')}</td></tr>`;
+    }
+}
 
 q('#btnAgregarLinea').addEventListener('click', () => crearFila({}));
 
@@ -827,7 +907,7 @@ function cargarProductoEnFila(tr, prod) {
     const pvp       = parseFloat(prod.pvp || 0);
     const descMax   = parseFloat(prod.descuento_max || 0);
     const precioMin = descMax > 0 ? parseFloat((pvp * (1 - descMax / 100)).toFixed(6)) : 0;
-    const stock     = parseFloat(prod.stock_total || prod.inv_stock_cantidad_disponible || 0);
+    const stock     = parseFloat(prod.stock_mi_bodega ?? prod.stock_total ?? prod.inv_stock_cantidad_disponible ?? 0);
     tr.dataset.pvp       = pvp;
     tr.dataset.precioMin = precioMin;
     const inpCodigo = tr.querySelector('.inp-codigo');
@@ -842,7 +922,7 @@ function cargarProductoEnFila(tr, prod) {
     tr.querySelector('.inp-aprobado-por').value      = '0';
     tr.querySelector('.inp-producto-id').value       = String(prod.inv_producto_id || '');
     tr.querySelector('.inp-stock').value             = stock;
-    tr.querySelector('.inp-stock-display').textContent = stock.toFixed(2);
+    tr.querySelector('.inp-stock-display').textContent = Math.round(stock);
     calcularFila(tr);
 }
 
@@ -1033,12 +1113,12 @@ function abrirModalCodigo(texto) {
 
 async function buscarPorCodigo(term) {
     const tbody = q('#cuerpoCodigoModal');
-    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Buscando...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Buscando...</td></tr>';
     try {
-        const json = await fetchJson(appUrl + '/ventas/facturas/productos?q=' + encodeURIComponent(term));
+        const json = await fetchJson(appUrl + '/ventas/facturas/productos?q=' + encodeURIComponent(term) + bodegaParam());
         const lista = json.ok ? (json.data?.productos || []) : [];
         if (!lista.length) {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">Sin resultados</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-3">Sin resultados</td></tr>';
             return;
         }
         tbody.innerHTML = lista.map((p, i) => {
@@ -1056,11 +1136,12 @@ async function buscarPorCodigo(term) {
               <td>${esc(p.codigo_interno||'')}</td>
               <td>${esc(p.inv_producto_nombre||'')}</td>
               <td class="text-end">$ ${parseFloat(p.pvp||0).toFixed(2)}</td>
-              <td class="text-end">${parseFloat(p.stock_total||0).toFixed(2)}</td>
+              <td class="text-end">${Math.round(parseFloat(p.stock_mi_bodega||0))}</td>
+              <td class="text-end">${Math.round(parseFloat(p.stock_total||0))}</td>
             </tr>`;
         }).join('');
     } catch {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Error al buscar</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-danger">Error al buscar</td></tr>';
     }
 }
 q('#buscarCodigoInput').addEventListener('input', (e) => {
@@ -1216,7 +1297,7 @@ function construirPayload() {
         const productoId = tr.querySelector('.inp-producto-id').value;
         const codigo     = tr.querySelector('.inp-codigo').value.trim();
         const descripcion= tr.querySelector('.inp-descripcion').value.trim();
-        const cantidad   = parseFloat(tr.querySelector('.inp-cantidad').value) || 0;
+        const cantidad   = parseFloat((parseFloat(tr.querySelector('.inp-cantidad').value) || 0).toFixed(2));
         const precio     = parseFloat(tr.querySelector('.inp-precio').value)   || 0;
         const ivaS       = tr.querySelector('.inp-iva');
         const ivaId      = ivaS?.value ? parseInt(ivaS.value) : 0;
@@ -1244,6 +1325,7 @@ function construirPayload() {
         fecha_emision: q('#inpFecha').value,
         observacion:   q('#inpObservacion').value.trim(),
         tipo_doc:      esEdicion ? tipoDocFijo : (q('#selTipoDoc')?.value || 'FACTURA_VENTA'),
+        bodega_id:     parseInt(q('#selBodega')?.value || 0),
         forma_pago_id: parseInt(q('#selFormaPago').value || 0),
         subtotal:      parseFloat(subtotal.toFixed(4)),
         descuento:     parseFloat(descuento.toFixed(4)),

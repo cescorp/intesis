@@ -111,6 +111,7 @@ final class FacturaControlador
             'empresas'       => $this->facturaModelo->listarEmpresasActivas($verTodas, $empresaId),
             'ivaList'        => $this->facturaModelo->listarIva($empresaId),
             'formasPago'     => $this->facturaModelo->listarFormasPago($empresaId),
+            'bodegas'        => $verTodas ? [] : $this->facturaModelo->listarBodegasPermitidas($empresaId, (int) $usuario['id']),
             'esSuperusuario' => $verTodas,
             'permisos'       => $this->obtenerPermisos($usuario),
             'permisosFormaPago' => $this->obtenerPermisosFormaPago($usuario),
@@ -144,6 +145,7 @@ final class FacturaControlador
             'empresas'       => $this->facturaModelo->listarEmpresasActivas($verTodas, $empresaId),
             'ivaList'        => $this->facturaModelo->listarIva($empresaId),
             'formasPago'     => $this->facturaModelo->listarFormasPago($empresaId),
+            'bodegas'        => $verTodas ? [] : $this->facturaModelo->listarBodegasPermitidas($empresaId, (int) $usuario['id']),
             'esSuperusuario' => $verTodas,
             'permisos'       => $this->obtenerPermisos($usuario),
             'permisosFormaPago' => $this->obtenerPermisosFormaPago($usuario),
@@ -204,13 +206,17 @@ final class FacturaControlador
         try {
             $body      = json_decode(file_get_contents('php://input') ?: '{}', true) ?? [];
             $facturaId = (int) ($body['factura_id'] ?? 0);
+            $motivo    = trim((string) ($body['motivo'] ?? ''));
             $empresaId = (int) $usuario['empresa_id'];
 
             if ($facturaId <= 0) {
                 $this->responderJson(false, 'ERROR_VALIDACION', 'ID de factura inválido.');
             }
+            if ($motivo === '') {
+                $this->responderJson(false, 'ERROR_VALIDACION', 'Debe indicar el motivo de anulación.');
+            }
 
-            $this->facturaModelo->anular($facturaId, $empresaId, (int) $usuario['id']);
+            $this->facturaModelo->anular($facturaId, $empresaId, (int) $usuario['id'], $motivo);
             $this->responderJson(true, 'OK', 'Factura anulada correctamente.');
         } catch (Throwable $excepcion) {
             $this->registrarErrorCrud('ANULAR FACTURA', $excepcion);
@@ -276,12 +282,29 @@ final class FacturaControlador
             $this->responderJson(true, 'OK', '', ['productos' => []]);
         }
 
+        $bodegaSeleccionada = (int) ($_GET['bodega_id'] ?? 0);
         $bodegaId = ($this->esSuperusuario($usuario) || !empty($usuario['venta_todas_bodegas']))
             ? null
-            : $this->facturaModelo->obtenerBodegaUsuario($empresaId, (int) $usuario['id']);
+            : ($bodegaSeleccionada > 0 ? $bodegaSeleccionada : $this->facturaModelo->obtenerBodegaUsuario($empresaId, (int) $usuario['id']));
 
         $this->responderJson(true, 'OK', '', [
             'productos' => $this->facturaModelo->buscarProductos($empresaId, $termino, $bodegaId),
+        ]);
+    }
+
+    public function stockBodegas(): void
+    {
+        $usuario    = $this->exigirSesionJson();
+        $this->exigirPermisoJson('/ventas/facturas/crear');
+        $empresaId  = (int) $usuario['empresa_id'];
+        $productoId = (int) ($_GET['producto_id'] ?? 0);
+
+        if ($productoId <= 0) {
+            $this->responderJson(false, 'ERROR_VALIDACION', 'Producto no válido.');
+        }
+
+        $this->responderJson(true, 'OK', '', [
+            'bodegas' => $this->facturaModelo->listarStockPorBodega($empresaId, $productoId),
         ]);
     }
 
@@ -502,6 +525,7 @@ final class FacturaControlador
             'observacion'   => trim((string) ($body['observacion']   ?? '')),
             'forma_pago_id' => (int)   ($body['forma_pago_id']  ?? 0),
             'formas_pago'   => $this->normalizarFormasPago($body['formas_pago'] ?? []),
+            'bodega_id'     => (int)   ($body['bodega_id']      ?? 0),
             'tipo_doc'      => in_array(trim((string)($body['tipo_doc'] ?? '')), ['FACTURA_VENTA', 'NOTA_VENTA'], true)
                                 ? trim((string)$body['tipo_doc'])
                                 : 'FACTURA_VENTA',
@@ -532,7 +556,7 @@ final class FacturaControlador
                 'producto_id'     => (int)   ($l['producto_id']    ?? 0),
                 'codigo'          => trim((string) ($l['codigo']   ?? '')),
                 'descripcion'     => trim((string) ($l['descripcion'] ?? '')),
-                'cantidad'        => round((float) ($l['cantidad']  ?? 0), 4),
+                'cantidad'        => round((float) ($l['cantidad']  ?? 0), 2),
                 'precio'          => round((float) ($l['precio']    ?? 0), 6),
                 'descuento'       => round((float) ($l['descuento'] ?? 0), 2),
                 'descuento_valor' => round((float) ($l['descuento_valor'] ?? 0), 4),

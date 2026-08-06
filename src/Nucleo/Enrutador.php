@@ -885,6 +885,10 @@ final class Enrutador
             $this->facturaControlador->productos();
             return;
         }
+        if ($metodo === 'GET' && $ruta === '/ventas/facturas/stock-bodegas') {
+            $this->facturaControlador->stockBodegas();
+            return;
+        }
         if ($metodo === 'GET' && $ruta === '/ventas/facturas/pdf') {
             $this->facturaControlador->pdf();
             return;

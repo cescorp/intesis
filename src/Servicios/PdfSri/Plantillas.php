@@ -101,13 +101,18 @@ if (!function_exists('gpdf_html_documento')) {
             ? gpdf_retencion($cabecera, $detalles, $infoAdicional)
             : gpdf_factura($cabecera, $detalles, $pagos, $infoAdicional);
 
-        return gpdf_html_base($contenido);
+        return gpdf_html_base($contenido, (bool) gpdf_valor($cabecera, 'anulado', false));
     }
 }
 
 if (!function_exists('gpdf_html_base')) {
-    function gpdf_html_base($contenido)
+    function gpdf_html_base($contenido, $anulado = false)
     {
+        $marcaAgua = $anulado
+            ? '<div style="position:fixed;top:40%;left:5%;width:90%;text-align:center;
+                transform:rotate(-30deg);font-size:70px;font-weight:bold;color:#dc3545;opacity:0.25;
+                z-index:1000;">ANULADO</div>'
+            : '';
         return '<!doctype html>
 <html>
 <head>
@@ -140,7 +145,7 @@ if (!function_exists('gpdf_html_base')) {
     .gpdf-info { margin-top: 10px; }
 </style>
 </head>
-<body>' . $contenido . '</body>
+<body>' . $marcaAgua . $contenido . '</body>
 </html>';
     }
 }

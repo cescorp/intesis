@@ -127,6 +127,7 @@
                     icono: 'warning',
                 };
 
+            const pedirMotivo = formulario.dataset.pedirMotivo === '1';
             mostrarAlerta(mensajeConfirmacion, {
                 omitirTimer: true,
                 extra: {
@@ -134,11 +135,21 @@
                     showConfirmButton: true,
                     cancelButtonText: 'Cancelar',
                     cancelButtonColor: '#263a5f',
+                    ...(pedirMotivo ? {
+                        input: 'text',
+                        inputLabel: 'Motivo',
+                        inputPlaceholder: 'Escriba el motivo de anulación...',
+                        inputValidator: (valor) => !valor?.trim() ? 'El motivo es obligatorio.' : undefined,
+                    } : {}),
                 },
                 confirmButtonText: 'Confirmar',
                 confirmButtonColor: '#d65f5f',
             }).then((resultado) => {
                 if (resultado.isConfirmed) {
+                    if (pedirMotivo) {
+                        const campoMotivo = formulario.querySelector('input[name="motivo"]');
+                        if (campoMotivo) campoMotivo.value = resultado.value.trim();
+                    }
                     formulario.dataset.confirmado = '1';
                     formulario.submit();
                 }
@@ -2666,6 +2677,13 @@
                     </td>
                 </tr>
             </table>
+            ${estado === 'ANULADO' ? `
+            <div class="doc-tabla-campos mt-1">
+                <div class="doc-celda-t">
+                    <div class="doc-etiqueta text-danger">Motivo anulación</div>
+                    <div class="doc-valor text-danger">${escaparHtml(cab.inv_movimientos_motivo_anulacion || '')}</div>
+                </div>
+            </div>` : ''}
 
         </div>
 
@@ -2748,23 +2766,34 @@
                 };
 
                 const msg = mensajes[accion] || { titulo: '¿Continuar?', texto: '', icono: 'question' };
+                const pedirMotivo = accion === 'anular' || accion === 'anular-procesado';
+                let motivoValor = '';
 
                 if (window.Swal) {
-                    const confirmacion = await Swal.fire({
+                    const opcionesConfirmacion = {
                         icon: msg.icono,
                         title: msg.titulo,
                         text: msg.texto,
                         showCancelButton: true,
                         confirmButtonText: 'Si, continuar',
                         cancelButtonText: 'Cancelar',
-                    });
+                    };
+                    if (pedirMotivo) {
+                        opcionesConfirmacion.input = 'text';
+                        opcionesConfirmacion.inputLabel = 'Motivo';
+                        opcionesConfirmacion.inputPlaceholder = 'Escriba el motivo de anulación...';
+                        opcionesConfirmacion.inputValidator = (valor) => !valor?.trim() ? 'El motivo es obligatorio.' : undefined;
+                    }
+                    const confirmacion = await Swal.fire(opcionesConfirmacion);
                     if (!confirmacion.isConfirmed) { return; }
+                    if (pedirMotivo) motivoValor = confirmacion.value.trim();
                 }
 
                 try {
                     boton.disabled = true;
                     const formData = new FormData();
                     formData.append('movimiento_id', id);
+                    if (pedirMotivo) formData.append('motivo', motivoValor);
                     const url = `${appUrl}/inventario/movimientos/${accion}`;
                     const respuesta = await fetch(url, { method: 'POST', body: formData, headers: { 'X-Requested-With': 'XMLHttpRequest' }, redirect: 'manual' });
                     // La accion redirige tras ejecutar; cerramos modal y recargamos

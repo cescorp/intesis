@@ -185,6 +185,8 @@ final class KardexControlador
             'tipo_movimiento' => $cabecera['inv_movimientos_tipo'] ?? '',
             'bodega_origen' => $cabecera['bodega_origen_nombre'] ?? null,
             'bodega_destino' => $cabecera['bodega_destino_nombre'] ?? null,
+            'anulado' => ($cabecera['sis_estado_codigo'] ?? '') === 'ANULADO',
+            'motivo_anulacion' => $cabecera['inv_movimientos_motivo_anulacion'] ?? '',
         ];
     }
 

@@ -596,6 +596,13 @@ body {
     background: rgba(214, 95, 95, .16);
 }
 
+.estado-anulada,
+.estado-anulado {
+    color: #7a1f1f;
+    background: rgba(214, 95, 95, .16);
+    font-weight: bold;
+}
+
 /* ── Estados de movimientos internos ─────────────────────────── */
 .estado-borrador {
     color: #4a4a6a;

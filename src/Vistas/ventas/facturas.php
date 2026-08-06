@@ -213,7 +213,8 @@ $msgAnular    = $msgs['CONFIRMAR_ANULAR_FACTURA'] ?? null;
                 <div class="col-md-6">
                     <table class="table table-sm mb-0">
                         <tr><td class="text-muted" style="width:130px">Número</td><td class="font-monospace">${escHtml(fac.ven_documento_numero)}</td></tr>
-                        <tr><td class="text-muted">Estado</td><td>${escHtml(fac.sis_estado_nombre)}</td></tr>
+                        <tr><td class="text-muted">Estado</td><td>${fac.sis_estado_codigo === 'ANULADA' ? `<span class="fw-bold text-danger">${escHtml(fac.sis_estado_nombre)}</span>` : escHtml(fac.sis_estado_nombre)}</td></tr>
+                        ${fac.sis_estado_codigo === 'ANULADA' ? `<tr><td class="text-muted">Motivo</td><td class="text-danger">${escHtml(fac.ven_documento_motivo_anulacion||'')}</td></tr>` : ''}
                         <tr><td class="text-muted">Subtotal</td><td class="font-monospace">$${parseFloat(fac.ven_documento_subtotal).toFixed(2)}</td></tr>
                         <tr><td class="text-muted">IVA</td><td class="font-monospace">$${parseFloat(fac.ven_documento_iva).toFixed(2)}</td></tr>
                         <tr><td class="text-muted fw-bold">Total</td><td class="font-monospace fw-bold">$${parseFloat(fac.ven_documento_total).toFixed(2)}</td></tr>
@@ -295,17 +296,22 @@ $msgAnular    = $msgs['CONFIRMAR_ANULAR_FACTURA'] ?? null;
             title:             msgAnular.sis_mensaje_errores_titulo,
             text:              msgAnular.sis_mensaje_errores_mensaje + ' ' + numero,
             icon:              msgAnular.sis_mensaje_errores_icono,
+            input:             'text',
+            inputLabel:        'Motivo',
+            inputPlaceholder:  'Escriba el motivo de anulación...',
+            inputValidator:    (valor) => !valor?.trim() ? 'El motivo es obligatorio.' : undefined,
             showCancelButton:  true,
             confirmButtonText: 'Sí, anular',
             cancelButtonText:  'Cancelar',
         });
         if (!result.isConfirmed) return;
+        const motivo = result.value.trim();
 
         try {
             const resp = await fetch(appUrl + '/ventas/facturas/anular', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ factura_id: id }),
+                body: JSON.stringify({ factura_id: id, motivo }),
             });
             const data = await resp.json();
             if (data.ok) {

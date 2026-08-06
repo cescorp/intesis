@@ -111,7 +111,13 @@ final class ProformaModelo
             SELECT dd.*,
                    p.inv_producto_codigo_principal AS codigo_interno,
                    p.inv_producto_nombre           AS producto_nombre,
-                   iv.sis_iva_valor
+                   iv.sis_iva_valor,
+                   COALESCE((
+                       SELECT SUM(s.inv_stock_cantidad_disponible)
+                       FROM inv_stock s
+                       WHERE s.inv_producto_id = dd.inv_producto_id
+                         AND s.sis_empresa_id  = dd.sis_empresa_id
+                   ), 0) AS stock_total
             FROM ven_documento_detalle dd
             INNER JOIN inv_producto p ON p.inv_producto_id = dd.inv_producto_id
             LEFT  JOIN sis_iva iv     ON iv.sis_iva_id     = dd.sis_iva_id
@@ -174,7 +180,7 @@ final class ProformaModelo
                 'subtotal_sin_impuestos' => $cabecera['subtotal'],
                 'impuesto_total'         => $cabecera['iva'],
                 'valor_total'            => $cabecera['total'],
-                'forma_pago_id'          => (int) $cabecera['forma_pago_id'],
+                'forma_pago_id'          => null,
                 'observacion'            => $cabecera['observacion'] !== '' ? $cabecera['observacion'] : null,
                 'estado_id'              => $this->obtenerEstadoId('CREADA'),
                 'usuario_crea'           => $usuarioId,
@@ -225,7 +231,6 @@ final class ProformaModelo
                     ven_documento_iva           = :iva,
                     ven_documento_total         = :total,
                     ven_documento_observacion   = :observacion,
-                    ven_forma_pago_id           = :forma_pago_id,
                     usuario_modifica            = :usuario,
                     fecha_modifica              = now()
                 WHERE ven_documento_id = :id
@@ -237,7 +242,6 @@ final class ProformaModelo
                 'iva'           => $cabecera['iva'],
                 'total'         => $cabecera['total'],
                 'observacion'   => $cabecera['observacion'] !== '' ? $cabecera['observacion'] : null,
-                'forma_pago_id' => (int) $cabecera['forma_pago_id'],
                 'usuario'       => $usuarioId,
                 'id'            => $proformaId,
             ]);
@@ -265,7 +269,7 @@ final class ProformaModelo
     // ANULAR
     // =========================================================================
 
-    public function anular(int $proformaId, int $empresaId, int $usuarioId): void
+    public function anular(int $proformaId, int $empresaId, int $usuarioId, string $motivo): void
     {
         $pdo = $this->pdo();
         $pdo->beginTransaction();
@@ -289,11 +293,13 @@ final class ProformaModelo
             $pdo->prepare("
                 UPDATE ven_documento
                 SET sis_estado_id    = :estado_id,
+                    ven_documento_motivo_anulacion = :motivo,
                     usuario_modifica = :usuario,
                     fecha_modifica   = now()
                 WHERE ven_documento_id = :id
             ")->execute([
                 'estado_id' => $this->obtenerEstadoId('ANULADA'),
+                'motivo'    => $motivo,
                 'usuario'   => $usuarioId,
                 'id'        => $proformaId,
             ]);
@@ -643,18 +649,6 @@ final class ProformaModelo
             FROM sis_iva
             WHERE sis_empresa_id = :empresa_id AND sis_iva_estado = 1
             ORDER BY sis_iva_predeterminado DESC, sis_iva_valor
-        ");
-        $sentencia->execute(['empresa_id' => $empresaId]);
-        return $sentencia->fetchAll();
-    }
-
-    public function listarFormasPago(int $empresaId): array
-    {
-        $sentencia = $this->pdo()->prepare("
-            SELECT ven_forma_pago_id, ven_forma_pago_nombre
-            FROM ven_forma_pago
-            WHERE sis_empresa_id = :empresa_id AND ven_forma_pago_estado = 'A'
-            ORDER BY ven_forma_pago_nombre
         ");
         $sentencia->execute(['empresa_id' => $empresaId]);
         return $sentencia->fetchAll();
