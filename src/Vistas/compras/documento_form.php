@@ -529,7 +529,9 @@ function cargarProductoEnFila(tr, prod) {
     tr.dataset.codProvOriginal = prod.cod_proveedor || '';
     const costo = parseFloat(prod.costo || 0);
     const pvp   = parseFloat(prod.pvp  || 0) > 0 ? parseFloat(prod.pvp) : costo;
-    tr.querySelector('.inp-cod-prov').value    = prod.cod_proveedor       || '';
+    if (!tr.querySelector('.inp-cod-prov').value.trim()) {
+        tr.querySelector('.inp-cod-prov').value = prod.cod_proveedor || '';
+    }
     tr.querySelector('.inp-cod-interno').value = prod.codigo_interno      || '';
     tr.querySelector('.inp-descripcion').value = prod.inv_producto_nombre || '';
     tr.querySelector('.inp-marca').value       = String(prod.marca_id || '');
@@ -598,7 +600,7 @@ cuerpoDetalle.addEventListener('focusout', (e) => {
 
         filaActual = tr;
         if (isCodProv)    abrirModalCodProv(val);
-        if (isCodInterno) abrirModalCodInterno(val);
+        if (isCodInterno) abrirCodInterno(tr, val);
     }, 180);
 });
 
@@ -748,6 +750,20 @@ function abrirModalCodInterno(texto) {
     bootstrap.Modal.getOrCreateInstance(q('#modalProductosCodigo')).show();
     buscarPorCodigo(texto);
     setTimeout(() => q('#buscarCodigoInput')?.focus(), 300);
+}
+
+/* ── Match unico exacto: carga directo sin abrir el modal ─────────────────── */
+async function abrirCodInterno(tr, texto) {
+    try {
+        const json = await fetchJson(appUrl + '/compras/documentos/productos?tipo=codigo&q=' + encodeURIComponent(texto));
+        const productos = json.productos || [];
+        if (productos.length === 1) {
+            cargarProductoEnFila(tr, productos[0]);
+            filaActual = null;
+            return;
+        }
+    } catch {}
+    abrirModalCodInterno(texto);
 }
 
 async function buscarPorCodigo(term) {
