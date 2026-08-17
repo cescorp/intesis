@@ -599,7 +599,7 @@ cuerpoDetalle.addEventListener('focusout', (e) => {
         if (productoId) return;
 
         filaActual = tr;
-        if (isCodProv)    abrirModalCodProv(val);
+        if (isCodProv)    abrirCodProv(tr, val);
         if (isCodInterno) abrirCodInterno(tr, val);
     }, 180);
 });
@@ -623,8 +623,8 @@ cuerpoDetalle.addEventListener('keydown', (e) => {
     if (productoId) return;   // producto ya cargado, no abrir modal
 
     filaActual = tr;
-    if (isCodProv)    abrirModalCodProv(val);
-    if (isCodInterno) abrirModalCodInterno(val);
+    if (isCodProv)    abrirCodProv(tr, val);
+    if (isCodInterno) abrirCodInterno(tr, val);
 });
 
 /* ── Enter en PVP agrega nueva linea automaticamente ─────────────────────── */
@@ -720,6 +720,39 @@ function abrirModalCodProv(texto) {
     setTimeout(() => q('#buscarCodProvInput')?.focus(), 300);
 }
 
+/* ── Si el codigo de proveedor no existe, preguntar antes de abrir el modal ── */
+let resolviendoBusquedaProducto = false;
+async function abrirCodProv(tr, texto) {
+    if (resolviendoBusquedaProducto) return;
+    resolviendoBusquedaProducto = true;
+    try {
+        let productos = [];
+        try {
+            const json = await fetchJson(appUrl + '/compras/documentos/productos?tipo=cod_proveedor&q=' + encodeURIComponent(texto));
+            productos = json.productos || [];
+        } catch {}
+        if (!productos.length) {
+            const res = await Swal.fire({
+                title: `Código Proveedor "${texto}" no existe`,
+                text: '¿Asignar a código interno existente?',
+                icon: 'question',
+                showCancelButton: true,
+                cancelButtonText: 'Buscar',
+                confirmButtonText: 'Asignar',
+                confirmButtonColor: '#1f6f68',
+                returnFocus: false,
+            });
+            if (res.isConfirmed) {
+                setTimeout(() => tr.querySelector('.inp-cod-interno')?.focus(), 0);
+                return;
+            }
+        }
+        abrirModalCodProv(texto);
+    } finally {
+        resolviendoBusquedaProducto = false;
+    }
+}
+
 async function buscarPorCodProv(term) {
     const tbody = q('#cuerpoCodProvModal');
     ocultarPanelNuevoProducto();
@@ -754,6 +787,8 @@ function abrirModalCodInterno(texto) {
 
 /* ── Match unico exacto: carga directo sin abrir el modal ─────────────────── */
 async function abrirCodInterno(tr, texto) {
+    if (resolviendoBusquedaProducto) return;
+    resolviendoBusquedaProducto = true;
     try {
         const json = await fetchJson(appUrl + '/compras/documentos/productos?tipo=codigo&q=' + encodeURIComponent(texto));
         const productos = json.productos || [];
@@ -762,8 +797,12 @@ async function abrirCodInterno(tr, texto) {
             filaActual = null;
             return;
         }
-    } catch {}
-    abrirModalCodInterno(texto);
+        abrirModalCodInterno(texto);
+    } catch {
+        abrirModalCodInterno(texto);
+    } finally {
+        resolviendoBusquedaProducto = false;
+    }
 }
 
 async function buscarPorCodigo(term) {
