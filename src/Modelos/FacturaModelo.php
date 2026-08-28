@@ -120,6 +120,13 @@ final class FacturaModelo
     {
         $estadoCodigo = $resultado['estado'] === 'AUTORIZADA' ? 'AUTORIZADA' : 'ERROR';
         $estadoId     = $this->obtenerEstadoId($estadoCodigo);
+        // ven_documento_ambiente_sri exige 'PRUEBAS'/'PRODUCCION' (chk_ven_documento_ambiente_sri);
+        // el SRI/XML usa el código numérico '1'/'2', hay que traducirlo aquí.
+        $ambiente = match ((string) ($resultado['ambiente'] ?? '')) {
+            '1' => 'PRUEBAS',
+            '2' => 'PRODUCCION',
+            default => null,
+        };
 
         $this->pdo()->prepare("
             UPDATE ven_documento SET
@@ -141,7 +148,7 @@ final class FacturaModelo
             'fecha_auth'      => $resultado['fecha_autorizacion']  ?: null,
             'xml'             => $resultado['xml_autorizado']      ?: null,
             'respuesta'       => $resultado['respuesta_sri']       ?? null,
-            'ambiente'        => $resultado['ambiente']            ?? null,
+            'ambiente'        => $ambiente,
             'codigo_numerico' => $resultado['codigo_numerico']     ?? null,
             'usuario'         => $usuarioId,
             'id'              => $facturaId,
@@ -155,12 +162,15 @@ final class FacturaModelo
                    p.inv_producto_codigo_principal AS codigo_interno,
                    p.inv_producto_nombre           AS producto_nombre,
                    iv.sis_iva_valor,
-                   COALESCE(s.inv_stock_cantidad_disponible, 0) AS stock_disponible
+                   COALESCE((
+                       SELECT SUM(s.inv_stock_cantidad_disponible)
+                       FROM inv_stock s
+                       WHERE s.inv_producto_id = dd.inv_producto_id
+                         AND s.sis_empresa_id  = dd.sis_empresa_id
+                   ), 0) AS stock_disponible
             FROM ven_documento_detalle dd
             INNER JOIN inv_producto p ON p.inv_producto_id = dd.inv_producto_id
             LEFT  JOIN sis_iva iv     ON iv.sis_iva_id     = dd.sis_iva_id
-            LEFT  JOIN inv_stock s    ON s.inv_producto_id = dd.inv_producto_id
-                                     AND s.sis_empresa_id  = dd.sis_empresa_id
             WHERE dd.ven_documento_id          = :id
               AND dd.ven_documento_detalle_estado = 1
             ORDER BY dd.ven_documento_detalle_id

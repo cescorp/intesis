@@ -123,7 +123,9 @@ final class SriXmlFacturaServicio
             $precio = (float)($l['ven_documento_detalle_precio_unitario'] ?? 0);
             $desc   = (float)($l['ven_documento_detalle_descuento_val']  ?? $l['ven_documento_detalle_descuento'] ?? 0);
             $base   = (float)($l['ven_documento_detalle_precio_total_sin_impuestos'] ?? 0);
-            $ivaPct = (float)($l['ven_documento_detalle_iva_valor']      ?? $l['sis_iva_valor'] ?? 0);
+            // sis_iva_valor = porcentaje real (ej. 15.00). ven_documento_detalle_iva_valor
+            // es el MONTO en dolares del IVA de la linea, no un porcentaje — no usar aqui.
+            $ivaPct = (float)($l['sis_iva_valor'] ?? 0);
             $ivaVal = (float)($l['ven_documento_detalle_impuesto_total'] ?? 0);
 
             $this->t($xml, $det, 'cantidad',              $this->util->f2($cant));
@@ -183,7 +185,7 @@ final class SriXmlFacturaServicio
     {
         $grupos = [];
         foreach ($lineas as $l) {
-            $pct  = (float)($l['ven_documento_detalle_iva_valor'] ?? $l['sis_iva_valor'] ?? 0);
+            $pct  = (float)($l['sis_iva_valor'] ?? 0);
             $base = (float)($l['ven_documento_detalle_precio_total_sin_impuestos'] ?? 0);
             $iva  = (float)($l['ven_documento_detalle_impuesto_total'] ?? 0);
             $key  = number_format($pct, 2);

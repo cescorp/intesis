@@ -9,3 +9,4 @@ almacenamiento/archivos/
 
 # Log de errores
 *.log
+*.xml

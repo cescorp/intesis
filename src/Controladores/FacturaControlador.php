@@ -504,8 +504,32 @@ final class FacturaControlador
             }
         } catch (Throwable $excepcion) {
             $this->registrarErrorCrud('ENVIAR SRI FACTURA', $excepcion);
-            $this->responderJson(false, 'ERROR_SRI', $excepcion->getMessage());
+            $this->responderJson(false, 'ERROR_SRI', $this->mensajeAmigableSri($excepcion));
         }
+    }
+
+    /**
+     * ***************************************************************************
+     * * TRADUCE EXCEPCIONES TECNICAS DEL ENVIO SRI A UN MENSAJE ENTENDIBLE.
+     * * EL DETALLE TECNICO COMPLETO YA QUEDA EN EL LOG (registrarErrorCrud).
+     * ***************************************************************************
+     */
+    private function mensajeAmigableSri(Throwable $excepcion): string
+    {
+        $texto = $excepcion->getMessage();
+
+        return match (true) {
+            str_contains($texto, 'WSDL') || str_contains($texto, 'SoapClient') || str_contains($texto, 'SSL') =>
+                'No se pudo conectar con el servidor del SRI (puede estar caído o inestable). Intente nuevamente en unos minutos.',
+            str_contains($texto, 'sri2.jar') || str_contains($texto, "\"java\"") =>
+                'No se pudo firmar el documento electrónicamente. Contacte al administrador para revisar la configuración de Java/certificado.',
+            str_contains($texto, 'Certificado digital no encontrado') =>
+                'No se encontró el certificado digital de la empresa. Verifique su configuración en Sistema → Empresas.',
+            str_contains($texto, 'SQLSTATE') =>
+                'Ocurrió un error interno al guardar la respuesta del SRI. Contacte al administrador.',
+            default =>
+                'No se pudo completar el envío al SRI. Contacte al administrador si el problema persiste.',
+        };
     }
 
     // =========================================================================
