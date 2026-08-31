@@ -385,18 +385,7 @@ $appUrl = rtrim($configuracion->obtener('APP_URL', ''), '/');
         document.getElementById('cert_nombre').value = nombre;
     });
 
-    // Toggle visibilidad de la clave del certificado
-    document.querySelector('.btn-toggle-clave').addEventListener('click', function () {
-        const input = document.getElementById('certificado_clave');
-        const icon  = this.querySelector('i');
-        if (input.type === 'password') {
-            input.type = 'text';
-            icon.classList.replace('bi-eye', 'bi-eye-slash');
-        } else {
-            input.type = 'password';
-            icon.classList.replace('bi-eye-slash', 'bi-eye');
-        }
-    });
+    // Toggle mostrar/ocultar clave del certificado: manejado de forma generica en sistema.js (.btn-toggle-clave)
 }());
 </script>
 <?php require $configuracion->raiz() . '/src/Vistas/plantillas/pie.php'; ?>

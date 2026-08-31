@@ -78,7 +78,7 @@ $appUrl = rtrim($configuracion->obtener('APP_URL', ''), '/');
                     <label class="form-label" for="correo">Correo electronico</label>
                     <div class="input-group input-intesis">
                         <span class="input-group-text"><i class="bi bi-envelope-at"></i></span>
-                        <input type="email" class="form-control" id="correo" name="correo" value="cescorp@hotmail.es" required>
+                        <input type="email" class="form-control" id="correo" name="correo" value="<?= htmlspecialchars($correoIngresado ?? '') ?>" required>
                     </div>
                 </div>
 
@@ -87,6 +87,9 @@ $appUrl = rtrim($configuracion->obtener('APP_URL', ''), '/');
                     <div class="input-group input-intesis">
                         <span class="input-group-text"><i class="bi bi-shield-lock"></i></span>
                         <input type="password" class="form-control" id="clave" name="clave" required>
+                        <button class="btn btn-outline-secondary btn-toggle-clave" type="button" tabindex="-1" title="Mostrar / ocultar contrasena">
+                            <i class="bi bi-eye"></i>
+                        </button>
                     </div>
                 </div>
 

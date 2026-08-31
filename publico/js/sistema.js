@@ -91,6 +91,22 @@
         mostrarAlerta(mensaje);
     }
 
+    // Toggle mostrar/ocultar clave: boton .btn-toggle-clave pegado a un <input> de password
+    document.addEventListener('click', (evento) => {
+        const boton = evento.target.closest('.btn-toggle-clave');
+        if (!boton) return;
+        const input = boton.previousElementSibling;
+        if (!input || input.tagName !== 'INPUT') return;
+        const icono = boton.querySelector('i');
+        if (input.type === 'password') {
+            input.type = 'text';
+            icono?.classList.replace('bi-eye', 'bi-eye-slash');
+        } else {
+            input.type = 'password';
+            icono?.classList.replace('bi-eye-slash', 'bi-eye');
+        }
+    });
+
     if (window.jQuery && jQuery.fn.DataTable) {
         jQuery('.tabla-intesis').DataTable({
             language: {
