@@ -38,10 +38,11 @@ final class AutenticacionControlador
         $this->vista->renderizar('autenticacion/login', [
             'titulo' => 'Ingreso',
             'error' => $_SESSION['error_login'] ?? null,
+            'correoIngresado' => $_SESSION['correo_login'] ?? '',
             'seleccionEmpresas' => $_SESSION['login_empresas'] ?? null,
             'usuarioPendiente' => $_SESSION['login_usuario'] ?? null,
         ]);
-        unset($_SESSION['error_login']);
+        unset($_SESSION['error_login'], $_SESSION['correo_login']);
     }
 
     /**
@@ -57,6 +58,7 @@ final class AutenticacionControlador
 
         if (!$usuario) {
             $_SESSION['error_login'] = 'Credenciales incorrectas o usuario inactivo.';
+            $_SESSION['correo_login'] = $correo;
             $this->redirigir('/login');
         }
 
