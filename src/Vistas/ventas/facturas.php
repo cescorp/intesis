@@ -21,6 +21,10 @@ $msgAnular    = $msgs['CONFIRMAR_ANULAR_FACTURA'] ?? null;
             </button>
             <?php endif; ?>
 
+            <button type="button" id="btnEnviarLoteSri" class="btn btn-outline-primary btn-sm d-none">
+                <i class="bi bi-send"></i> Enviar <span id="lblLoteCount">0</span> al SRI
+            </button>
+
             <form method="get" action="<?= $appUrl ?>/ventas/facturas" class="d-flex align-items-center gap-2 ms-auto flex-wrap">
                 <div class="d-flex align-items-center gap-1">
                     <label class="form-label mb-0 small fw-semibold text-muted">Desde:</label>
@@ -47,6 +51,7 @@ $msgAnular    = $msgs['CONFIRMAR_ANULAR_FACTURA'] ?? null;
         <div class="table-responsive">
             <table id="tablaFacturas" class="table table-hover tabla-intesis align-middle w-100">
                 <thead><tr>
+                    <th style="width:30px"><input type="checkbox" id="chkTodosSri" title="Seleccionar todas"></th>
                     <?php if ($esSuperusuario): ?><th>Empresa</th><?php endif; ?>
                     <th>Número</th>
                     <th>Fecha</th>
@@ -58,7 +63,19 @@ $msgAnular    = $msgs['CONFIRMAR_ANULAR_FACTURA'] ?? null;
                 </tr></thead>
                 <tbody>
                 <?php foreach ($facturas as $fac): ?>
+                <?php
+                    $estadoCodFila   = $fac['sis_estado_codigo'];
+                    $esFacturaVenta  = ($fac['sis_tipo_documento_codigo'] ?? $fac['tipo_nombre'] ?? '') !== 'NOTA_VENTA';
+                    $elegibleSri     = $esFacturaVenta && in_array($estadoCodFila, ['CREADA', 'ERROR'], true);
+                ?>
                 <tr>
+                    <td>
+                        <?php if ($elegibleSri): ?>
+                        <input type="checkbox" class="chk-factura-sri"
+                            data-id="<?= $fac['ven_documento_id'] ?>"
+                            data-numero="<?= htmlspecialchars($fac['ven_documento_numero']) ?>">
+                        <?php endif; ?>
+                    </td>
                     <?php if ($esSuperusuario): ?>
                     <td><?= htmlspecialchars($fac['sis_empresa_nombre_comercial']) ?></td>
                     <?php endif; ?>
@@ -74,7 +91,7 @@ $msgAnular    = $msgs['CONFIRMAR_ANULAR_FACTURA'] ?? null;
                     </td>
                     <td>
                         <?php
-                        $estadoCod = $fac['sis_estado_codigo'];
+                        $estadoCod = $estadoCodFila;
                         $claseEstado = match($estadoCod) {
                             'CREADA'     => 'estado-activo',
                             'AUTORIZADA' => 'estado-badge bg-primary text-white',
@@ -98,7 +115,7 @@ $msgAnular    = $msgs['CONFIRMAR_ANULAR_FACTURA'] ?? null;
                                class="btn btn-sm btn-outline-secondary" title="PDF" target="_blank">
                                 <i class="bi bi-file-earmark-pdf"></i>
                             </a>
-                            <?php if (($fac['sis_tipo_documento_codigo'] ?? $fac['tipo_nombre'] ?? '') !== 'NOTA_VENTA'): ?>
+                            <?php if ($esFacturaVenta): ?>
                                 <?php if ($estadoCod === 'CREADA'): ?>
                                 <button type="button"
                                     class="btn btn-sm btn-outline-primary btn-enviar-sri"
@@ -175,7 +192,7 @@ $msgAnular    = $msgs['CONFIRMAR_ANULAR_FACTURA'] ?? null;
             $('#tablaFacturas').DataTable({
                 language: { url: appUrl + '/publico/plugins/datatables/es-ES.json' },
                 pageLength: 25,
-                columnDefs: [{ orderable: false, targets: -1 }],
+                columnDefs: [{ orderable: false, searchable: false, targets: 0 }, { orderable: false, targets: -1 }],
             });
         }
     } catch(ex) { console.warn('DataTables:', ex); }
@@ -283,6 +300,81 @@ $msgAnular    = $msgs['CONFIRMAR_ANULAR_FACTURA'] ?? null;
         } catch {
             Swal.fire({ title: 'Error', text: 'Error de conexión.', icon: 'error' });
         }
+    });
+
+    // ── Enviar al SRI por lote ──────────────────────────────────────────────
+    function actualizarBotonLoteSri() {
+        const marcados = document.querySelectorAll('.chk-factura-sri:checked').length;
+        document.getElementById('lblLoteCount').textContent = marcados;
+        document.getElementById('btnEnviarLoteSri').classList.toggle('d-none', marcados === 0);
+    }
+
+    document.addEventListener('change', (e) => {
+        if (e.target.classList.contains('chk-factura-sri')) {
+            actualizarBotonLoteSri();
+        } else if (e.target.id === 'chkTodosSri') {
+            document.querySelectorAll('.chk-factura-sri').forEach((chk) => {
+                if (chk.closest('tr').offsetParent !== null) chk.checked = e.target.checked;
+            });
+            actualizarBotonLoteSri();
+        }
+    });
+
+    document.getElementById('btnEnviarLoteSri').addEventListener('click', async () => {
+        const seleccion = Array.from(document.querySelectorAll('.chk-factura-sri:checked'))
+            .map((chk) => ({ id: parseInt(chk.dataset.id), numero: chk.dataset.numero }));
+        if (seleccion.length === 0) return;
+
+        const result = await Swal.fire({
+            title:              'Enviar al SRI',
+            text:               `¿Enviar ${seleccion.length} factura(s) seleccionada(s) al SRI Ecuador?`,
+            icon:               'question',
+            showCancelButton:   true,
+            confirmButtonText:  'Sí, enviar',
+            cancelButtonText:   'Cancelar',
+            confirmButtonColor: '#1f6f68',
+        });
+        if (!result.isConfirmed) return;
+
+        const okList = [];
+        const errList = [];
+        for (let i = 0; i < seleccion.length; i++) {
+            const f = seleccion[i];
+            Swal.fire({
+                title:            'Procesando...',
+                text:             `Enviando ${i + 1} de ${seleccion.length}... (Factura ${f.numero})`,
+                allowOutsideClick: false,
+                allowEscapeKey:    false,
+                didOpen:           () => Swal.showLoading(),
+            });
+            try {
+                const resp = await fetch(appUrl + '/ventas/facturas/enviar-sri', {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body:    JSON.stringify({ factura_id: f.id }),
+                });
+                const data = await resp.json();
+                if (data.ok) {
+                    okList.push(f.numero);
+                } else {
+                    errList.push({ numero: f.numero, mensaje: data.mensaje });
+                }
+            } catch {
+                errList.push({ numero: f.numero, mensaje: 'Error de conexión.' });
+            }
+        }
+
+        let html = `<p>${okList.length} autorizada(s), ${errList.length} con error.</p>`;
+        if (errList.length) {
+            html += '<ul class="text-start small text-danger mb-0">' +
+                errList.map((e) => `<li><strong>${escHtml(e.numero)}</strong> — ${escHtml(e.mensaje)}</li>`).join('') +
+                '</ul>';
+        }
+        Swal.fire({
+            title: 'Proceso terminado',
+            html,
+            icon:  errList.length ? 'warning' : 'success',
+        }).then(() => location.reload());
     });
 
     // ── Anular ───────────────────────────────────────────────────────────────

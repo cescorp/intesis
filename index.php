@@ -52,6 +52,7 @@ require_once __DIR__ . '/src/Servicios/SriFirmadorServicio.php';
 require_once __DIR__ . '/src/Servicios/SriSoapServicio.php';
 require_once __DIR__ . '/src/Servicios/SriEmailServicio.php';
 require_once __DIR__ . '/src/Servicios/FacturacionElectronicaServicio.php';
+require_once __DIR__ . '/src/Servicios/LicenciaCifradoServicio.php';
 // PdfSri se carga solo cuando se usa (require_once en DocumentoCompraControlador::generarPdf)
 require_once __DIR__ . '/src/Controladores/AutenticacionControlador.php';
 require_once __DIR__ . '/src/Controladores/PanelControlador.php';
