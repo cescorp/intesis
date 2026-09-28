@@ -80,14 +80,14 @@ $appUrl = rtrim($configuracion->obtener('APP_URL', ''), '/');
                                 <div class="col-lg-5">
                                     <div class="card card-intesis">
                                         <div class="card-body">
-                                            <h5 class="card-title mb-3">
+                                            <h5 class="card-title float-none d-block mb-3">
                                                 <i class="bi bi-patch-check me-2 text-success"></i>Subir archivo de licencia
                                             </h5>
                                             <form action="<?= $appUrl ?>/sistema/configuracion/licencia/activar" method="post" enctype="multipart/form-data">
                                                 <div class="mb-3">
-                                                    <label class="form-label" for="licencia_json">Archivo de licencia (.json)</label>
-                                                    <input type="file" class="form-control" id="licencia_json" name="licencia_json" accept=".json" required>
-                                                    <div class="form-text">Seleccione el archivo .json proporcionado por el proveedor.</div>
+                                                    <label class="form-label" for="licencia_json">Archivo de licencia (.lic)</label>
+                                                    <input type="file" class="form-control" id="licencia_json" name="licencia_json" accept=".lic" required>
+                                                    <div class="form-text">Seleccione el archivo .lic proporcionado por el proveedor.</div>
                                                 </div>
                                                 <button type="submit" class="btn btn-intesis">
                                                     <i class="bi bi-upload me-1"></i>Activar licencia
@@ -101,7 +101,7 @@ $appUrl = rtrim($configuracion->obtener('APP_URL', ''), '/');
                                 <div class="col-lg-7">
                                     <div class="card card-intesis">
                                         <div class="card-body">
-                                            <h5 class="card-title mb-3">
+                                            <h5 class="card-title float-none d-block mb-3">
                                                 <i class="bi bi-list-check me-2"></i>Módulos con licencia activa
                                             </h5>
                                             <?php if (empty($licencias)): ?>
@@ -155,30 +155,33 @@ $appUrl = rtrim($configuracion->obtener('APP_URL', ''), '/');
                                 <div class="col-lg-6">
                                     <div class="card card-intesis">
                                         <div class="card-body">
-                                            <h5 class="card-title mb-3">
+                                            <h5 class="card-title float-none d-block mb-3">
                                                 <i class="bi bi-file-earmark-arrow-down me-2 text-primary"></i>Generar archivo de licencia
                                             </h5>
                                             <form action="<?= $appUrl ?>/sistema/configuracion/licencia/generar" method="post">
                                                 <div class="row g-3">
-                                                    <div class="col-12">
-                                                        <label class="form-label" for="gen_empresa_id">Empresa</label>
-                                                        <select class="form-select" id="gen_empresa_id" name="empresa_id">
-                                                            <option value="">Seleccione empresa</option>
-                                                            <?php foreach ($empresas as $emp): ?>
-                                                                <option value="<?= (int) $emp['sis_empresa_id'] ?>">
-                                                                    <?= htmlspecialchars($emp['sis_empresa_razon_social']) ?>
-                                                                    (<?= htmlspecialchars($emp['sis_empresa_ruc']) ?>)
-                                                                </option>
-                                                            <?php endforeach; ?>
-                                                        </select>
+                                                    <div class="col-md-6">
+                                                        <label class="form-label" for="gen_ruc">RUC del cliente</label>
+                                                        <input type="text" class="form-control" id="gen_ruc" name="ruc" maxlength="13" placeholder="1234567890001" required>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label class="form-label" for="gen_razon_social">Razón social (referencia)</label>
+                                                        <input type="text" class="form-control" id="gen_razon_social" name="razon_social" required>
+                                                        <div class="form-text">Solo para nombrar el archivo; no se valida contra ninguna base.</div>
                                                     </div>
                                                     <div class="col-12">
-                                                        <label class="form-label">Módulos</label>
+                                                        <label class="form-label d-flex align-items-center gap-2 mb-1">
+                                                            Módulos
+                                                            <span class="form-check mb-0 ms-2">
+                                                                <input class="form-check-input" type="checkbox" id="gen_mod_todos">
+                                                                <label class="form-check-label small" for="gen_mod_todos">Seleccionar todo</label>
+                                                            </span>
+                                                        </label>
                                                         <div class="row g-2">
                                                             <?php foreach ($modulos as $mod): ?>
                                                                 <div class="col-6">
                                                                     <div class="form-check">
-                                                                        <input class="form-check-input" type="checkbox" name="modulos[]" id="mod_<?= (int) $mod['sis_modulo_id'] ?>" value="<?= (int) $mod['sis_modulo_id'] ?>">
+                                                                        <input class="form-check-input gen-mod-checkbox" type="checkbox" name="modulos[]" id="mod_<?= (int) $mod['sis_modulo_id'] ?>" value="<?= htmlspecialchars($mod['sis_modulo_nombre']) ?>">
                                                                         <label class="form-check-label" for="mod_<?= (int) $mod['sis_modulo_id'] ?>">
                                                                             <?= htmlspecialchars($mod['sis_modulo_nombre']) ?>
                                                                         </label>
@@ -190,9 +193,9 @@ $appUrl = rtrim($configuracion->obtener('APP_URL', ''), '/');
                                                     <div class="col-md-6">
                                                         <label class="form-label" for="gen_tipo">Tipo de licencia</label>
                                                         <select class="form-select" id="gen_tipo" name="tipo">
-                                                            <option value="TRIAL">TRIAL</option>
-                                                            <option value="FULL">FULL</option>
-                                                            <option value="MODULAR">MODULAR</option>
+                                                            <option value="DEMO">DEMO</option>
+                                                            <option value="PAGO">PAGO</option>
+                                                            <option value="GRATUITO">GRATUITO</option>
                                                         </select>
                                                     </div>
                                                     <div class="col-md-6">
@@ -208,7 +211,7 @@ $appUrl = rtrim($configuracion->obtener('APP_URL', ''), '/');
                                                     </div>
                                                     <div class="col-12">
                                                         <button type="submit" class="btn btn-intesis">
-                                                            <i class="bi bi-download me-1"></i>Descargar licencia .json
+                                                            <i class="bi bi-download me-1"></i>Descargar licencia .lic
                                                         </button>
                                                     </div>
                                                 </div>
@@ -230,4 +233,14 @@ $appUrl = rtrim($configuracion->obtener('APP_URL', ''), '/');
 <?php if (!empty($mensaje)): ?>
     <script>window.INTESIS_MENSAJE = <?= json_encode($mensaje, JSON_UNESCAPED_UNICODE) ?>;</script>
 <?php endif; ?>
+<script>
+(function () {
+    'use strict';
+    const chkTodos = document.getElementById('gen_mod_todos');
+    if (!chkTodos) return;
+    chkTodos.addEventListener('change', () => {
+        document.querySelectorAll('.gen-mod-checkbox').forEach((chk) => { chk.checked = chkTodos.checked; });
+    });
+})();
+</script>
 <?php require $configuracion->raiz() . '/src/Vistas/plantillas/pie.php'; ?>

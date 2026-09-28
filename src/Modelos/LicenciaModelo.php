@@ -36,7 +36,7 @@ final class LicenciaModelo
             FROM sis_licencia l
             INNER JOIN sis_empresa e ON e.sis_empresa_id = l.sis_empresa_id
             INNER JOIN sis_modulo m ON m.sis_modulo_id = l.sis_modulo_id
-            WHERE l.sis_licencia_estado <> 'E'
+            WHERE l.sis_licencia_estado <> 'INACTIVO'
             {$filtro}
             ORDER BY l.sis_empresa_id, m.sis_modulo_nombre
         ";
@@ -64,40 +64,52 @@ final class LicenciaModelo
 
     /**
      * ***************************************************************************
-     * * LISTA EMPRESAS ACTIVAS PARA EL FORMULARIO DE GENERACIÓN.
+     * * BUSCA UNA EMPRESA ACTIVA LOCAL POR RUC (LA LICENCIA VIAJA POR RUC, NO POR ID,
+     * * PORQUE SE GENERA EN UNA INSTALACION DISTINTA A LA QUE LA ACTIVA).
      * ***************************************************************************
      */
-    public function listarEmpresasActivas(): array
+    public function buscarEmpresaPorRuc(string $ruc): ?array
     {
         $sentencia = $this->conexionBaseDatos->obtener()->prepare("
-            SELECT e.sis_empresa_id, e.sis_empresa_razon_social, e.sis_empresa_ruc
+            SELECT e.sis_empresa_id, e.sis_empresa_razon_social
             FROM sis_empresa e
             INNER JOIN sis_estado es ON es.sis_estado_id = e.sis_estado_id
-            WHERE es.sis_estado_codigo = 'ACTIVO'
-            ORDER BY e.sis_empresa_razon_social
+            WHERE es.sis_estado_codigo = 'ACTIVO' AND e.sis_empresa_ruc = :ruc
+            LIMIT 1
         ");
-        $sentencia->execute();
+        $sentencia->execute(['ruc' => $ruc]);
+        $fila = $sentencia->fetch();
 
-        return $sentencia->fetchAll();
+        return $fila ?: null;
     }
 
     /**
      * ***************************************************************************
-     * * GUARDA O ACTUALIZA UNA LICENCIA DESDE EL JSON SUBIDO.
+     * * GUARDA/ACTUALIZA LA LICENCIA DE UNA EMPRESA LOCAL PARA LOS MODULOS INDICADOS
+     * * (POR NOMBRE, RESUELTOS AL CATALOGO LOCAL DE MODULOS) Y GUARDA EL BLOB CIFRADO
+     * * COMPLETO RECIBIDO, PARA PODER RE-VALIDARLO MAS ADELANTE SI HACE FALTA.
      * ***************************************************************************
      */
-    public function guardarDesdeJson(int $empresaId, array $json, int $usuarioId): void
-    {
+    public function guardarLicencia(
+        int $empresaId,
+        string $tipo,
+        string $fechaInicio,
+        string $fechaFin,
+        array $nombresModulos,
+        string $blobCompleto,
+        int $usuarioId
+    ): void {
+        $idsPorNombre = [];
+        foreach ($this->listarModulos() as $modulo) {
+            $idsPorNombre[$modulo['sis_modulo_nombre']] = (int) $modulo['sis_modulo_id'];
+        }
+
         $pdo = $this->conexionBaseDatos->obtener();
         $pdo->beginTransaction();
         try {
-            foreach ($json['modulos'] ?? [] as $modulo) {
-                $moduloId    = (int) ($modulo['modulo_id'] ?? 0);
-                $tipo        = trim((string) ($json['tipo'] ?? 'TRIAL'));
-                $fechaInicio = trim((string) ($json['fecha_inicio'] ?? date('Y-m-d')));
-                $fechaFin    = trim((string) ($json['fecha_fin'] ?? date('Y-m-d', strtotime('+1 year'))));
-
-                if ($moduloId <= 0) {
+            foreach ($nombresModulos as $nombre) {
+                $moduloId = $idsPorNombre[mb_strtoupper(trim((string) $nombre), 'UTF-8')] ?? null;
+                if ($moduloId === null) {
                     continue;
                 }
 
@@ -115,8 +127,8 @@ final class LicenciaModelo
                         SET sis_licencia_tipo        = :tipo,
                             sis_licencia_fecha_inicio = :fecha_inicio,
                             sis_licencia_fecha_fin    = :fecha_fin,
-                            sis_licencia_estado       = 'A',
-                            sis_licencia_json         = :json,
+                            sis_licencia_estado       = 'ACTIVO',
+                            sis_licencia_json         = :blob,
                             usuario_modifica          = :usuario_modifica,
                             fecha_modifica            = now()
                         WHERE sis_licencia_id = :id
@@ -124,7 +136,7 @@ final class LicenciaModelo
                         'tipo'             => $tipo,
                         'fecha_inicio'     => $fechaInicio,
                         'fecha_fin'        => $fechaFin,
-                        'json'             => json_encode($json, JSON_UNESCAPED_UNICODE),
+                        'blob'             => $blobCompleto,
                         'usuario_modifica' => $usuarioId,
                         'id'               => $licenciaId,
                     ]);
@@ -133,14 +145,14 @@ final class LicenciaModelo
                         INSERT INTO sis_licencia
                             (sis_empresa_id, sis_modulo_id, sis_licencia_tipo, sis_licencia_fecha_inicio, sis_licencia_fecha_fin, sis_licencia_estado, sis_licencia_json, usuario_crea)
                         VALUES
-                            (:empresa_id, :modulo_id, :tipo, :fecha_inicio, :fecha_fin, 'A', :json, :usuario_crea)
+                            (:empresa_id, :modulo_id, :tipo, :fecha_inicio, :fecha_fin, 'ACTIVO', :blob, :usuario_crea)
                     ")->execute([
                         'empresa_id'   => $empresaId,
                         'modulo_id'    => $moduloId,
                         'tipo'         => $tipo,
                         'fecha_inicio' => $fechaInicio,
                         'fecha_fin'    => $fechaFin,
-                        'json'         => json_encode($json, JSON_UNESCAPED_UNICODE),
+                        'blob'         => $blobCompleto,
                         'usuario_crea' => $usuarioId,
                     ]);
                 }

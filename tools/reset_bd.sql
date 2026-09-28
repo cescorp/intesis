@@ -1,232 +1,502 @@
 -- =============================================================================
--- INTESIS — RESET BASE DE DATOS PARA PRUEBAS
--- Limpia todos los datos operativos y re-siembra empresa + admin + catálogos
--- por empresa (sis_iva, ven_forma_pago).
+-- INTESIS — RESET TOTAL PARA PRUEBAS EN LIMPIO
 --
--- USO:
---   psql -U postgres -d intesis -f reset_bd.sql
+-- 1. LIMPIA TODAS LAS TABLAS DEL ESQUEMA public (catalogos incluidos) y
+--    reinicia los contadores (ids vuelven a 1).
+-- 2. RE-INSERTA LOS CATALOGOS GLOBALES: sis_estado, sis_modulo,
+--    sis_tipo_documento, sis_mensaje_errores, sis_menu.
+-- 3. CREA LA EMPRESA MASTER "INTESIS" con su usuario superusuario, perfiles
+--    base, bodega, IVA, formas de pago, secuencias y licencia PAGO de 10 anios
+--    para los 6 modulos.
+--
+-- REQUISITO: las tablas ya deben existir (esquema completo con todas las
+-- migraciones aplicadas). Este script NO crea tablas.
+--
+-- USO:   psql -U postgres -d intesis -f reset_bd.sql
+-- ATENCION: BORRA TODOS LOS DATOS de la base. Todo corre en una sola
+-- transaccion: si algo falla, no se cambia nada.
+--
+-- Acceso inicial:  cescorp@hotmail.es  /  276241   (perfil SUPERUSUARIO)
 -- =============================================================================
 
+\set ON_ERROR_STOP on
+-- El archivo esta en UTF-8; sin esto psql en Windows lo lee como WIN1252 y las tildes se dañan.
+SET client_encoding = 'UTF8';
 BEGIN;
 
 -- -----------------------------------------------------------------------------
--- 1. TRUNCAR TODO LO OPERATIVO (incluye sis_iva y ven_forma_pago que son
---    por empresa, no globales)
+-- 1. LIMPIAR TODO
 -- -----------------------------------------------------------------------------
+DO $$
+DECLARE
+    v_tablas text;
+BEGIN
+    SELECT string_agg(format('%I.%I', schemaname, tablename), ', ')
+      INTO v_tablas
+      FROM pg_tables
+     WHERE schemaname = 'public';
 
-TRUNCATE TABLE
-    -- Contabilidad
-    con_asiento_detalle,
-    con_asiento,
-    con_conciliacion_bancaria,
-    con_periodo,
-    con_plan_cuentas,
-    con_plantilla_integracion,
-    con_retencion_concepto,
-    -- Compras
-    com_documento_detalle,
-    com_documento,
-    com_archivos_sri,
-    com_proveedor,
-    -- Ventas
-    ven_documento_detalle,
-    ven_cxc,
-    ven_documento,
-    ven_lista_precio_detalle,
-    ven_lista_precio,
-    ven_cliente,
-    ven_forma_pago,
-    -- Inventario
-    inv_kardex,
-    inv_movimientos_detalle,
-    inv_movimientos,
-    inv_stock,
-    inv_codigo_proveedor,
-    inv_producto,
-    inv_bodega_usuarios,
-    inv_bodega,
-    inv_categoria,
-    inv_marca,
-    -- Sistema por empresa
-    sis_iva,
-    sis_bancos,
-    sis_licencia,
-    sis_archivos,
-    sis_auditoria,
-    -- Reportes
-    rep_componente,
-    rep_usuario_config,
-    rep_reporte,
-    -- Sistema core
-    sis_perfil_permisos,
-    sis_usuario_empresa,
-    sis_secuencias,
-    sis_perfil,
-    sis_usuarios,
-    sis_empresa
-CASCADE;
-
--- Con CASCADE solo arrastra tablas que no están en esta lista y referencian
--- a las listadas. Las tablas catálogo globales (sis_estado, sis_menu,
--- sis_tipo_documento, sis_mensaje_errores, sis_modulo, sis_plan,
--- sis_plan_modulo) NO tienen FK a ninguna de las anteriores, así que
--- no se tocan.
+    EXECUTE 'TRUNCATE TABLE ' || v_tablas || ' RESTART IDENTITY CASCADE';
+END $$;
 
 -- -----------------------------------------------------------------------------
--- 2. EMPRESA DE PRUEBA
+-- 2. CATALOGOS GLOBALES (exportados de la base de desarrollo, ids originales)
 -- -----------------------------------------------------------------------------
 
-INSERT INTO sis_empresa (
-    sis_empresa_id,
-    sis_empresa_ruc,
-    sis_empresa_razon_social,
-    sis_empresa_nombre_comercial,
-    sis_empresa_direccion,
-    sis_empresa_email,
-    sis_empresa_obligado_contabilidad,
-    sis_empresa_contribuyente_especial,
-    sis_empresa_ambiente_sri,
-    sis_estado_id,
-    usuario_crea
-)
-VALUES (
-    1,
-    '9999999999999',
-    'EMPRESA DE PRUEBA S.A.',
-    'EMPRESA PRUEBA',
-    'DIRECCIÓN MATRIZ',
-    'admin@prueba.com',
-    false,
-    false,
-    '1',
-    (SELECT sis_estado_id FROM sis_estado
-     WHERE sis_estado_modulo = 'SISTEMA'
-       AND sis_estado_entidad = 'SIS_EMPRESA'
-       AND sis_estado_codigo = 'ACTIVO' LIMIT 1),
-    1
-);
+-- sis_estado
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (1, 'SISTEMA', 'SIS_USUARIOS', 'ACTIVO', 'ACTIVO', 'USUARIO HABILITADO PARA INGRESAR AL SISTEMA', 1, true, 1, NULL, '2026-06-01 23:32:38.183845', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (2, 'SISTEMA', 'SIS_USUARIOS', 'INACTIVO', 'INACTIVO', 'USUARIO DESHABILITADO TEMPORALMENTE', 2, true, 1, NULL, '2026-06-01 23:32:38.183845', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (3, 'SISTEMA', 'SIS_USUARIOS', 'ELIMINADO', 'ELIMINADO', 'USUARIO ELIMINADO LOGICAMENTE', 3, true, 1, NULL, '2026-06-01 23:32:38.183845', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (4, 'SISTEMA', 'SIS_USUARIOS', 'BLOQUEADO', 'BLOQUEADO', 'USUARIO BLOQUEADO POR SEGURIDAD', 4, true, 1, NULL, '2026-06-01 23:32:38.183845', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (5, 'COMPRAS', 'COM_PROVEEDOR', 'ACTIVO', 'ACTIVO', 'PROVEEDOR DISPONIBLE PARA OPERACIONES', 1, true, 1, NULL, '2026-06-01 23:32:38.183845', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (6, 'COMPRAS', 'COM_PROVEEDOR', 'INACTIVO', 'INACTIVO', 'PROVEEDOR DESHABILITADO TEMPORALMENTE', 2, true, 1, NULL, '2026-06-01 23:32:38.183845', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (7, 'COMPRAS', 'COM_PROVEEDOR', 'ELIMINADO', 'ELIMINADO', 'PROVEEDOR ELIMINADO LOGICAMENTE', 3, true, 1, NULL, '2026-06-01 23:32:38.183845', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (8, 'COMPRAS', 'COM_DOCUMENTO', 'BORRADOR', 'BORRADOR', 'DOCUMENTO DE COMPRA EN EDICION', 1, true, 1, NULL, '2026-06-01 23:32:38.183845', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (9, 'COMPRAS', 'COM_DOCUMENTO', 'REGISTRADO', 'REGISTRADO', 'DOCUMENTO DE COMPRA REGISTRADO CONTABLEMENTE', 2, true, 1, NULL, '2026-06-01 23:32:38.183845', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (10, 'COMPRAS', 'COM_DOCUMENTO', 'ANULADO', 'ANULADO', 'DOCUMENTO DE COMPRA ANULADO', 3, true, 1, NULL, '2026-06-01 23:32:38.183845', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (11, 'COMPRAS', 'COM_DOCUMENTO', 'PENDIENTE', 'PENDIENTE', 'DOCUMENTO DE COMPRA PENDIENTE DE PROCESO', 4, true, 1, NULL, '2026-06-01 23:32:38.183845', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (12, 'COMPRAS', 'COM_DOCUMENTO', 'RECHAZADO', 'RECHAZADO', 'DOCUMENTO DE COMPRA RECHAZADO', 5, true, 1, NULL, '2026-06-01 23:32:38.183845', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (13, 'VENTAS', 'VEN_CLIENTE', 'ACTIVO', 'ACTIVO', 'CLIENTE DISPONIBLE PARA OPERACIONES', 1, true, 1, NULL, '2026-06-01 23:32:38.183845', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (14, 'VENTAS', 'VEN_CLIENTE', 'INACTIVO', 'INACTIVO', 'CLIENTE DESHABILITADO TEMPORALMENTE', 2, true, 1, NULL, '2026-06-01 23:32:38.183845', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (15, 'VENTAS', 'VEN_CLIENTE', 'ELIMINADO', 'ELIMINADO', 'CLIENTE ELIMINADO LOGICAMENTE', 3, true, 1, NULL, '2026-06-01 23:32:38.183845', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (16, 'VENTAS', 'VEN_DOCUMENTO', 'BORRADOR', 'BORRADOR', 'DOCUMENTO DE VENTA EN EDICION', 1, true, 1, NULL, '2026-06-01 23:32:38.183845', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (17, 'VENTAS', 'VEN_DOCUMENTO', 'EMITIDO', 'EMITIDO', 'DOCUMENTO DE VENTA EMITIDO', 2, true, 1, NULL, '2026-06-01 23:32:38.183845', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (18, 'VENTAS', 'VEN_DOCUMENTO', 'AUTORIZADO', 'AUTORIZADO', 'DOCUMENTO DE VENTA AUTORIZADO', 3, true, 1, NULL, '2026-06-01 23:32:38.183845', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (19, 'VENTAS', 'VEN_DOCUMENTO', 'ANULADO', 'ANULADO', 'DOCUMENTO DE VENTA ANULADO', 4, true, 1, NULL, '2026-06-01 23:32:38.183845', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (20, 'VENTAS', 'VEN_DOCUMENTO', 'RECHAZADO', 'RECHAZADO', 'DOCUMENTO DE VENTA RECHAZADO', 5, true, 1, NULL, '2026-06-01 23:32:38.183845', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (21, 'VENTAS', 'VEN_DOCUMENTO', 'PENDIENTE', 'PENDIENTE', 'DOCUMENTO DE VENTA PENDIENTE DE PROCESO', 6, true, 1, NULL, '2026-06-01 23:32:38.183845', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (22, 'INVENTARIO', 'INV_PRODUCTO', 'ACTIVO', 'ACTIVO', 'PRODUCTO DISPONIBLE PARA OPERACIONES', 1, true, 1, NULL, '2026-06-01 23:32:38.183845', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (23, 'INVENTARIO', 'INV_PRODUCTO', 'INACTIVO', 'INACTIVO', 'PRODUCTO DESHABILITADO TEMPORALMENTE', 2, true, 1, NULL, '2026-06-01 23:32:38.183845', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (24, 'INVENTARIO', 'INV_PRODUCTO', 'ELIMINADO', 'ELIMINADO', 'PRODUCTO ELIMINADO LOGICAMENTE', 3, true, 1, NULL, '2026-06-01 23:32:38.183845', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (25, 'INVENTARIO', 'INV_BODEGA', 'ACTIVO', 'ACTIVO', 'BODEGA DISPONIBLE PARA OPERACIONES', 1, true, 1, NULL, '2026-06-01 23:32:38.183845', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (26, 'INVENTARIO', 'INV_BODEGA', 'INACTIVO', 'INACTIVO', 'BODEGA DESHABILITADA TEMPORALMENTE', 2, true, 1, NULL, '2026-06-01 23:32:38.183845', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (27, 'INVENTARIO', 'INV_BODEGA', 'ELIMINADO', 'ELIMINADO', 'BODEGA ELIMINADA LOGICAMENTE', 3, true, 1, NULL, '2026-06-01 23:32:38.183845', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (28, 'INVENTARIO', 'INV_MOVIMIENTOS', 'BORRADOR', 'BORRADOR', 'MOVIMIENTO DE INVENTARIO EN EDICION', 1, true, 1, NULL, '2026-06-01 23:32:38.183845', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (29, 'INVENTARIO', 'INV_MOVIMIENTOS', 'REGISTRADO', 'REGISTRADO', 'MOVIMIENTO DE INVENTARIO REGISTRADO', 2, true, 1, NULL, '2026-06-01 23:32:38.183845', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (30, 'INVENTARIO', 'INV_MOVIMIENTOS', 'ANULADO', 'ANULADO', 'MOVIMIENTO DE INVENTARIO ANULADO', 3, true, 1, NULL, '2026-06-01 23:32:38.183845', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (31, 'CONTABILIDAD', 'CON_ASIENTO', 'BORRADOR', 'BORRADOR', 'ASIENTO CONTABLE EN EDICION', 1, true, 1, NULL, '2026-06-01 23:32:38.183845', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (32, 'CONTABILIDAD', 'CON_ASIENTO', 'REGISTRADO', 'REGISTRADO', 'ASIENTO CONTABLE REGISTRADO', 2, true, 1, NULL, '2026-06-01 23:32:38.183845', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (33, 'CONTABILIDAD', 'CON_ASIENTO', 'ANULADO', 'ANULADO', 'ASIENTO CONTABLE ANULADO', 3, true, 1, NULL, '2026-06-01 23:32:38.183845', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (34, 'CONTABILIDAD', 'CON_PLAN_CUENTAS', 'ACTIVO', 'ACTIVO', 'CUENTA CONTABLE DISPONIBLE PARA USO', 1, true, 1, NULL, '2026-06-01 23:32:38.183845', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (35, 'CONTABILIDAD', 'CON_PLAN_CUENTAS', 'INACTIVO', 'INACTIVO', 'CUENTA CONTABLE DESHABILITADA TEMPORALMENTE', 2, true, 1, NULL, '2026-06-01 23:32:38.183845', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (36, 'CONTABILIDAD', 'CON_PLAN_CUENTAS', 'ELIMINADO', 'ELIMINADO', 'CUENTA CONTABLE ELIMINADA LOGICAMENTE', 3, true, 1, NULL, '2026-06-01 23:32:38.183845', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (37, 'SISTEMA', 'SIS_EMPRESA', 'ACTIVO', 'ACTIVO', 'EMPRESA DISPONIBLE PARA OPERACIONES', 1, true, 1, NULL, '2026-06-02 00:38:31.51682', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (38, 'SISTEMA', 'SIS_EMPRESA', 'INACTIVO', 'INACTIVO', 'EMPRESA DESHABILITADA TEMPORALMENTE', 2, true, 1, NULL, '2026-06-02 00:38:31.51682', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (39, 'SISTEMA', 'SIS_EMPRESA', 'ELIMINADO', 'ELIMINADO', 'EMPRESA ELIMINADA LOGICAMENTE', 3, true, 1, NULL, '2026-06-02 00:38:31.51682', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (50, 'SISTEMA', 'SIS_TIPO_DOCUMENTO', 'ACTIVO', 'Activo', 'REGISTRO DISPONIBLE PARA USO', 1, true, 1, NULL, '2026-06-04 14:10:45.502228', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (51, 'SISTEMA', 'SIS_TIPO_DOCUMENTO', 'INACTIVO', 'Inactivo', 'REGISTRO NO DISPONIBLE PARA USO', 2, true, 1, NULL, '2026-06-04 14:10:45.502228', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (52, 'SISTEMA', 'SIS_SECUENCIAS', 'ACTIVO', 'Activo', 'REGISTRO DISPONIBLE PARA USO', 1, true, 1, NULL, '2026-06-04 14:10:45.502228', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (53, 'SISTEMA', 'SIS_SECUENCIAS', 'INACTIVO', 'Inactivo', 'REGISTRO NO DISPONIBLE PARA USO', 2, true, 1, NULL, '2026-06-04 14:10:45.502228', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (54, 'SISTEMA', 'SIS_SECUENCIAS', 'AGOTADO', 'Agotado', 'SECUENCIA SIN NUMEROS DISPONIBLES', 3, true, 1, NULL, '2026-06-04 14:10:45.502228', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (83, 'INVENTARIO', 'INV_MOVIMIENTOS', 'PENDIENTE', 'Pendiente', 'MOVIMIENTO PENDIENTE DE APROBACION', 1, true, 1, NULL, '2026-06-07 23:26:05.680416', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (84, 'INVENTARIO', 'INV_MOVIMIENTOS', 'PROCESADO', 'Procesado', 'MOVIMIENTO PROCESADO EN INVENTARIO', 2, true, 1, NULL, '2026-06-07 23:26:05.680416', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (85, 'INVENTARIO', 'INV_MOVIMIENTOS', 'EN_TRANSITO', 'En transito', 'TRANSFERENCIA DESCONTADA DE ORIGEN Y PENDIENTE DE RECEPCION', 3, true, 1, NULL, '2026-06-07 23:26:05.680416', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (86, 'INVENTARIO', 'INV_MOVIMIENTOS', 'RECIBIDO', 'Recibido', 'TRANSFERENCIA RECIBIDA EN DESTINO', 4, true, 1, NULL, '2026-06-07 23:26:05.680416', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (68, 'INVENTARIO', 'INV_CATEGORIA', 'ACTIVO', 'ACTIVO', 'CATEGORIA DISPONIBLE PARA PRODUCTOS', 1, true, 1, NULL, '2026-06-04 17:36:54.435734', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (69, 'INVENTARIO', 'INV_CATEGORIA', 'INACTIVO', 'INACTIVO', 'CATEGORIA DESHABILITADA TEMPORALMENTE', 2, true, 1, NULL, '2026-06-04 17:36:54.435734', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (70, 'INVENTARIO', 'INV_CATEGORIA', 'ELIMINADO', 'ELIMINADO', 'CATEGORIA ELIMINADA LOGICAMENTE', 3, true, 1, NULL, '2026-06-04 17:36:54.435734', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (71, 'INVENTARIO', 'INV_MARCA', 'ACTIVO', 'ACTIVO', 'MARCA DISPONIBLE PARA PRODUCTOS', 1, true, 1, NULL, '2026-06-04 17:36:54.435734', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (72, 'INVENTARIO', 'INV_MARCA', 'INACTIVO', 'INACTIVO', 'MARCA DESHABILITADA TEMPORALMENTE', 2, true, 1, NULL, '2026-06-04 17:36:54.435734', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (73, 'INVENTARIO', 'INV_MARCA', 'ELIMINADO', 'ELIMINADO', 'MARCA ELIMINADA LOGICAMENTE', 3, true, 1, NULL, '2026-06-04 17:36:54.435734', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (87, 'VENTAS', 'VEN_DOCUMENTO', 'CREADA', 'Creada', NULL, 1, true, 1, NULL, '2026-06-13 11:48:18.196436', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (88, 'VENTAS', 'VEN_DOCUMENTO', 'FACTURADA', 'Facturada', NULL, 1, true, 1, NULL, '2026-06-13 11:48:18.201814', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (89, 'VENTAS', 'VEN_DOCUMENTO', 'ANULADA', 'Anulada', NULL, 1, true, 1, NULL, '2026-06-13 11:48:18.204668', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (90, 'VENTAS', 'VEN_DOCUMENTO', 'AUTORIZADA', 'Autorizada', NULL, 1, true, 1, NULL, '2026-06-15 19:25:27.46209', NULL);
+INSERT INTO public.sis_estado (sis_estado_id, sis_estado_modulo, sis_estado_entidad, sis_estado_codigo, sis_estado_nombre, sis_estado_descripcion, sis_estado_orden, sis_estado_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (91, 'VENTAS', 'VEN_DOCUMENTO', 'ERROR', 'Error', NULL, 1, true, 1, NULL, '2026-06-15 19:25:27.46209', NULL);
 
-SELECT setval(pg_get_serial_sequence('sis_empresa', 'sis_empresa_id'), 1, true);
+-- sis_modulo
+INSERT INTO public.sis_modulo (sis_modulo_id, sis_modulo_nombre, sis_modulo_descripcion, sis_modulo_estado, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (1, 'VENTAS', 'MODULO PARA CONTROL DE CLIENTES, FACTURACION Y CAJAS', 1, 1, NULL, '2026-06-01 22:46:45.107104', NULL);
+INSERT INTO public.sis_modulo (sis_modulo_id, sis_modulo_nombre, sis_modulo_descripcion, sis_modulo_estado, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (2, 'COMPRAS', 'MODULO PARA CONTROL DE PROVEEDORES Y ADQUISICIONES', 1, 1, NULL, '2026-06-01 22:46:45.107104', NULL);
+INSERT INTO public.sis_modulo (sis_modulo_id, sis_modulo_nombre, sis_modulo_descripcion, sis_modulo_estado, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (3, 'INVENTARIO', 'MODULO PARA CONTROL DE BODEGAS, STOCK Y KARDEX', 1, 1, NULL, '2026-06-01 22:46:45.107104', NULL);
+INSERT INTO public.sis_modulo (sis_modulo_id, sis_modulo_nombre, sis_modulo_descripcion, sis_modulo_estado, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (4, 'CONTABILIDAD', 'MODULO PARA PLAN DE CUENTAS, ASIENTOS Y ESTADOS FINANCIEROS', 1, 1, NULL, '2026-06-01 22:46:45.107104', NULL);
+INSERT INTO public.sis_modulo (sis_modulo_id, sis_modulo_nombre, sis_modulo_descripcion, sis_modulo_estado, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (5, 'REPORTES', 'MODULO PARA REPORTES DINAMICOS Y CONFIGURABLES', 1, 1, NULL, '2026-06-01 22:46:45.107104', NULL);
+INSERT INTO public.sis_modulo (sis_modulo_id, sis_modulo_nombre, sis_modulo_descripcion, sis_modulo_estado, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (6, 'SISTEMA', 'MODULO DE CONFIGURACION GENERAL, USUARIOS Y LICENCIAS', 1, 1, NULL, '2026-06-01 22:46:45.107104', NULL);
+
+-- sis_tipo_documento
+INSERT INTO public.sis_tipo_documento (sis_tipo_documento_id, sis_tipo_documento_codigo, sis_tipo_documento_nombre, sis_tipo_documento_afecta_inventario, sis_tipo_documento_afecta_contabilidad, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_tipo_documento_modulo, sis_tipo_documento_descripcion, sis_estado_id, sis_tipo_documento_codigo_sri) VALUES (2, 'FACTURA', 'Factura', true, true, 1, NULL, '2026-06-04 14:10:45.502228', NULL, 'VENTAS', 'DOCUMENTO DE VENTA PARA FACTURACION ELECTRONICA', 50, NULL);
+INSERT INTO public.sis_tipo_documento (sis_tipo_documento_id, sis_tipo_documento_codigo, sis_tipo_documento_nombre, sis_tipo_documento_afecta_inventario, sis_tipo_documento_afecta_contabilidad, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_tipo_documento_modulo, sis_tipo_documento_descripcion, sis_estado_id, sis_tipo_documento_codigo_sri) VALUES (3, 'NOTA_CREDITO', 'Nota de credito', true, true, 1, NULL, '2026-06-04 14:10:45.502228', NULL, 'VENTAS', 'DOCUMENTO PARA DISMINUIR VALORES FACTURADOS', 50, NULL);
+INSERT INTO public.sis_tipo_documento (sis_tipo_documento_id, sis_tipo_documento_codigo, sis_tipo_documento_nombre, sis_tipo_documento_afecta_inventario, sis_tipo_documento_afecta_contabilidad, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_tipo_documento_modulo, sis_tipo_documento_descripcion, sis_estado_id, sis_tipo_documento_codigo_sri) VALUES (4, 'NOTA_DEBITO', 'Nota de debito', false, true, 1, NULL, '2026-06-04 14:10:45.502228', NULL, 'VENTAS', 'DOCUMENTO PARA AUMENTAR VALORES FACTURADOS', 50, NULL);
+INSERT INTO public.sis_tipo_documento (sis_tipo_documento_id, sis_tipo_documento_codigo, sis_tipo_documento_nombre, sis_tipo_documento_afecta_inventario, sis_tipo_documento_afecta_contabilidad, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_tipo_documento_modulo, sis_tipo_documento_descripcion, sis_estado_id, sis_tipo_documento_codigo_sri) VALUES (5, 'RETENCION', 'Retencion', false, true, 1, NULL, '2026-06-04 14:10:45.502228', NULL, 'VENTAS', 'COMPROBANTE DE RETENCION ELECTRONICA', 50, NULL);
+INSERT INTO public.sis_tipo_documento (sis_tipo_documento_id, sis_tipo_documento_codigo, sis_tipo_documento_nombre, sis_tipo_documento_afecta_inventario, sis_tipo_documento_afecta_contabilidad, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_tipo_documento_modulo, sis_tipo_documento_descripcion, sis_estado_id, sis_tipo_documento_codigo_sri) VALUES (6, 'AJUSTE', 'Ajuste de inventario', true, false, 1, NULL, '2026-06-04 14:10:45.502228', NULL, 'INVENTARIO', 'DOCUMENTO PARA AJUSTAR EXISTENCIAS', 50, NULL);
+INSERT INTO public.sis_tipo_documento (sis_tipo_documento_id, sis_tipo_documento_codigo, sis_tipo_documento_nombre, sis_tipo_documento_afecta_inventario, sis_tipo_documento_afecta_contabilidad, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_tipo_documento_modulo, sis_tipo_documento_descripcion, sis_estado_id, sis_tipo_documento_codigo_sri) VALUES (7, 'ASIENTO', 'Asiento contable', false, true, 1, NULL, '2026-06-04 14:10:45.502228', NULL, 'CONTABILIDAD', 'DOCUMENTO CONTABLE INTERNO', 50, NULL);
+INSERT INTO public.sis_tipo_documento (sis_tipo_documento_id, sis_tipo_documento_codigo, sis_tipo_documento_nombre, sis_tipo_documento_afecta_inventario, sis_tipo_documento_afecta_contabilidad, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_tipo_documento_modulo, sis_tipo_documento_descripcion, sis_estado_id, sis_tipo_documento_codigo_sri) VALUES (19, 'SALDO_INICIAL', 'Saldo inicial', true, false, 1, NULL, '2026-06-05 23:55:08.386721', NULL, 'INVENTARIO', 'DOCUMENTO AUTOMATICO PARA CARGA DE SALDO INICIAL', 50, NULL);
+INSERT INTO public.sis_tipo_documento (sis_tipo_documento_id, sis_tipo_documento_codigo, sis_tipo_documento_nombre, sis_tipo_documento_afecta_inventario, sis_tipo_documento_afecta_contabilidad, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_tipo_documento_modulo, sis_tipo_documento_descripcion, sis_estado_id, sis_tipo_documento_codigo_sri) VALUES (22, 'TRANSFERENCIA', 'Transferencia', true, false, 1, 1, '2026-06-07 23:26:05.680416', '2026-06-08 23:09:01.669299', 'INVENTARIO', 'DOCUMENTO INTERNO DE TRANSFERENCIA ENTRE BODEGAS', 50, NULL);
+INSERT INTO public.sis_tipo_documento (sis_tipo_documento_id, sis_tipo_documento_codigo, sis_tipo_documento_nombre, sis_tipo_documento_afecta_inventario, sis_tipo_documento_afecta_contabilidad, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_tipo_documento_modulo, sis_tipo_documento_descripcion, sis_estado_id, sis_tipo_documento_codigo_sri) VALUES (20, 'AJUSTE_OUT', 'Ajuste de salida', true, false, 1, 1, '2026-06-07 23:26:05.680416', '2026-06-09 00:26:00.764652', 'INVENTARIO', 'DOCUMENTO INTERNO DE AJUSTE NEGATIVO', 51, NULL);
+INSERT INTO public.sis_tipo_documento (sis_tipo_documento_id, sis_tipo_documento_codigo, sis_tipo_documento_nombre, sis_tipo_documento_afecta_inventario, sis_tipo_documento_afecta_contabilidad, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_tipo_documento_modulo, sis_tipo_documento_descripcion, sis_estado_id, sis_tipo_documento_codigo_sri) VALUES (26, 'FACTURA_COMPRA', 'Factura de Compra', true, false, 1, NULL, '2026-06-09 17:46:47.089528', NULL, 'COMPRAS', '', 50, NULL);
+INSERT INTO public.sis_tipo_documento (sis_tipo_documento_id, sis_tipo_documento_codigo, sis_tipo_documento_nombre, sis_tipo_documento_afecta_inventario, sis_tipo_documento_afecta_contabilidad, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_tipo_documento_modulo, sis_tipo_documento_descripcion, sis_estado_id, sis_tipo_documento_codigo_sri) VALUES (27, 'GASTO', 'Gasto', false, false, 1, NULL, '2026-06-09 17:46:47.089528', NULL, 'COMPRAS', '', 50, NULL);
+INSERT INTO public.sis_tipo_documento (sis_tipo_documento_id, sis_tipo_documento_codigo, sis_tipo_documento_nombre, sis_tipo_documento_afecta_inventario, sis_tipo_documento_afecta_contabilidad, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_tipo_documento_modulo, sis_tipo_documento_descripcion, sis_estado_id, sis_tipo_documento_codigo_sri) VALUES (28, 'NOTA_CRED_COMPRA', 'Nota de Credito Compra', true, false, 1, NULL, '2026-06-09 17:46:47.089528', NULL, 'COMPRAS', '', 50, NULL);
+INSERT INTO public.sis_tipo_documento (sis_tipo_documento_id, sis_tipo_documento_codigo, sis_tipo_documento_nombre, sis_tipo_documento_afecta_inventario, sis_tipo_documento_afecta_contabilidad, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_tipo_documento_modulo, sis_tipo_documento_descripcion, sis_estado_id, sis_tipo_documento_codigo_sri) VALUES (31, 'PROFORMA', 'Proforma', false, false, 1, NULL, '2026-06-13 11:48:18.18874', NULL, 'VENTAS', '', 50, NULL);
+INSERT INTO public.sis_tipo_documento (sis_tipo_documento_id, sis_tipo_documento_codigo, sis_tipo_documento_nombre, sis_tipo_documento_afecta_inventario, sis_tipo_documento_afecta_contabilidad, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_tipo_documento_modulo, sis_tipo_documento_descripcion, sis_estado_id, sis_tipo_documento_codigo_sri) VALUES (33, 'NOTA_VENTA', 'Nota de Venta', false, false, 1, NULL, '2026-06-15 19:45:10.507027', NULL, 'VENTAS', '', 50, NULL);
+INSERT INTO public.sis_tipo_documento (sis_tipo_documento_id, sis_tipo_documento_codigo, sis_tipo_documento_nombre, sis_tipo_documento_afecta_inventario, sis_tipo_documento_afecta_contabilidad, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_tipo_documento_modulo, sis_tipo_documento_descripcion, sis_estado_id, sis_tipo_documento_codigo_sri) VALUES (32, 'FACTURA_VENTA', 'Factura de Venta', true, false, 1, 1, '2026-06-13 11:48:18.18874', '2026-06-15 23:17:42.347562', 'VENTAS', '', 50, '01');
+INSERT INTO public.sis_tipo_documento (sis_tipo_documento_id, sis_tipo_documento_codigo, sis_tipo_documento_nombre, sis_tipo_documento_afecta_inventario, sis_tipo_documento_afecta_contabilidad, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_tipo_documento_modulo, sis_tipo_documento_descripcion, sis_estado_id, sis_tipo_documento_codigo_sri) VALUES (21, 'AJUSTE_IN', 'Ajuste de entrada', true, false, 1, 1, '2026-06-07 23:26:05.680416', '2026-06-16 21:51:03.859096', 'INVENTARIO', 'DOCUMENTO INTERNO DE AJUSTE POSITIVO', 50, NULL);
+
+-- sis_mensaje_errores
+INSERT INTO public.sis_mensaje_errores (sis_mensaje_errores_id, sis_mensaje_errores_codigo, sis_mensaje_errores_tipo, sis_mensaje_errores_titulo, sis_mensaje_errores_mensaje, sis_mensaje_errores_icono, sis_mensaje_errores_modulo, sis_mensaje_errores_entidad, sis_mensaje_errores_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_mensaje_errores_tiempo, sis_mensaje_errores_posicion) VALUES (2, 'EMPRESA_DATOS_OBLIGATORIOS', 'ERROR', 'Datos incompletos', 'Razon social, nombre comercial y direccion son obligatorios.', 'error', 'SISTEMA', 'SIS_EMPRESA', true, 1, NULL, '2026-06-03 17:16:18.064871', NULL, 0, 1);
+INSERT INTO public.sis_mensaje_errores (sis_mensaje_errores_id, sis_mensaje_errores_codigo, sis_mensaje_errores_tipo, sis_mensaje_errores_titulo, sis_mensaje_errores_mensaje, sis_mensaje_errores_icono, sis_mensaje_errores_modulo, sis_mensaje_errores_entidad, sis_mensaje_errores_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_mensaje_errores_tiempo, sis_mensaje_errores_posicion) VALUES (3, 'EMPRESA_EMAIL_INVALIDO', 'ERROR', 'Correo invalido', 'Ingrese un correo electronico valido.', 'error', 'SISTEMA', 'SIS_EMPRESA', true, 1, NULL, '2026-06-03 17:16:18.064871', NULL, 0, 1);
+INSERT INTO public.sis_mensaje_errores (sis_mensaje_errores_id, sis_mensaje_errores_codigo, sis_mensaje_errores_tipo, sis_mensaje_errores_titulo, sis_mensaje_errores_mensaje, sis_mensaje_errores_icono, sis_mensaje_errores_modulo, sis_mensaje_errores_entidad, sis_mensaje_errores_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_mensaje_errores_tiempo, sis_mensaje_errores_posicion) VALUES (9, 'CONFIRMAR_INACTIVAR_EMPRESA', 'CONFIRMACION', 'Inactivar empresa', 'La empresa no podra usarse en nuevas operaciones mientras este inactiva.', 'warning', 'SISTEMA', 'SIS_EMPRESA', true, 1, NULL, '2026-06-03 17:16:18.064871', NULL, 0, 1);
+INSERT INTO public.sis_mensaje_errores (sis_mensaje_errores_id, sis_mensaje_errores_codigo, sis_mensaje_errores_tipo, sis_mensaje_errores_titulo, sis_mensaje_errores_mensaje, sis_mensaje_errores_icono, sis_mensaje_errores_modulo, sis_mensaje_errores_entidad, sis_mensaje_errores_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_mensaje_errores_tiempo, sis_mensaje_errores_posicion) VALUES (10, 'CONFIRMAR_ELIMINAR_EMPRESA', 'CONFIRMACION', 'Eliminar empresa', 'La empresa se eliminara logicamente y dejara de aparecer en el listado principal.', 'warning', 'SISTEMA', 'SIS_EMPRESA', true, 1, NULL, '2026-06-03 17:16:18.064871', NULL, 0, 1);
+INSERT INTO public.sis_mensaje_errores (sis_mensaje_errores_id, sis_mensaje_errores_codigo, sis_mensaje_errores_tipo, sis_mensaje_errores_titulo, sis_mensaje_errores_mensaje, sis_mensaje_errores_icono, sis_mensaje_errores_modulo, sis_mensaje_errores_entidad, sis_mensaje_errores_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_mensaje_errores_tiempo, sis_mensaje_errores_posicion) VALUES (11, 'USUARIO_DATOS_OBLIGATORIOS', 'ERROR', 'Datos incompletos', 'Seleccione empresa, perfil, nombre y correo valido.', 'error', 'SISTEMA', 'SIS_USUARIOS', true, 1, NULL, '2026-06-03 17:16:18.064871', NULL, 0, 1);
+INSERT INTO public.sis_mensaje_errores (sis_mensaje_errores_id, sis_mensaje_errores_codigo, sis_mensaje_errores_tipo, sis_mensaje_errores_titulo, sis_mensaje_errores_mensaje, sis_mensaje_errores_icono, sis_mensaje_errores_modulo, sis_mensaje_errores_entidad, sis_mensaje_errores_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_mensaje_errores_tiempo, sis_mensaje_errores_posicion) VALUES (12, 'USUARIO_CLAVE_INVALIDA', 'ERROR', 'Clave invalida', 'La clave debe tener minimo 8 caracteres y coincidir con la confirmacion.', 'error', 'SISTEMA', 'SIS_USUARIOS', true, 1, NULL, '2026-06-03 17:16:18.064871', NULL, 0, 1);
+INSERT INTO public.sis_mensaje_errores (sis_mensaje_errores_id, sis_mensaje_errores_codigo, sis_mensaje_errores_tipo, sis_mensaje_errores_titulo, sis_mensaje_errores_mensaje, sis_mensaje_errores_icono, sis_mensaje_errores_modulo, sis_mensaje_errores_entidad, sis_mensaje_errores_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_mensaje_errores_tiempo, sis_mensaje_errores_posicion) VALUES (13, 'USUARIO_CORREO_ASIGNADO', 'ERROR', 'Correo asignado', 'El correo ya esta asignado a esa empresa.', 'error', 'SISTEMA', 'SIS_USUARIOS', true, 1, NULL, '2026-06-03 17:16:18.064871', NULL, 0, 1);
+INSERT INTO public.sis_mensaje_errores (sis_mensaje_errores_id, sis_mensaje_errores_codigo, sis_mensaje_errores_tipo, sis_mensaje_errores_titulo, sis_mensaje_errores_mensaje, sis_mensaje_errores_icono, sis_mensaje_errores_modulo, sis_mensaje_errores_entidad, sis_mensaje_errores_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_mensaje_errores_tiempo, sis_mensaje_errores_posicion) VALUES (14, 'USUARIO_CORREO_REGISTRADO', 'ERROR', 'Correo registrado', 'El correo ya esta registrado en el sistema.', 'error', 'SISTEMA', 'SIS_USUARIOS', true, 1, NULL, '2026-06-03 17:16:18.064871', NULL, 0, 1);
+INSERT INTO public.sis_mensaje_errores (sis_mensaje_errores_id, sis_mensaje_errores_codigo, sis_mensaje_errores_tipo, sis_mensaje_errores_titulo, sis_mensaje_errores_mensaje, sis_mensaje_errores_icono, sis_mensaje_errores_modulo, sis_mensaje_errores_entidad, sis_mensaje_errores_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_mensaje_errores_tiempo, sis_mensaje_errores_posicion) VALUES (18, 'CONFIRMAR_INACTIVAR_USUARIO', 'CONFIRMACION', 'Inactivar usuario', 'El usuario no podra ingresar a esta empresa mientras este inactivo.', 'warning', 'SISTEMA', 'SIS_USUARIOS', true, 1, NULL, '2026-06-03 17:16:18.064871', NULL, 0, 1);
+INSERT INTO public.sis_mensaje_errores (sis_mensaje_errores_id, sis_mensaje_errores_codigo, sis_mensaje_errores_tipo, sis_mensaje_errores_titulo, sis_mensaje_errores_mensaje, sis_mensaje_errores_icono, sis_mensaje_errores_modulo, sis_mensaje_errores_entidad, sis_mensaje_errores_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_mensaje_errores_tiempo, sis_mensaje_errores_posicion) VALUES (19, 'CONFIRMAR_BLOQUEAR_USUARIO', 'CONFIRMACION', 'Bloquear usuario', 'El usuario quedara bloqueado por seguridad.', 'warning', 'SISTEMA', 'SIS_USUARIOS', true, 1, NULL, '2026-06-03 17:16:18.064871', NULL, 0, 1);
+INSERT INTO public.sis_mensaje_errores (sis_mensaje_errores_id, sis_mensaje_errores_codigo, sis_mensaje_errores_tipo, sis_mensaje_errores_titulo, sis_mensaje_errores_mensaje, sis_mensaje_errores_icono, sis_mensaje_errores_modulo, sis_mensaje_errores_entidad, sis_mensaje_errores_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_mensaje_errores_tiempo, sis_mensaje_errores_posicion) VALUES (20, 'CONFIRMAR_ELIMINAR_USUARIO', 'CONFIRMACION', 'Eliminar usuario', 'La asignacion se eliminara logicamente del sistema.', 'warning', 'SISTEMA', 'SIS_USUARIOS', true, 1, NULL, '2026-06-03 17:16:18.064871', NULL, 0, 1);
+INSERT INTO public.sis_mensaje_errores (sis_mensaje_errores_id, sis_mensaje_errores_codigo, sis_mensaje_errores_tipo, sis_mensaje_errores_titulo, sis_mensaje_errores_mensaje, sis_mensaje_errores_icono, sis_mensaje_errores_modulo, sis_mensaje_errores_entidad, sis_mensaje_errores_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_mensaje_errores_tiempo, sis_mensaje_errores_posicion) VALUES (21, 'ERROR_GENERICO_GUARDAR', 'ERROR', 'No se pudo guardar', 'Revise los datos ingresados e intente nuevamente.', 'error', 'SISTEMA', 'GENERAL', true, 1, NULL, '2026-06-03 17:16:18.064871', NULL, 0, 1);
+INSERT INTO public.sis_mensaje_errores (sis_mensaje_errores_id, sis_mensaje_errores_codigo, sis_mensaje_errores_tipo, sis_mensaje_errores_titulo, sis_mensaje_errores_mensaje, sis_mensaje_errores_icono, sis_mensaje_errores_modulo, sis_mensaje_errores_entidad, sis_mensaje_errores_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_mensaje_errores_tiempo, sis_mensaje_errores_posicion) VALUES (22, 'ERROR_SIN_PERMISO', 'ERROR', 'Acceso restringido', 'Su perfil no tiene permiso para esta accion.', 'error', 'SISTEMA', 'GENERAL', true, 1, NULL, '2026-06-03 17:16:18.064871', NULL, 0, 1);
+INSERT INTO public.sis_mensaje_errores (sis_mensaje_errores_id, sis_mensaje_errores_codigo, sis_mensaje_errores_tipo, sis_mensaje_errores_titulo, sis_mensaje_errores_mensaje, sis_mensaje_errores_icono, sis_mensaje_errores_modulo, sis_mensaje_errores_entidad, sis_mensaje_errores_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_mensaje_errores_tiempo, sis_mensaje_errores_posicion) VALUES (23, 'MENSAJE_NO_CONFIGURADO', 'ALERTA', 'Mensaje no configurado', 'No existe configuracion para el codigo de mensaje solicitado.', 'warning', 'SISTEMA', 'GENERAL', true, 1, NULL, '2026-06-03 17:16:18.064871', NULL, 0, 1);
+INSERT INTO public.sis_mensaje_errores (sis_mensaje_errores_id, sis_mensaje_errores_codigo, sis_mensaje_errores_tipo, sis_mensaje_errores_titulo, sis_mensaje_errores_mensaje, sis_mensaje_errores_icono, sis_mensaje_errores_modulo, sis_mensaje_errores_entidad, sis_mensaje_errores_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_mensaje_errores_tiempo, sis_mensaje_errores_posicion) VALUES (1, 'EMPRESA_RUC_INVALIDO', 'ERROR', 'RUC invalido', 'Ingrese un RUC valido.', 'error', 'SISTEMA', 'SIS_EMPRESA', true, 1, NULL, '2026-06-03 17:16:18.064871', NULL, 0, 1);
+INSERT INTO public.sis_mensaje_errores (sis_mensaje_errores_id, sis_mensaje_errores_codigo, sis_mensaje_errores_tipo, sis_mensaje_errores_titulo, sis_mensaje_errores_mensaje, sis_mensaje_errores_icono, sis_mensaje_errores_modulo, sis_mensaje_errores_entidad, sis_mensaje_errores_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_mensaje_errores_tiempo, sis_mensaje_errores_posicion) VALUES (36, 'ERROR_VALIDACION', 'ERROR', 'No se pudo guardar', 'Revise los datos ingresados.', 'error', 'SISTEMA', 'GENERAL', true, 1, NULL, '2026-06-04 18:20:02.040211', NULL, 0, 4);
+INSERT INTO public.sis_mensaje_errores (sis_mensaje_errores_id, sis_mensaje_errores_codigo, sis_mensaje_errores_tipo, sis_mensaje_errores_titulo, sis_mensaje_errores_mensaje, sis_mensaje_errores_icono, sis_mensaje_errores_modulo, sis_mensaje_errores_entidad, sis_mensaje_errores_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_mensaje_errores_tiempo, sis_mensaje_errores_posicion) VALUES (37, 'ERROR_SESION', 'ERROR', 'Sesion no activa', 'Inicie sesion para continuar.', 'error', 'SISTEMA', 'SEGURIDAD', true, 1, NULL, '2026-06-04 18:20:02.040211', NULL, 0, 4);
+INSERT INTO public.sis_mensaje_errores (sis_mensaje_errores_id, sis_mensaje_errores_codigo, sis_mensaje_errores_tipo, sis_mensaje_errores_titulo, sis_mensaje_errores_mensaje, sis_mensaje_errores_icono, sis_mensaje_errores_modulo, sis_mensaje_errores_entidad, sis_mensaje_errores_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_mensaje_errores_tiempo, sis_mensaje_errores_posicion) VALUES (4, 'EMPRESA_CREADA', 'EXITO', 'Empresa creada', 'La empresa fue registrada correctamente.', 'success', 'SISTEMA', 'SIS_EMPRESA', true, 1, 1, '2026-06-03 17:16:18.064871', '2026-06-05 05:18:08.974975', 5000, 2);
+INSERT INTO public.sis_mensaje_errores (sis_mensaje_errores_id, sis_mensaje_errores_codigo, sis_mensaje_errores_tipo, sis_mensaje_errores_titulo, sis_mensaje_errores_mensaje, sis_mensaje_errores_icono, sis_mensaje_errores_modulo, sis_mensaje_errores_entidad, sis_mensaje_errores_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_mensaje_errores_tiempo, sis_mensaje_errores_posicion) VALUES (5, 'EMPRESA_ACTUALIZADA', 'EXITO', 'Empresa actualizada', 'Los cambios fueron guardados correctamente.', 'success', 'SISTEMA', 'SIS_EMPRESA', true, 1, 1, '2026-06-03 17:16:18.064871', '2026-06-05 05:18:08.974975', 5000, 2);
+INSERT INTO public.sis_mensaje_errores (sis_mensaje_errores_id, sis_mensaje_errores_codigo, sis_mensaje_errores_tipo, sis_mensaje_errores_titulo, sis_mensaje_errores_mensaje, sis_mensaje_errores_icono, sis_mensaje_errores_modulo, sis_mensaje_errores_entidad, sis_mensaje_errores_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_mensaje_errores_tiempo, sis_mensaje_errores_posicion) VALUES (6, 'EMPRESA_ACTIVADA', 'EXITO', 'Empresa activada', 'La empresa quedo activa.', 'success', 'SISTEMA', 'SIS_EMPRESA', true, 1, 1, '2026-06-03 17:16:18.064871', '2026-06-05 05:18:08.974975', 5000, 2);
+INSERT INTO public.sis_mensaje_errores (sis_mensaje_errores_id, sis_mensaje_errores_codigo, sis_mensaje_errores_tipo, sis_mensaje_errores_titulo, sis_mensaje_errores_mensaje, sis_mensaje_errores_icono, sis_mensaje_errores_modulo, sis_mensaje_errores_entidad, sis_mensaje_errores_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_mensaje_errores_tiempo, sis_mensaje_errores_posicion) VALUES (7, 'EMPRESA_INACTIVADA', 'EXITO', 'Empresa inactivada', 'La empresa quedo inactiva.', 'success', 'SISTEMA', 'SIS_EMPRESA', true, 1, 1, '2026-06-03 17:16:18.064871', '2026-06-05 05:18:08.974975', 5000, 2);
+INSERT INTO public.sis_mensaje_errores (sis_mensaje_errores_id, sis_mensaje_errores_codigo, sis_mensaje_errores_tipo, sis_mensaje_errores_titulo, sis_mensaje_errores_mensaje, sis_mensaje_errores_icono, sis_mensaje_errores_modulo, sis_mensaje_errores_entidad, sis_mensaje_errores_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_mensaje_errores_tiempo, sis_mensaje_errores_posicion) VALUES (8, 'EMPRESA_ELIMINADA', 'EXITO', 'Empresa eliminada', 'La empresa fue eliminada logicamente.', 'success', 'SISTEMA', 'SIS_EMPRESA', true, 1, 1, '2026-06-03 17:16:18.064871', '2026-06-05 05:18:08.974975', 5000, 2);
+INSERT INTO public.sis_mensaje_errores (sis_mensaje_errores_id, sis_mensaje_errores_codigo, sis_mensaje_errores_tipo, sis_mensaje_errores_titulo, sis_mensaje_errores_mensaje, sis_mensaje_errores_icono, sis_mensaje_errores_modulo, sis_mensaje_errores_entidad, sis_mensaje_errores_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_mensaje_errores_tiempo, sis_mensaje_errores_posicion) VALUES (15, 'USUARIO_CREADO', 'EXITO', 'Usuario creado', 'El usuario fue registrado correctamente.', 'success', 'SISTEMA', 'SIS_USUARIOS', true, 1, 1, '2026-06-03 17:16:18.064871', '2026-06-05 05:18:08.974975', 5000, 2);
+INSERT INTO public.sis_mensaje_errores (sis_mensaje_errores_id, sis_mensaje_errores_codigo, sis_mensaje_errores_tipo, sis_mensaje_errores_titulo, sis_mensaje_errores_mensaje, sis_mensaje_errores_icono, sis_mensaje_errores_modulo, sis_mensaje_errores_entidad, sis_mensaje_errores_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_mensaje_errores_tiempo, sis_mensaje_errores_posicion) VALUES (16, 'USUARIO_ACTUALIZADO', 'EXITO', 'Usuario actualizado', 'Los cambios fueron guardados correctamente.', 'success', 'SISTEMA', 'SIS_USUARIOS', true, 1, 1, '2026-06-03 17:16:18.064871', '2026-06-05 05:18:08.974975', 5000, 2);
+INSERT INTO public.sis_mensaje_errores (sis_mensaje_errores_id, sis_mensaje_errores_codigo, sis_mensaje_errores_tipo, sis_mensaje_errores_titulo, sis_mensaje_errores_mensaje, sis_mensaje_errores_icono, sis_mensaje_errores_modulo, sis_mensaje_errores_entidad, sis_mensaje_errores_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_mensaje_errores_tiempo, sis_mensaje_errores_posicion) VALUES (17, 'USUARIO_CLAVE_RESTABLECIDA', 'EXITO', 'Clave restablecida', 'La nueva clave fue guardada correctamente.', 'success', 'SISTEMA', 'SIS_USUARIOS', true, 1, 1, '2026-06-03 17:16:18.064871', '2026-06-05 05:18:08.974975', 5000, 2);
+INSERT INTO public.sis_mensaje_errores (sis_mensaje_errores_id, sis_mensaje_errores_codigo, sis_mensaje_errores_tipo, sis_mensaje_errores_titulo, sis_mensaje_errores_mensaje, sis_mensaje_errores_icono, sis_mensaje_errores_modulo, sis_mensaje_errores_entidad, sis_mensaje_errores_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_mensaje_errores_tiempo, sis_mensaje_errores_posicion) VALUES (24, 'USUARIO_ACTIVADO', 'EXITO', 'Usuario activado', 'El usuario quedo activo.', 'success', 'SISTEMA', 'SIS_USUARIOS', true, 1, 1, '2026-06-03 17:22:58.55245', '2026-06-05 05:18:08.974975', 5000, 2);
+INSERT INTO public.sis_mensaje_errores (sis_mensaje_errores_id, sis_mensaje_errores_codigo, sis_mensaje_errores_tipo, sis_mensaje_errores_titulo, sis_mensaje_errores_mensaje, sis_mensaje_errores_icono, sis_mensaje_errores_modulo, sis_mensaje_errores_entidad, sis_mensaje_errores_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_mensaje_errores_tiempo, sis_mensaje_errores_posicion) VALUES (25, 'USUARIO_INACTIVADO', 'EXITO', 'Usuario inactivado', 'El usuario quedo inactivo.', 'success', 'SISTEMA', 'SIS_USUARIOS', true, 1, 1, '2026-06-03 17:22:58.55245', '2026-06-05 05:18:08.974975', 5000, 2);
+INSERT INTO public.sis_mensaje_errores (sis_mensaje_errores_id, sis_mensaje_errores_codigo, sis_mensaje_errores_tipo, sis_mensaje_errores_titulo, sis_mensaje_errores_mensaje, sis_mensaje_errores_icono, sis_mensaje_errores_modulo, sis_mensaje_errores_entidad, sis_mensaje_errores_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_mensaje_errores_tiempo, sis_mensaje_errores_posicion) VALUES (26, 'USUARIO_BLOQUEADO', 'EXITO', 'Usuario bloqueado', 'El usuario quedo bloqueado.', 'success', 'SISTEMA', 'SIS_USUARIOS', true, 1, 1, '2026-06-03 17:22:58.55245', '2026-06-05 05:18:08.974975', 5000, 2);
+INSERT INTO public.sis_mensaje_errores (sis_mensaje_errores_id, sis_mensaje_errores_codigo, sis_mensaje_errores_tipo, sis_mensaje_errores_titulo, sis_mensaje_errores_mensaje, sis_mensaje_errores_icono, sis_mensaje_errores_modulo, sis_mensaje_errores_entidad, sis_mensaje_errores_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_mensaje_errores_tiempo, sis_mensaje_errores_posicion) VALUES (27, 'USUARIO_ELIMINADO', 'EXITO', 'Usuario eliminado', 'El usuario fue eliminado logicamente.', 'success', 'SISTEMA', 'SIS_USUARIOS', true, 1, 1, '2026-06-03 17:22:58.55245', '2026-06-05 05:18:08.974975', 5000, 2);
+INSERT INTO public.sis_mensaje_errores (sis_mensaje_errores_id, sis_mensaje_errores_codigo, sis_mensaje_errores_tipo, sis_mensaje_errores_titulo, sis_mensaje_errores_mensaje, sis_mensaje_errores_icono, sis_mensaje_errores_modulo, sis_mensaje_errores_entidad, sis_mensaje_errores_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_mensaje_errores_tiempo, sis_mensaje_errores_posicion) VALUES (39, 'CONFIRMAR_INACTIVAR_PERFIL', 'CONFIRMACION', 'Inactivar perfil', 'El perfil quedara inactivo y no podra asignarse a usuarios.', 'warning', 'SISTEMA', 'SIS_PERFIL', true, 1, NULL, '2026-06-04 20:22:35.433214', NULL, 0, 4);
+INSERT INTO public.sis_mensaje_errores (sis_mensaje_errores_id, sis_mensaje_errores_codigo, sis_mensaje_errores_tipo, sis_mensaje_errores_titulo, sis_mensaje_errores_mensaje, sis_mensaje_errores_icono, sis_mensaje_errores_modulo, sis_mensaje_errores_entidad, sis_mensaje_errores_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_mensaje_errores_tiempo, sis_mensaje_errores_posicion) VALUES (40, 'CONFIRMAR_ELIMINAR_PERFIL', 'CONFIRMACION', 'Eliminar perfil', 'El perfil se eliminara logicamente si no tiene usuarios asignados.', 'warning', 'SISTEMA', 'SIS_PERFIL', true, 1, NULL, '2026-06-04 20:22:35.433214', NULL, 0, 4);
+INSERT INTO public.sis_mensaje_errores (sis_mensaje_errores_id, sis_mensaje_errores_codigo, sis_mensaje_errores_tipo, sis_mensaje_errores_titulo, sis_mensaje_errores_mensaje, sis_mensaje_errores_icono, sis_mensaje_errores_modulo, sis_mensaje_errores_entidad, sis_mensaje_errores_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_mensaje_errores_tiempo, sis_mensaje_errores_posicion) VALUES (41, 'CONFIRMAR_INACTIVAR_MENU', 'CONFIRMACION', 'Inactivar menu', 'El menu dejara de mostrarse a los perfiles que lo tengan asignado.', 'warning', 'SISTEMA', 'SIS_MENU', true, 1, NULL, '2026-06-04 20:22:35.433214', NULL, 0, 4);
+INSERT INTO public.sis_mensaje_errores (sis_mensaje_errores_id, sis_mensaje_errores_codigo, sis_mensaje_errores_tipo, sis_mensaje_errores_titulo, sis_mensaje_errores_mensaje, sis_mensaje_errores_icono, sis_mensaje_errores_modulo, sis_mensaje_errores_entidad, sis_mensaje_errores_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_mensaje_errores_tiempo, sis_mensaje_errores_posicion) VALUES (42, 'CONFIRMAR_INACTIVAR_ESTADO', 'CONFIRMACION', 'Inactivar estado', 'El estado dejara de estar disponible para nuevos registros.', 'warning', 'SISTEMA', 'SIS_ESTADO', true, 1, NULL, '2026-06-04 20:22:35.433214', NULL, 0, 4);
+INSERT INTO public.sis_mensaje_errores (sis_mensaje_errores_id, sis_mensaje_errores_codigo, sis_mensaje_errores_tipo, sis_mensaje_errores_titulo, sis_mensaje_errores_mensaje, sis_mensaje_errores_icono, sis_mensaje_errores_modulo, sis_mensaje_errores_entidad, sis_mensaje_errores_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_mensaje_errores_tiempo, sis_mensaje_errores_posicion) VALUES (43, 'CONFIRMAR_INACTIVAR_MENSAJE', 'CONFIRMACION', 'Inactivar mensaje', 'El mensaje no se usara mientras permanezca inactivo.', 'warning', 'SISTEMA', 'SIS_MENSAJE_ERRORES', true, 1, NULL, '2026-06-04 20:22:35.433214', NULL, 0, 4);
+INSERT INTO public.sis_mensaje_errores (sis_mensaje_errores_id, sis_mensaje_errores_codigo, sis_mensaje_errores_tipo, sis_mensaje_errores_titulo, sis_mensaje_errores_mensaje, sis_mensaje_errores_icono, sis_mensaje_errores_modulo, sis_mensaje_errores_entidad, sis_mensaje_errores_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_mensaje_errores_tiempo, sis_mensaje_errores_posicion) VALUES (44, 'CONFIRMAR_INACTIVAR_TIPO_DOCUMENTO', 'CONFIRMACION', 'Inactivar tipo', 'El tipo de documento dejara de estar disponible para nuevas operaciones.', 'warning', 'SISTEMA', 'SIS_TIPO_DOCUMENTO', true, 1, NULL, '2026-06-04 20:22:35.433214', NULL, 0, 4);
+INSERT INTO public.sis_mensaje_errores (sis_mensaje_errores_id, sis_mensaje_errores_codigo, sis_mensaje_errores_tipo, sis_mensaje_errores_titulo, sis_mensaje_errores_mensaje, sis_mensaje_errores_icono, sis_mensaje_errores_modulo, sis_mensaje_errores_entidad, sis_mensaje_errores_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_mensaje_errores_tiempo, sis_mensaje_errores_posicion) VALUES (45, 'CONFIRMAR_INACTIVAR_SECUENCIA', 'CONFIRMACION', 'Inactivar secuencia', 'La secuencia dejara de estar disponible para emitir nuevos documentos.', 'warning', 'SISTEMA', 'SIS_SECUENCIAS', true, 1, NULL, '2026-06-04 20:22:35.433214', NULL, 0, 4);
+INSERT INTO public.sis_mensaje_errores (sis_mensaje_errores_id, sis_mensaje_errores_codigo, sis_mensaje_errores_tipo, sis_mensaje_errores_titulo, sis_mensaje_errores_mensaje, sis_mensaje_errores_icono, sis_mensaje_errores_modulo, sis_mensaje_errores_entidad, sis_mensaje_errores_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_mensaje_errores_tiempo, sis_mensaje_errores_posicion) VALUES (46, 'CONFIRMAR_INACTIVAR_PRODUCTO', 'CONFIRMACION', 'Inactivar producto', 'El producto no podra usarse en nuevas operaciones mientras este inactivo.', 'warning', 'INVENTARIO', 'INV_PRODUCTO', true, 1, NULL, '2026-06-04 20:22:35.433214', NULL, 0, 4);
+INSERT INTO public.sis_mensaje_errores (sis_mensaje_errores_id, sis_mensaje_errores_codigo, sis_mensaje_errores_tipo, sis_mensaje_errores_titulo, sis_mensaje_errores_mensaje, sis_mensaje_errores_icono, sis_mensaje_errores_modulo, sis_mensaje_errores_entidad, sis_mensaje_errores_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_mensaje_errores_tiempo, sis_mensaje_errores_posicion) VALUES (47, 'CONFIRMAR_INACTIVAR_CATEGORIA', 'CONFIRMACION', 'Inactivar categoria', 'La categoria dejara de estar disponible para nuevos productos.', 'warning', 'INVENTARIO', 'INV_CATEGORIA', true, 1, NULL, '2026-06-04 20:22:35.433214', NULL, 0, 4);
+INSERT INTO public.sis_mensaje_errores (sis_mensaje_errores_id, sis_mensaje_errores_codigo, sis_mensaje_errores_tipo, sis_mensaje_errores_titulo, sis_mensaje_errores_mensaje, sis_mensaje_errores_icono, sis_mensaje_errores_modulo, sis_mensaje_errores_entidad, sis_mensaje_errores_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_mensaje_errores_tiempo, sis_mensaje_errores_posicion) VALUES (48, 'CONFIRMAR_INACTIVAR_MARCA', 'CONFIRMACION', 'Inactivar marca', 'La marca dejara de estar disponible para nuevos productos.', 'warning', 'INVENTARIO', 'INV_MARCA', true, 1, NULL, '2026-06-04 20:22:35.433214', NULL, 0, 4);
+INSERT INTO public.sis_mensaje_errores (sis_mensaje_errores_id, sis_mensaje_errores_codigo, sis_mensaje_errores_tipo, sis_mensaje_errores_titulo, sis_mensaje_errores_mensaje, sis_mensaje_errores_icono, sis_mensaje_errores_modulo, sis_mensaje_errores_entidad, sis_mensaje_errores_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_mensaje_errores_tiempo, sis_mensaje_errores_posicion) VALUES (49, 'CONFIRMAR_INACTIVAR_BODEGA', 'CONFIRMACION', 'Inactivar bodega', 'La bodega no podra usarse en nuevas operaciones mientras este inactiva.', 'warning', 'INVENTARIO', 'INV_BODEGA', true, 1, NULL, '2026-06-04 20:22:35.433214', NULL, 0, 4);
+INSERT INTO public.sis_mensaje_errores (sis_mensaje_errores_id, sis_mensaje_errores_codigo, sis_mensaje_errores_tipo, sis_mensaje_errores_titulo, sis_mensaje_errores_mensaje, sis_mensaje_errores_icono, sis_mensaje_errores_modulo, sis_mensaje_errores_entidad, sis_mensaje_errores_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_mensaje_errores_tiempo, sis_mensaje_errores_posicion) VALUES (35, 'REGISTRO_GUARDADO', 'EXITO', 'Registro guardado', 'Registro guardado correctamente.', 'success', 'SISTEMA', 'GENERAL', true, 1, 1, '2026-06-04 18:20:02.040211', '2026-06-05 05:18:08.974975', 5000, 2);
+INSERT INTO public.sis_mensaje_errores (sis_mensaje_errores_id, sis_mensaje_errores_codigo, sis_mensaje_errores_tipo, sis_mensaje_errores_titulo, sis_mensaje_errores_mensaje, sis_mensaje_errores_icono, sis_mensaje_errores_modulo, sis_mensaje_errores_entidad, sis_mensaje_errores_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_mensaje_errores_tiempo, sis_mensaje_errores_posicion) VALUES (38, 'REGISTROS_LISTADOS', 'EXITO', 'Registros listados', 'Registros listados correctamente.', 'success', 'SISTEMA', 'GENERAL', true, 1, 1, '2026-06-04 20:22:35.433214', '2026-06-05 05:18:08.974975', 5000, 2);
+INSERT INTO public.sis_mensaje_errores (sis_mensaje_errores_id, sis_mensaje_errores_codigo, sis_mensaje_errores_tipo, sis_mensaje_errores_titulo, sis_mensaje_errores_mensaje, sis_mensaje_errores_icono, sis_mensaje_errores_modulo, sis_mensaje_errores_entidad, sis_mensaje_errores_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_mensaje_errores_tiempo, sis_mensaje_errores_posicion) VALUES (50, 'CONFIRMAR_ELIMINAR_BODEGA', 'CONFIRMACION', 'Eliminar bodega', 'La bodega se eliminara logicamente si no tiene stock ni movimientos.', 'warning', 'INVENTARIO', 'INV_BODEGA', true, 1, 1, '2026-06-04 20:22:35.433214', '2026-06-06 18:01:09.75182', 0, 4);
+INSERT INTO public.sis_mensaje_errores (sis_mensaje_errores_id, sis_mensaje_errores_codigo, sis_mensaje_errores_tipo, sis_mensaje_errores_titulo, sis_mensaje_errores_mensaje, sis_mensaje_errores_icono, sis_mensaje_errores_modulo, sis_mensaje_errores_entidad, sis_mensaje_errores_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_mensaje_errores_tiempo, sis_mensaje_errores_posicion) VALUES (51, 'CONFIRMAR_INACTIVAR_CLIENTE', 'CONFIRMACION', 'Inactivar cliente', '¿Desea inactivar este cliente?', 'warning', 'VENTAS', 'VEN_CLIENTE', true, 1, NULL, '2026-06-10 18:14:13.216204', NULL, 0, 4);
+INSERT INTO public.sis_mensaje_errores (sis_mensaje_errores_id, sis_mensaje_errores_codigo, sis_mensaje_errores_tipo, sis_mensaje_errores_titulo, sis_mensaje_errores_mensaje, sis_mensaje_errores_icono, sis_mensaje_errores_modulo, sis_mensaje_errores_entidad, sis_mensaje_errores_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_mensaje_errores_tiempo, sis_mensaje_errores_posicion) VALUES (52, 'CONFIRMAR_ANULAR_PROFORMA', 'CONFIRMACION', 'Anular proforma', '¿Desea anular esta proforma? Esta acción no se puede deshacer.', 'warning', 'VENTAS', 'VEN_DOCUMENTO', true, 1, NULL, '2026-06-13 11:50:29.358239', NULL, 0, 4);
+INSERT INTO public.sis_mensaje_errores (sis_mensaje_errores_id, sis_mensaje_errores_codigo, sis_mensaje_errores_tipo, sis_mensaje_errores_titulo, sis_mensaje_errores_mensaje, sis_mensaje_errores_icono, sis_mensaje_errores_modulo, sis_mensaje_errores_entidad, sis_mensaje_errores_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_mensaje_errores_tiempo, sis_mensaje_errores_posicion) VALUES (53, 'CONFIRMAR_FACTURAR_PROFORMA', 'CONFIRMACION', 'Facturar proforma', '¿Confirma la facturación de la proforma con las cantidades indicadas?', 'question', 'VENTAS', 'VEN_DOCUMENTO', true, 1, NULL, '2026-06-13 11:50:29.358239', NULL, 0, 4);
+INSERT INTO public.sis_mensaje_errores (sis_mensaje_errores_id, sis_mensaje_errores_codigo, sis_mensaje_errores_tipo, sis_mensaje_errores_titulo, sis_mensaje_errores_mensaje, sis_mensaje_errores_icono, sis_mensaje_errores_modulo, sis_mensaje_errores_entidad, sis_mensaje_errores_activo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica, sis_mensaje_errores_tiempo, sis_mensaje_errores_posicion) VALUES (54, 'EMPRESA_DESCUENTO_INVALIDO', 'ERROR', 'Descuento invalido', 'El porcentaje de descuento maximo debe estar entre 0 y 100.', 'error', 'SISTEMA', 'SIS_EMPRESA', true, 1, NULL, '2026-07-27 23:40:55.200989', NULL, 0, 4);
+
+-- sis_menu
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (2, 'Empresas', 1, 'bi bi-buildings', '/sistema/empresas', 1, 1, 'M', 1, NULL, '2026-06-02 00:39:57.093308', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (3, 'Ver empresa', 2, 'bi bi-eye', '/sistema/empresas/ver', 1, 1, 'B', 1, NULL, '2026-06-02 00:39:57.093308', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (4, 'Crear empresa', 2, 'bi bi-building-add', '/sistema/empresas/crear', 2, 1, 'B', 1, NULL, '2026-06-02 00:39:57.093308', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (5, 'Editar empresa', 2, 'bi bi-pencil-square', '/sistema/empresas/editar', 3, 1, 'B', 1, NULL, '2026-06-02 00:39:57.093308', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (6, 'Activar empresa', 2, 'bi bi-toggle-on', '/sistema/empresas/activar', 4, 1, 'B', 1, NULL, '2026-06-02 00:39:57.093308', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (7, 'Inactivar empresa', 2, 'bi bi-toggle-off', '/sistema/empresas/inactivar', 5, 1, 'B', 1, NULL, '2026-06-02 00:39:57.093308', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (8, 'Eliminar empresa', 2, 'bi bi-trash3', '/sistema/empresas/eliminar', 6, 1, 'B', 1, NULL, '2026-06-02 00:39:57.093308', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (9, 'Usuarios', 1, 'bi bi-people', '/sistema/usuarios', 2, 1, 'M', 1, NULL, '2026-06-03 16:18:55.584954', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (10, 'Ver usuario', 9, 'bi bi-eye', '/sistema/usuarios/ver', 1, 1, 'B', 1, NULL, '2026-06-03 16:18:55.584954', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (11, 'Crear usuario', 9, 'bi bi-person-plus', '/sistema/usuarios/crear', 2, 1, 'B', 1, NULL, '2026-06-03 16:18:55.584954', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (12, 'Editar usuario', 9, 'bi bi-pencil-square', '/sistema/usuarios/editar', 3, 1, 'B', 1, NULL, '2026-06-03 16:18:55.584954', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (13, 'Activar usuario', 9, 'bi bi-toggle-on', '/sistema/usuarios/activar', 4, 1, 'B', 1, NULL, '2026-06-03 16:18:55.584954', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (14, 'Inactivar usuario', 9, 'bi bi-toggle-off', '/sistema/usuarios/inactivar', 5, 1, 'B', 1, NULL, '2026-06-03 16:18:55.584954', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (15, 'Bloquear usuario', 9, 'bi bi-person-lock', '/sistema/usuarios/bloquear', 6, 1, 'B', 1, NULL, '2026-06-03 16:18:55.584954', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (16, 'Eliminar usuario', 9, 'bi bi-trash3', '/sistema/usuarios/eliminar', 7, 1, 'B', 1, NULL, '2026-06-03 16:18:55.584954', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (17, 'Restablecer clave', 9, 'bi bi-key', '/sistema/usuarios/restablecer-clave', 8, 1, 'B', 1, NULL, '2026-06-03 16:18:55.584954', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (18, 'Perfiles / Roles', 1, 'bi bi-person-gear', '/sistema/perfiles', 3, 1, 'M', 1, NULL, '2026-06-03 18:54:56.748556', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (19, 'Inactivar perfil', 18, 'bi bi-toggle-off', '/sistema/perfiles/inactivar', 6, 1, 'B', 1, NULL, '2026-06-03 18:54:56.748556', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (20, 'Eliminar perfil', 18, 'bi bi-trash3', '/sistema/perfiles/eliminar', 7, 1, 'B', 1, NULL, '2026-06-03 18:54:56.748556', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (21, 'Activar perfil', 18, 'bi bi-toggle-on', '/sistema/perfiles/activar', 5, 1, 'B', 1, NULL, '2026-06-03 18:54:56.748556', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (22, 'Editar perfil', 18, 'bi bi-pencil-square', '/sistema/perfiles/editar', 3, 1, 'B', 1, NULL, '2026-06-03 18:54:56.748556', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (23, 'Ver perfil', 18, 'bi bi-eye', '/sistema/perfiles/ver', 1, 1, 'B', 1, NULL, '2026-06-03 18:54:56.748556', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (24, 'Guardar permisos', 18, 'bi bi-shield-check', '/sistema/perfiles/permisos', 4, 1, 'B', 1, NULL, '2026-06-03 18:54:56.748556', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (25, 'Crear perfil', 18, 'bi bi-person-plus', '/sistema/perfiles/crear', 2, 1, 'B', 1, NULL, '2026-06-03 18:54:56.748556', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (27, 'Ver menu', 26, 'bi bi-eye', '/sistema/menus/ver', 1, 1, 'B', 1, NULL, '2026-06-04 12:46:44.371149', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (28, 'Inactivar menu', 26, 'bi bi-toggle-off', '/sistema/menus/inactivar', 5, 1, 'B', 1, NULL, '2026-06-04 12:46:44.371149', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (29, 'Activar menu', 26, 'bi bi-toggle-on', '/sistema/menus/activar', 4, 1, 'B', 1, NULL, '2026-06-04 12:46:44.371149', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (30, 'Editar menu', 26, 'bi bi-pencil-square', '/sistema/menus/editar', 3, 1, 'B', 1, NULL, '2026-06-04 12:46:44.371149', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (31, 'Crear menu', 26, 'bi bi-plus-square', '/sistema/menus/crear', 2, 1, 'B', 1, NULL, '2026-06-04 12:46:44.371149', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (36, 'Configuración', 1, 'bi bi-gear-wide-connected', '/sistema/configuracion', 5, 1, 'M', 1, NULL, '2026-06-04 13:06:17.384545', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (54, 'Estados', 36, 'bi bi-toggle2-on', '/sistema/configuracion/estados', 1, 1, 'M', 1, NULL, '2026-06-04 14:27:38.239603', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (56, 'Mensajes Error', 36, 'bi bi-chat-left-text', '/sistema/configuracion/mensajes-error', 2, 1, 'M', 1, NULL, '2026-06-04 14:27:38.239603', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (26, 'Menus', 1, 'bi bi-menu-button-wide', '/sistema/menus', 4, 1, 'M', 1, 1, '2026-06-04 12:46:44.371149', '2026-06-06 18:26:19.762103');
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (55, 'Documento', 36, 'bi bi-receipt-cutoff', '/sistema/configuracion/tipos-documento', 3, 1, 'M', 1, 1, '2026-06-04 14:27:38.239603', '2026-06-09 00:00:18.639327');
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (1, 'Sistema', NULL, 'bi bi-sliders', '/sistema', 50, 1, 'M', 1, 1, '2026-06-02 00:39:57.093308', '2026-06-12 11:20:39.053728');
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (38, 'Ver configuración', 36, 'bi bi-eye', '/sistema/configuracion/ver', 1, 0, 'B', 1, 1, '2026-06-04 13:06:17.384545', '2026-06-04 14:31:57.823244');
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (37, 'Inactivar estado', 54, 'bi bi-toggle-off', '/sistema/configuracion/estados/inactivar', 5, 1, 'B', 1, 1, '2026-06-04 13:06:17.384545', '2026-06-04 14:31:57.823244');
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (40, 'Activar estado', 54, 'bi bi-toggle-on', '/sistema/configuracion/estados/activar', 4, 1, 'B', 1, 1, '2026-06-04 13:06:17.384545', '2026-06-04 14:31:57.823244');
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (42, 'Editar estado', 54, 'bi bi-pencil-square', '/sistema/configuracion/estados/editar', 3, 1, 'B', 1, 1, '2026-06-04 13:06:17.384545', '2026-06-04 14:31:57.823244');
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (45, 'Crear estado', 54, 'bi bi-plus-square', '/sistema/configuracion/estados/crear', 2, 1, 'B', 1, 1, '2026-06-04 13:06:17.384545', '2026-06-04 14:31:57.823244');
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (41, 'Crear mensaje error', 56, 'bi bi-plus-square', '/sistema/configuracion/mensajes-error/crear', 6, 1, 'B', 1, 1, '2026-06-04 13:06:17.384545', '2026-06-04 14:31:57.823244');
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (44, 'Editar mensaje error', 56, 'bi bi-pencil-square', '/sistema/configuracion/mensajes-error/editar', 7, 1, 'B', 1, 1, '2026-06-04 13:06:17.384545', '2026-06-04 14:31:57.823244');
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (39, 'Activar mensaje error', 56, 'bi bi-toggle-on', '/sistema/configuracion/mensajes-error/activar', 8, 1, 'B', 1, 1, '2026-06-04 13:06:17.384545', '2026-06-04 14:31:57.823244');
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (43, 'Inactivar mensaje error', 56, 'bi bi-toggle-off', '/sistema/configuracion/mensajes-error/inactivar', 9, 1, 'B', 1, 1, '2026-06-04 13:06:17.384545', '2026-06-04 14:31:57.823244');
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (50, 'Crear tipo documento', 55, 'bi bi-plus-square', '/sistema/configuracion/tipos-documento/crear', 40, 1, 'B', 1, 1, '2026-06-04 14:10:45.502228', '2026-06-04 14:31:57.823244');
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (47, 'Editar tipo documento', 55, 'bi bi-pencil-square', '/sistema/configuracion/tipos-documento/editar', 41, 1, 'B', 1, 1, '2026-06-04 14:10:45.502228', '2026-06-04 14:31:57.823244');
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (48, 'Activar tipo documento', 55, 'bi bi-toggle-on', '/sistema/configuracion/tipos-documento/activar', 42, 1, 'B', 1, 1, '2026-06-04 14:10:45.502228', '2026-06-04 14:31:57.823244');
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (51, 'Inactivar tipo documento', 55, 'bi bi-toggle-off', '/sistema/configuracion/tipos-documento/inactivar', 43, 1, 'B', 1, 1, '2026-06-04 14:10:45.502228', '2026-06-04 14:31:57.823244');
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (59, 'Editar bodega', 58, 'bi bi-pencil-square', '/inventario/bodegas/editar', 3, 1, 'B', 1, NULL, '2026-06-04 16:54:21.732678', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (60, 'Eliminar bodega', 58, 'bi bi-trash3', '/inventario/bodegas/eliminar', 6, 1, 'B', 1, NULL, '2026-06-04 16:54:21.732678', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (57, 'Inventario', NULL, 'bi bi-box-seam', '/inventario', 1, 1, 'M', 1, 1, '2026-06-04 16:54:21.732678', '2026-06-06 18:25:42.456766');
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (58, 'Bodegas', 57, 'bi bi-buildings', '/inventario/bodegas', 2, 1, 'M', 1, 1, '2026-06-04 16:54:21.732678', '2026-06-06 18:34:52.292143');
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (52, 'Crear secuencia', 55, 'bi bi-plus-square', '/sistema/configuracion/secuencias/crear', 44, 1, 'B', 1, 1, '2026-06-04 14:10:45.502228', '2026-06-04 14:31:57.823244');
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (65, 'Categorias', 57, 'bi bi-tags', '/inventario/categorias', 3, 1, 'M', 1, 1, '2026-06-04 17:36:54.435734', '2026-07-28 06:39:13.20493');
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (66, 'Marcas', 57, 'bi bi-bookmark-star', '/inventario/marcas', 4, 1, 'M', 1, 1, '2026-06-04 17:36:54.435734', '2026-07-28 06:39:24.491122');
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (53, 'Activar secuencia', 55, 'bi bi-toggle-on', '/sistema/configuracion/secuencias/activar', 46, 1, 'B', 1, 1, '2026-06-04 14:10:45.502228', '2026-06-04 14:31:57.823244');
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (46, 'Editar secuencia', 55, 'bi bi-pencil-square', '/sistema/configuracion/secuencias/editar', 45, 1, 'B', 1, 1, '2026-06-04 14:10:45.502228', '2026-06-04 14:31:57.823244');
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (49, 'Inactivar secuencia', 55, 'bi bi-toggle-off', '/sistema/configuracion/secuencias/inactivar', 47, 1, 'B', 1, 1, '2026-06-04 14:10:45.502228', '2026-06-04 14:31:57.823244');
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (61, 'Inactivar bodega', 58, 'bi bi-toggle-off', '/inventario/bodegas/inactivar', 5, 1, 'B', 1, NULL, '2026-06-04 16:54:21.732678', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (62, 'Ver bodegas', 58, 'bi bi-eye', '/inventario/bodegas/ver', 1, 1, 'B', 1, NULL, '2026-06-04 16:54:21.732678', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (63, 'Crear bodega', 58, 'bi bi-plus-square', '/inventario/bodegas/crear', 2, 1, 'B', 1, NULL, '2026-06-04 16:54:21.732678', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (64, 'Activar bodega', 58, 'bi bi-toggle-on', '/inventario/bodegas/activar', 4, 1, 'B', 1, NULL, '2026-06-04 16:54:21.732678', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (67, 'Productos', 57, 'bi bi-box2-heart', '/inventario/productos', 2, 1, 'M', 1, NULL, '2026-06-04 17:36:54.435734', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (68, 'Activar marca', 66, 'bi bi-toggle-on', '/inventario/marcas/activar', 4, 1, 'B', 1, NULL, '2026-06-04 17:36:54.435734', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (69, 'Ver categorias', 65, 'bi bi-eye', '/inventario/categorias/ver', 1, 1, 'B', 1, NULL, '2026-06-04 17:36:54.435734', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (70, 'Crear producto', 67, 'bi bi-plus-square', '/inventario/productos/crear', 2, 1, 'B', 1, NULL, '2026-06-04 17:36:54.435734', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (72, 'Inactivar categoria', 65, 'bi bi-toggle-off', '/inventario/categorias/inactivar', 5, 1, 'B', 1, NULL, '2026-06-04 17:36:54.435734', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (73, 'Editar producto', 67, 'bi bi-pencil-square', '/inventario/productos/editar', 3, 1, 'B', 1, NULL, '2026-06-04 17:36:54.435734', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (74, 'Editar marca', 66, 'bi bi-pencil-square', '/inventario/marcas/editar', 3, 1, 'B', 1, NULL, '2026-06-04 17:36:54.435734', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (75, 'Activar producto', 67, 'bi bi-toggle-on', '/inventario/productos/activar', 4, 1, 'B', 1, NULL, '2026-06-04 17:36:54.435734', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (76, 'Activar categoria', 65, 'bi bi-toggle-on', '/inventario/categorias/activar', 4, 1, 'B', 1, NULL, '2026-06-04 17:36:54.435734', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (77, 'Ver productos', 67, 'bi bi-eye', '/inventario/productos/ver', 1, 1, 'B', 1, NULL, '2026-06-04 17:36:54.435734', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (78, 'Ver marcas', 66, 'bi bi-eye', '/inventario/marcas/ver', 1, 1, 'B', 1, NULL, '2026-06-04 17:36:54.435734', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (79, 'Inactivar producto', 67, 'bi bi-toggle-off', '/inventario/productos/inactivar', 5, 1, 'B', 1, NULL, '2026-06-04 17:36:54.435734', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (81, 'Editar categoria', 65, 'bi bi-pencil-square', '/inventario/categorias/editar', 3, 1, 'B', 1, NULL, '2026-06-04 17:36:54.435734', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (82, 'Inactivar marca', 66, 'bi bi-toggle-off', '/inventario/marcas/inactivar', 5, 1, 'B', 1, NULL, '2026-06-04 17:36:54.435734', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (83, 'Subir imagen producto', 67, 'bi bi-cloud-upload', '/inventario/productos/archivos/subir', 21, 1, 'B', 1, NULL, '2026-06-05 17:50:21.811106', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (84, 'Eliminar imagen producto', 67, 'bi bi-trash3', '/inventario/productos/archivos/eliminar', 24, 1, 'B', 1, NULL, '2026-06-05 17:50:21.811106', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (85, 'Ver galeria producto', 67, 'bi bi-images', '/inventario/productos/archivos/listar', 20, 1, 'B', 1, NULL, '2026-06-05 17:50:21.811106', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (86, 'Ver imagen producto', 67, 'bi bi-image', '/inventario/productos/archivos/ver', 22, 1, 'B', 1, NULL, '2026-06-05 17:50:21.811106', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (87, 'Principal imagen producto', 67, 'bi bi-star', '/inventario/productos/archivos/principal', 23, 1, 'B', 1, NULL, '2026-06-05 17:50:21.811106', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (89, 'Confirmar importacion', 88, 'bi bi-check2-square', '/inventario/stock/confirmar-importacion', 4, 1, 'B', 1, NULL, '2026-06-05 23:55:08.386721', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (90, 'Importar stock', 88, 'bi bi-file-earmark-arrow-up', '/inventario/stock/importar', 3, 1, 'B', 1, NULL, '2026-06-05 23:55:08.386721', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (91, 'Ver stock', 88, 'bi bi-eye', '/inventario/stock/ver', 1, 1, 'B', 1, NULL, '2026-06-05 23:55:08.386721', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (92, 'Descargar plantilla', 88, 'bi bi-filetype-csv', '/inventario/stock/plantilla', 5, 1, 'B', 1, NULL, '2026-06-05 23:55:08.386721', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (93, 'Registrar saldo', 88, 'bi bi-plus-square', '/inventario/stock/registrar', 2, 1, 'B', 1, NULL, '2026-06-05 23:55:08.386721', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (88, 'Stock', 57, 'bi bi-boxes', '/inventario/stock', 1, 1, 'M', 1, 1, '2026-06-05 23:55:08.386721', '2026-06-06 18:34:45.751053');
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (94, 'Kardex', 57, 'bi bi-activity', '/inventario/kardex', 6, 1, 'M', 1, NULL, '2026-06-06 19:00:11.216798', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (95, 'Ver kardex', 94, 'bi bi-eye', '/inventario/kardex/ver', 1, 1, 'B', 1, NULL, '2026-06-06 19:00:11.216798', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (96, 'Detalle kardex', 94, 'bi bi-list-columns-reverse', '/inventario/kardex/detalle', 2, 1, 'B', 1, NULL, '2026-06-06 19:00:11.216798', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (97, 'Ver PDF kardex', 94, 'bi bi-filetype-pdf', '/inventario/kardex/documento', 3, 1, 'B', 1, NULL, '2026-06-07 17:49:00.818656', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (98, 'Movimientos internos', 57, 'bi bi-arrow-left-right', '/inventario/movimientos', 7, 1, 'M', 1, NULL, '2026-06-07 23:26:05.680416', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (99, 'Ver movimientos', 98, 'bi bi-eye', '/inventario/movimientos/ver', 1, 1, 'B', 1, NULL, '2026-06-07 23:26:05.680416', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (100, 'Crear transferencia', 98, 'bi bi-arrow-left-right', '/inventario/movimientos/transferencia', 4, 1, 'B', 1, NULL, '2026-06-07 23:26:05.680416', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (101, 'Aprobar movimiento', 98, 'bi bi-check2-square', '/inventario/movimientos/aprobar', 6, 1, 'B', 1, NULL, '2026-06-07 23:26:05.680416', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (102, 'Recibir transferencia', 98, 'bi bi-box-arrow-in-down', '/inventario/movimientos/recibir', 7, 1, 'B', 1, NULL, '2026-06-07 23:26:05.680416', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (103, 'Crear ajuste egreso', 98, 'bi bi-dash-circle', '/inventario/movimientos/ajuste-egreso', 3, 1, 'B', 1, NULL, '2026-06-07 23:26:05.680416', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (104, 'Anular movimiento', 98, 'bi bi-x-octagon', '/inventario/movimientos/anular', 8, 1, 'B', 1, NULL, '2026-06-07 23:26:05.680416', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (105, 'Crear ajuste ingreso', 98, 'bi bi-plus-circle', '/inventario/movimientos/ajuste-ingreso', 2, 1, 'B', 1, NULL, '2026-06-07 23:26:05.680416', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (106, 'Buscar productos', 98, 'bi bi-search', '/inventario/movimientos/productos', 9, 1, 'B', 1, NULL, '2026-06-07 23:26:05.680416', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (107, 'Editar movimiento', 98, 'bi bi-pencil-square', '/inventario/movimientos/editar', 5, 1, 'B', 1, NULL, '2026-06-07 23:26:05.680416', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (108, 'Usuarios bodega', 58, 'bi bi-people', '/inventario/bodegas/usuarios', 7, 1, 'B', 1, NULL, '2026-06-08 15:35:49.06596', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (109, 'Activar usuario bodega', 58, 'bi bi-toggle-on', '/inventario/bodegas/usuarios/activar', 9, 1, 'B', 1, NULL, '2026-06-08 15:35:49.06596', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (110, 'Guardar usuario bodega', 58, 'bi bi-save2', '/inventario/bodegas/usuarios/guardar', 8, 1, 'B', 1, NULL, '2026-06-08 15:35:49.06596', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (111, 'Inactivar usuario bodega', 58, 'bi bi-toggle-off', '/inventario/bodegas/usuarios/inactivar', 10, 1, 'B', 1, NULL, '2026-06-08 15:35:49.06596', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (112, 'Ver detalle movimiento', 98, 'bi bi-eye', '/inventario/movimientos/detalle', 20, 1, 'B', 1, NULL, '2026-06-08 23:06:51.117204', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (113, 'Anular procesado o recibido', 98, 'bi bi-x-octagon-fill', '/inventario/movimientos/anular-procesado', 21, 1, 'B', 1, NULL, '2026-06-08 23:06:51.117204', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (114, 'Compras', NULL, 'bi bi-cart3', '/compras', 30, 1, 'M', 1, NULL, '2026-06-09 14:10:41.347155', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (115, 'Proveedores', 114, 'bi bi-people', '/compras/proveedores', 10, 1, 'M', 1, NULL, '2026-06-09 14:10:41.359023', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (116, 'Editar proveedor', 115, 'bi bi-dot', '/compras/proveedores/editar', 3, 1, 'B', 1, NULL, '2026-06-09 14:10:41.35956', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (117, 'Ver proveedores', 115, 'bi bi-dot', '/compras/proveedores/ver', 1, 1, 'B', 1, NULL, '2026-06-09 14:10:41.35956', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (118, 'Activar proveedor', 115, 'bi bi-dot', '/compras/proveedores/activar', 4, 1, 'B', 1, NULL, '2026-06-09 14:10:41.35956', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (119, 'Inactivar proveedor', 115, 'bi bi-dot', '/compras/proveedores/inactivar', 5, 1, 'B', 1, NULL, '2026-06-09 14:10:41.35956', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (120, 'Crear proveedor', 115, 'bi bi-dot', '/compras/proveedores/crear', 2, 1, 'B', 1, NULL, '2026-06-09 14:10:41.35956', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (123, 'Ver documentos', 121, 'bi bi-dot', '/compras/documentos/ver', 1, 1, 'B', 1, NULL, '2026-06-09 17:46:36.259206', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (124, 'Anular documento', 121, 'bi bi-dot', '/compras/documentos/anular', 4, 1, 'B', 1, NULL, '2026-06-09 17:46:36.259206', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (125, 'Crear compra', 121, 'bi bi-dot', '/compras/documentos/crear', 2, 1, 'B', 1, 1, '2026-06-09 17:46:36.259206', '2026-06-09 18:11:17.707339');
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (122, 'Confirmar compra', 121, 'bi bi-dot', '/compras/documentos/registrar', 3, 1, 'B', 1, 1, '2026-06-09 17:46:36.259206', '2026-06-12 11:06:04.704267');
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (126, 'Ventas', NULL, 'bi bi-receipt', '/ventas', 40, 1, 'M', 1, NULL, '2026-06-10 18:13:07.298289', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (127, 'Clientes', 126, 'bi bi-person-lines-fill', '/ventas/clientes', 10, 1, 'M', 1, NULL, '2026-06-10 18:13:07.302609', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (128, 'Inactivar cliente', 127, 'bi bi-dot', '/ventas/clientes/inactivar', 5, 1, 'B', 1, NULL, '2026-06-10 18:13:07.305963', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (129, 'Activar cliente', 127, 'bi bi-dot', '/ventas/clientes/activar', 4, 1, 'B', 1, NULL, '2026-06-10 18:13:07.305963', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (130, 'Crear cliente', 127, 'bi bi-dot', '/ventas/clientes/crear', 2, 1, 'B', 1, NULL, '2026-06-10 18:13:07.305963', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (131, 'Ver clientes', 127, 'bi bi-dot', '/ventas/clientes/ver', 1, 1, 'B', 1, NULL, '2026-06-10 18:13:07.305963', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (132, 'Editar cliente', 127, 'bi bi-dot', '/ventas/clientes/editar', 3, 1, 'B', 1, NULL, '2026-06-10 18:13:07.305963', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (121, 'Documentos', 114, 'bi bi-receipt', '/compras/documentos', 20, 1, 'M', 1, 1, '2026-06-09 17:46:36.257968', '2026-06-10 21:57:12.903977');
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (133, 'Procesar TXT SRI', 121, 'bi bi-file-earmark-text', '/compras/documentos/procesar-txt', 6, 1, 'B', 1, NULL, '2026-06-10 22:12:06.679376', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (134, 'Subir XML SRI', 121, 'bi bi-file-earmark-code', '/compras/documentos/subir-xml', 5, 1, 'B', 1, NULL, '2026-06-10 22:12:06.679376', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (141, 'Editar código proveedor', 115, 'bi bi-dot', '/compras/codigos-proveedor/editar', 12, 1, 'B', 1, NULL, '2026-06-12 12:15:07.984738', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (142, 'Ver códigos proveedor', 115, 'bi bi-dot', '/compras/codigos-proveedor/ver', 10, 1, 'B', 1, NULL, '2026-06-12 12:15:07.984738', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (143, 'Eliminar código proveedor', 115, 'bi bi-dot', '/compras/codigos-proveedor/eliminar', 14, 1, 'B', 1, NULL, '2026-06-12 12:15:07.984738', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (144, 'Crear código proveedor', 115, 'bi bi-dot', '/compras/codigos-proveedor/crear', 11, 1, 'B', 1, NULL, '2026-06-12 12:15:07.984738', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (145, 'Inactivar código proveedor', 115, 'bi bi-dot', '/compras/codigos-proveedor/inactivar', 13, 1, 'B', 1, NULL, '2026-06-12 12:15:07.984738', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (146, 'Proformas', 126, 'bi bi-file-earmark-ruled', '/ventas/proformas', 20, 1, 'M', 1, NULL, '2026-06-13 11:50:29.358239', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (147, 'Facturar proforma', 146, 'bi bi-dot', '/ventas/proformas/facturar', 5, 1, 'B', 1, NULL, '2026-06-13 11:50:29.358239', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (148, 'Editar proforma', 146, 'bi bi-dot', '/ventas/proformas/editar', 3, 1, 'B', 1, NULL, '2026-06-13 11:50:29.358239', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (149, 'Crear proforma', 146, 'bi bi-dot', '/ventas/proformas/crear', 2, 1, 'B', 1, NULL, '2026-06-13 11:50:29.358239', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (150, 'Aprobar precio', 146, 'bi bi-dot', '/ventas/proformas/aprobar-precio', 6, 1, 'B', 1, NULL, '2026-06-13 11:50:29.358239', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (151, 'Anular proforma', 146, 'bi bi-dot', '/ventas/proformas/anular', 4, 1, 'B', 1, NULL, '2026-06-13 11:50:29.358239', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (152, 'Ver proformas', 146, 'bi bi-dot', '/ventas/proformas/ver', 1, 1, 'B', 1, NULL, '2026-06-13 11:50:29.358239', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (153, 'PDF Proforma', 146, 'bi bi-dot', '/ventas/proformas/pdf', 7, 1, 'B', 1, NULL, '2026-06-15 18:01:39.759352', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (154, 'Facturas', 126, 'bi bi-receipt', '/ventas/facturas', 25, 1, 'M', 1, NULL, '2026-06-15 19:25:27.493329', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (155, 'Editar factura', 154, 'bi bi-dot', '/ventas/facturas/editar', 3, 1, 'B', 1, NULL, '2026-06-15 19:25:27.494477', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (156, 'Ver facturas', 154, 'bi bi-dot', '/ventas/facturas/ver', 1, 1, 'B', 1, NULL, '2026-06-15 19:25:27.494477', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (157, 'Crear factura', 154, 'bi bi-dot', '/ventas/facturas/crear', 2, 1, 'B', 1, NULL, '2026-06-15 19:25:27.494477', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (158, 'Anular factura', 154, 'bi bi-dot', '/ventas/facturas/anular', 4, 1, 'B', 1, NULL, '2026-06-15 19:25:27.494477', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (159, 'PDF Factura', 154, 'bi bi-dot', '/ventas/facturas/pdf', 7, 1, 'B', 1, NULL, '2026-06-16 00:22:35.383616', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (161, 'Enviar al SRI', 154, 'bi bi-send', '/ventas/facturas/enviar-sri', 60, 1, 'B', 1, NULL, '2026-06-16 10:46:19.318941', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (162, 'Licencia', 36, 'bi bi-patch-check', '/sistema/configuracion/licencia', 4, 1, 'M', 1, NULL, '2026-06-16 21:06:12.519757', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (163, 'Ver licencia', 162, 'bi bi-eye', '/sistema/configuracion/licencia/ver', 1, 1, 'B', 1, NULL, '2026-06-16 21:06:12.519757', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (164, 'Activar licencia', 162, 'bi bi-upload', '/sistema/configuracion/licencia/activar', 2, 1, 'B', 1, NULL, '2026-06-16 21:06:12.519757', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (165, 'Generar licencia', 162, 'bi bi-file-earmark-arrow-down', '/sistema/configuracion/licencia/generar', 3, 1, 'B', 1, NULL, '2026-06-16 21:06:12.519757', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (71, 'Crear categoria', 67, 'bi bi-plus-square', '/inventario/categorias/crear', 6, 1, 'B', 1, NULL, '2026-06-04 17:36:54.435734', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (80, 'Crear marca', 67, 'bi bi-plus-square', '/inventario/marcas/crear', 7, 1, 'B', 1, NULL, '2026-06-04 17:36:54.435734', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (166, 'Editar forma de pago', 154, 'bi bi-dot', '/ventas/formas-pago/editar', 31, 1, 'B', 1, NULL, '2026-07-29 17:46:53.184941', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (167, 'Eliminar forma de pago', 154, 'bi bi-dot', '/ventas/formas-pago/eliminar', 33, 1, 'B', 1, NULL, '2026-07-29 17:46:53.184941', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (168, 'Crear forma de pago', 154, 'bi bi-dot', '/ventas/formas-pago/crear', 30, 1, 'B', 1, NULL, '2026-07-29 17:46:53.184941', NULL);
+INSERT INTO public.sis_menu (sis_menu_id, sis_menu_nombre, sis_menu_padre, sis_menu_icono, sis_menu_url, sis_menu_orden, sis_menu_estado, sis_menu_tipo, usuario_crea, usuario_modifica, fecha_crea, fecha_modifica) VALUES (169, 'Inactivar forma de pago', 154, 'bi bi-dot', '/ventas/formas-pago/inactivar', 32, 1, 'B', 1, NULL, '2026-07-29 17:46:53.184941', NULL);
+
+-- Ajustar los contadores de los catalogos para que los nuevos registros
+-- (creados desde el sistema) continuen despues del ultimo id insertado.
+DO $$
+DECLARE
+    r   record;
+    seq text;
+BEGIN
+    FOR r IN
+        SELECT * FROM (VALUES
+            ('sis_estado',          'sis_estado_id'),
+            ('sis_modulo',          'sis_modulo_id'),
+            ('sis_tipo_documento',  'sis_tipo_documento_id'),
+            ('sis_mensaje_errores', 'sis_mensaje_errores_id'),
+            ('sis_menu',            'sis_menu_id')
+        ) AS t(tabla, columna)
+    LOOP
+        seq := pg_get_serial_sequence('public.' || r.tabla, r.columna);
+        IF seq IS NULL THEN
+            RAISE EXCEPTION 'No se encontro la secuencia de %.%', r.tabla, r.columna;
+        END IF;
+        EXECUTE format('SELECT setval(%L, (SELECT max(%I) FROM public.%I))', seq, r.columna, r.tabla);
+    END LOOP;
+END $$;
 
 -- -----------------------------------------------------------------------------
--- 3. USUARIO ADMINISTRADOR
---    Correo : cescorp@hotmail.es
---    Clave  : (misma clave actual — hash Argon2id)
+-- 3. EMPRESA MASTER "INTESIS" + USUARIO SUPERUSUARIO + DATOS BASE
 -- -----------------------------------------------------------------------------
+DO $$
+DECLARE
+    v_empresa       BIGINT;
+    v_usuario       BIGINT;
+    v_perfil_super  BIGINT;
+    v_bodega        BIGINT;
+    v_est_empresa   BIGINT;
+    v_est_usuario   BIGINT;
+    v_est_bodega    BIGINT;
+    v_est_secuencia BIGINT;
+BEGIN
+    SELECT sis_estado_id INTO STRICT v_est_empresa FROM sis_estado
+     WHERE sis_estado_modulo = 'SISTEMA' AND sis_estado_entidad = 'SIS_EMPRESA' AND sis_estado_codigo = 'ACTIVO';
+    SELECT sis_estado_id INTO STRICT v_est_usuario FROM sis_estado
+     WHERE sis_estado_modulo = 'SISTEMA' AND sis_estado_entidad = 'SIS_USUARIOS' AND sis_estado_codigo = 'ACTIVO';
+    SELECT sis_estado_id INTO STRICT v_est_bodega FROM sis_estado
+     WHERE sis_estado_modulo = 'INVENTARIO' AND sis_estado_entidad = 'INV_BODEGA' AND sis_estado_codigo = 'ACTIVO';
+    SELECT sis_estado_id INTO STRICT v_est_secuencia FROM sis_estado
+     WHERE sis_estado_modulo = 'SISTEMA' AND sis_estado_entidad = 'SIS_SECUENCIAS' AND sis_estado_codigo = 'ACTIVO';
 
-INSERT INTO sis_usuarios (
-    sis_usuarios_id,
-    sis_usuarios_nombre,
-    sis_usuarios_correo,
-    sis_usuarios_password,
-    sis_estado_id,
-    usuario_crea
-)
-VALUES (
-    1,
-    'ADMINISTRADOR',
-    'cescorp@hotmail.es',
-    '$argon2id$v=19$m=65536,t=4,p=1$Li9yRzIwQS9PNEs3Q09GYg$226mv3mxLYP8G8wmVstIYqIwDTrd1WT5SbYOvUb/zqQ',
-    (SELECT sis_estado_id FROM sis_estado
-     WHERE sis_estado_modulo = 'SISTEMA'
-       AND sis_estado_entidad = 'SIS_USUARIOS'
-       AND sis_estado_codigo = 'ACTIVO' LIMIT 1),
-    1
-);
+    -- Empresa (usuario_crea = 1: el primer usuario que se crea abajo)
+    INSERT INTO sis_empresa (
+        sis_empresa_ruc, sis_empresa_razon_social, sis_empresa_nombre_comercial,
+        sis_empresa_direccion, sis_empresa_email,
+        sis_empresa_obligado_contabilidad, sis_empresa_contribuyente_especial,
+        sis_empresa_ambiente_sri, sis_estado_id, usuario_crea
+    ) VALUES (
+        '9999999999999', 'INTESIS', 'INTESIS',
+        'DIRECCION MATRIZ', 'cescorp@hotmail.es',
+        false, false,
+        '1', v_est_empresa, 1
+    ) RETURNING sis_empresa_id INTO v_empresa;
 
-SELECT setval(pg_get_serial_sequence('sis_usuarios', 'sis_usuarios_id'), 1, true);
+    -- Usuario (clave 276241, hash Argon2id como genera la aplicacion)
+    INSERT INTO sis_usuarios (sis_usuarios_nombre, sis_usuarios_correo, sis_usuarios_password, sis_estado_id, usuario_crea)
+    VALUES ('Cesar', 'cescorp@hotmail.es',
+            '$argon2id$v=19$m=65536,t=4,p=1$d1JWLmN1azhHQko4b2Y5MA$zd6WvSKh7pQknSrt1UgTKyq998e6GIwg8Bw2T3+vYuI',
+            v_est_usuario, 1)
+    RETURNING sis_usuarios_id INTO v_usuario;
 
--- -----------------------------------------------------------------------------
--- 4. PERFILES BASE
--- -----------------------------------------------------------------------------
+    IF v_usuario <> 1 THEN
+        RAISE EXCEPTION 'El primer usuario debia tener id 1 y tiene %', v_usuario;
+    END IF;
 
-INSERT INTO sis_perfil (sis_empresa_id, sis_perfil_codigo, sis_perfil_nombre, sis_perfil_estado, usuario_crea)
-VALUES
-    (1, 'SUPERUSUARIO',   'SUPERUSUARIO',      1, 1),
-    (1, 'GERENCIA',       'GERENCIA',           1, 1),
-    (1, 'CONTADOR',       'CONTADOR',           1, 1),
-    (1, 'GERENTE_VENTAS', 'GERENTE DE VENTAS',  1, 1),
-    (1, 'VENDEDOR',       'VENDEDOR',           1, 1),
-    (1, 'COMPRAS',        'COMPRAS',            1, 1),
-    (1, 'BODEGUERO',      'BODEGUERO',          1, 1);
+    -- Perfiles base (los mismos que crea EmpresaModelo::crear)
+    INSERT INTO sis_perfil (sis_empresa_id, sis_perfil_codigo, sis_perfil_nombre, sis_perfil_estado, usuario_crea)
+    VALUES
+        (v_empresa, 'SUPERUSUARIO',   'SUPERUSUARIO',     1, v_usuario),
+        (v_empresa, 'GERENCIA',       'GERENCIA',         1, v_usuario),
+        (v_empresa, 'CONTADOR',       'CONTADOR',         1, v_usuario),
+        (v_empresa, 'GERENTE_VENTAS', 'GERENTE DE VENTAS',1, v_usuario),
+        (v_empresa, 'VENDEDOR',       'VENDEDOR',         1, v_usuario),
+        (v_empresa, 'COMPRAS',        'COMPRAS',          1, v_usuario),
+        (v_empresa, 'BODEGUERO',      'BODEGUERO',        1, v_usuario);
 
--- -----------------------------------------------------------------------------
--- 5. ASIGNAR ADMIN → SUPERUSUARIO
--- -----------------------------------------------------------------------------
+    SELECT sis_perfil_id INTO STRICT v_perfil_super FROM sis_perfil
+     WHERE sis_empresa_id = v_empresa AND sis_perfil_codigo = 'SUPERUSUARIO';
 
-INSERT INTO sis_usuario_empresa (
-    sis_usuarios_id, sis_empresa_id, sis_perfil_id, sis_estado_id,
-    sis_usuario_empresa_predeterminada, usuario_crea
-)
-SELECT 1, 1, p.sis_perfil_id,
-    (SELECT sis_estado_id FROM sis_estado
-     WHERE sis_estado_modulo = 'SISTEMA'
-       AND sis_estado_entidad = 'SIS_USUARIOS'
-       AND sis_estado_codigo = 'ACTIVO' LIMIT 1),
-    true, 1
-FROM sis_perfil p
-WHERE p.sis_empresa_id = 1 AND p.sis_perfil_codigo = 'SUPERUSUARIO';
+    -- Permisos: SUPERUSUARIO todo; GERENCIA y CONTADOR solo empresas/usuarios
+    INSERT INTO sis_perfil_permisos (sis_empresa_id, sis_perfil_id, sis_menu_id, sis_perfil_permisos_estado, usuario_crea)
+    SELECT v_empresa, v_perfil_super, m.sis_menu_id, 1, v_usuario
+      FROM sis_menu m WHERE m.sis_menu_estado = 1;
 
--- -----------------------------------------------------------------------------
--- 6. PERMISOS
--- -----------------------------------------------------------------------------
+    INSERT INTO sis_perfil_permisos (sis_empresa_id, sis_perfil_id, sis_menu_id, sis_perfil_permisos_estado, usuario_crea)
+    SELECT v_empresa, p.sis_perfil_id, m.sis_menu_id, 1, v_usuario
+      FROM sis_perfil p CROSS JOIN sis_menu m
+     WHERE p.sis_empresa_id = v_empresa
+       AND p.sis_perfil_codigo IN ('GERENCIA', 'CONTADOR')
+       AND m.sis_menu_estado = 1
+       AND m.sis_menu_url IN ('/sistema', '/sistema/empresas', '/sistema/empresas/ver',
+                              '/sistema/usuarios', '/sistema/usuarios/ver');
 
-INSERT INTO sis_perfil_permisos (sis_empresa_id, sis_perfil_id, sis_menu_id, sis_perfil_permisos_estado, usuario_crea)
-SELECT 1, p.sis_perfil_id, m.sis_menu_id, 1, 1
-FROM sis_perfil p CROSS JOIN sis_menu m
-WHERE p.sis_empresa_id = 1
-  AND p.sis_perfil_codigo = 'SUPERUSUARIO'
-  AND m.sis_menu_estado = 1;
+    -- Usuario <-> empresa <-> perfil
+    INSERT INTO sis_usuario_empresa (sis_usuarios_id, sis_empresa_id, sis_perfil_id, sis_estado_id,
+                                     sis_usuario_empresa_predeterminada, usuario_crea)
+    VALUES (v_usuario, v_empresa, v_perfil_super, v_est_usuario, true, v_usuario);
 
-INSERT INTO sis_perfil_permisos (sis_empresa_id, sis_perfil_id, sis_menu_id, sis_perfil_permisos_estado, usuario_crea)
-SELECT 1, p.sis_perfil_id, m.sis_menu_id, 1, 1
-FROM sis_perfil p CROSS JOIN sis_menu m
-WHERE p.sis_empresa_id = 1
-  AND p.sis_perfil_codigo IN ('GERENCIA', 'CONTADOR')
-  AND m.sis_menu_url IN (
-      '/sistema', '/sistema/empresas', '/sistema/empresas/ver',
-      '/sistema/usuarios', '/sistema/usuarios/ver'
-  );
+    -- Bodega principal, asignada al usuario como predeterminada
+    INSERT INTO inv_bodega (sis_empresa_id, inv_bodega_codigo, inv_bodega_nombre, inv_bodega_descripcion,
+                            inv_bodega_es_principal, inv_bodega_establecimiento, inv_bodega_punto_emision,
+                            sis_estado_id, usuario_crea)
+    VALUES (v_empresa, 'BOD001', 'BODEGA PRINCIPAL', 'Bodega principal de la empresa',
+            true, '001', '001', v_est_bodega, v_usuario)
+    RETURNING inv_bodega_id INTO v_bodega;
 
--- -----------------------------------------------------------------------------
--- 7. BODEGA PRINCIPAL
--- -----------------------------------------------------------------------------
+    INSERT INTO inv_bodega_usuarios (sis_empresa_id, sis_usuarios_id, inv_bodega_id,
+                                     inv_bodega_usuarios_estado, inv_bodega_usuarios_predeterminada, usuario_crea)
+    VALUES (v_empresa, v_usuario, v_bodega, 1, true, v_usuario);
 
-INSERT INTO inv_bodega (
-    sis_empresa_id, inv_bodega_codigo, inv_bodega_nombre, inv_bodega_descripcion,
-    inv_bodega_es_principal, inv_bodega_establecimiento, inv_bodega_punto_emision,
-    sis_estado_id, usuario_crea
-)
-VALUES (
-    1, 'BOD001', 'BODEGA PRINCIPAL', 'Bodega principal de la empresa',
-    true, '001', '001',
-    (SELECT sis_estado_id FROM sis_estado
-     WHERE sis_estado_modulo = 'INVENTARIO'
-       AND sis_estado_entidad = 'INV_BODEGA'
-       AND sis_estado_codigo = 'ACTIVO' LIMIT 1),
-    1
-);
+    -- IVA (0% y 15%; el 15% es el predeterminado)
+    INSERT INTO sis_iva (sis_empresa_id, sis_iva_valor, sis_iva_estado, sis_iva_predeterminado, usuario_crea)
+    VALUES (v_empresa,  0.00, 1, false, v_usuario),
+           (v_empresa, 15.00, 1, true,  v_usuario);
 
--- -----------------------------------------------------------------------------
--- 8. IVA (tasas estándar Ecuador)
--- -----------------------------------------------------------------------------
+    -- Formas de pago base (las mismas que crea EmpresaModelo::crear)
+    INSERT INTO ven_forma_pago (sis_empresa_id, ven_forma_pago_nombre, ven_forma_pago_codigo_sri,
+                                ven_forma_pago_calculadora, ven_forma_pago_tipo, ven_forma_pago_estado, usuario_crea)
+    VALUES (v_empresa, 'EFECTIVO',        '01', 'S', 'EFECTIVO',        'A', v_usuario),
+           (v_empresa, 'TRANSFERENCIA',   '16', 'N', 'TRANSFERENCIA',   'A', v_usuario),
+           (v_empresa, 'TARJETA CRÉDITO', '19', 'N', 'TARJETA_CREDITO', 'A', v_usuario);
 
-INSERT INTO sis_iva (sis_empresa_id, sis_iva_valor, sis_iva_estado, usuario_crea)
-VALUES
-    (1,  0.00, 1, 1),
-    (1, 15.00, 1, 1);
+    -- Secuencias base 001-001 (las mismas que crea EmpresaModelo::crear)
+    INSERT INTO sis_secuencias (sis_empresa_id, sis_tipo_documento_id,
+                                sis_secuencias_establecimiento, sis_secuencias_punto_emision,
+                                sis_secuencias_desde, sis_secuencias_actual, sis_secuencias_hasta,
+                                sis_secuencias_observacion, sis_estado_id, usuario_crea)
+    SELECT v_empresa, td.sis_tipo_documento_id, '001', '001', 1, 1, 999999999,
+           'Secuencia base creada automaticamente', v_est_secuencia, v_usuario
+      FROM sis_tipo_documento td
+     WHERE (td.sis_tipo_documento_modulo, td.sis_tipo_documento_codigo) IN
+           (('VENTAS', 'FACTURA_VENTA'), ('VENTAS', 'NOTA_VENTA'), ('VENTAS', 'PROFORMA'),
+            ('INVENTARIO', 'AJUSTE'), ('INVENTARIO', 'TRANSFERENCIA'));
 
--- -----------------------------------------------------------------------------
--- 9. FORMAS DE PAGO
--- -----------------------------------------------------------------------------
-
-INSERT INTO ven_forma_pago (sis_empresa_id, ven_forma_pago_nombre, ven_forma_pago_estado, ven_forma_pago_solicitar_datos, ven_forma_pago_calculadora, ven_forma_pago_codigo_sri, usuario_crea)
-VALUES
-    (1, 'EFECTIVO',          'A', 'N', 'S', '01', 1),
-    (1, 'TARJETA DE CRÉDITO','A', 'S', 'N', '19', 1),
-    (1, 'TARJETA DE DÉBITO', 'A', 'S', 'N', '20', 1),
-    (1, 'TRANSFERENCIA',     'A', 'S', 'N', '16', 1),
-    (1, 'CHEQUE',            'A', 'S', 'N', '21', 1),
-    (1, 'CRÉDITO',           'A', 'N', 'N', '18', 1);
+    -- Licencia PAGO de 10 anios para los 6 modulos
+    INSERT INTO sis_licencia (sis_empresa_id, sis_modulo_id, sis_licencia_tipo,
+                              sis_licencia_fecha_inicio, sis_licencia_fecha_fin, sis_licencia_estado, usuario_crea)
+    SELECT v_empresa, mo.sis_modulo_id, 'PAGO',
+           current_date, (current_date + interval '10 years')::date, 'ACTIVO', v_usuario
+      FROM sis_modulo mo WHERE mo.sis_modulo_estado = 1;
+END $$;
 
 COMMIT;
+
+-- -----------------------------------------------------------------------------
+-- RESUMEN (solo informativo)
+-- -----------------------------------------------------------------------------
+SELECT e.sis_empresa_razon_social AS empresa, e.sis_empresa_ruc AS ruc,
+       u.sis_usuarios_correo AS usuario, p.sis_perfil_codigo AS perfil,
+       (SELECT count(*) FROM sis_licencia l WHERE l.sis_empresa_id = e.sis_empresa_id) AS modulos_licenciados,
+       (SELECT count(*) FROM sis_menu) AS menus
+  FROM sis_usuario_empresa ue
+  JOIN sis_empresa  e ON e.sis_empresa_id  = ue.sis_empresa_id
+  JOIN sis_usuarios u ON u.sis_usuarios_id = ue.sis_usuarios_id
+  JOIN sis_perfil   p ON p.sis_perfil_id   = ue.sis_perfil_id;

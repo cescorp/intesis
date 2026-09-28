@@ -12,6 +12,8 @@ use Intesis\Nucleo\ControladorComun;
 use Intesis\Nucleo\RegistroErrores;
 use Intesis\Nucleo\Sesion;
 use Intesis\Nucleo\Vista;
+use Intesis\Servicios\LicenciaCifradoServicio;
+use Intesis\Servicios\ValidadorIdentificacion;
 use Throwable;
 
 final class LicenciaControlador
@@ -25,7 +27,8 @@ final class LicenciaControlador
         private MenuModelo $menuModelo,
         private MensajeSistemaModelo $mensajeSistemaModelo,
         private Configuracion $configuracion,
-        private RegistroErrores $registroErrores
+        private RegistroErrores $registroErrores,
+        private LicenciaCifradoServicio $licenciaCifradoServicio
     ) {
     }
 
@@ -47,7 +50,6 @@ final class LicenciaControlador
             'menus'          => $this->menuModelo->listarMenusPorPerfil((int) $usuario['empresa_id'], (int) $usuario['perfil_id']),
             'licencias'      => $this->licenciaModelo->listar($empresaId),
             'modulos'        => $this->licenciaModelo->listarModulos(),
-            'empresas'       => $this->licenciaModelo->listarEmpresasActivas(),
             'esSuperusuario' => $esSuperusuario,
             'permisos'       => $this->obtenerPermisos($usuario),
             'mensaje'        => $this->sesion->consumirMensaje(),
@@ -56,7 +58,9 @@ final class LicenciaControlador
 
     /**
      * ***************************************************************************
-     * * PROCESA LA SUBIDA DEL ARCHIVO .JSON DE LICENCIA.
+     * * PROCESA LA SUBIDA DEL ARCHIVO .LIC DE LICENCIA (CIFRADO).
+     * * LA EMPRESA SE RESUELVE POR RUC CONTRA LA BASE LOCAL, NUNCA POR UN ID
+     * * INTERNO, PORQUE EL ARCHIVO SE GENERA EN OTRA INSTALACION/BASE DE DATOS.
      * ***************************************************************************
      */
     public function activar(): void
@@ -68,38 +72,46 @@ final class LicenciaControlador
             $archivo = $_FILES['licencia_json'] ?? null;
 
             if ($archivo === null || ($archivo['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
-                throw new \InvalidArgumentException('Debe seleccionar un archivo de licencia .json.');
+                throw new \InvalidArgumentException('Debe seleccionar un archivo de licencia .lic.');
             }
             if ($archivo['error'] !== UPLOAD_ERR_OK) {
                 throw new \RuntimeException('Error al subir el archivo.');
             }
 
             $extension = strtolower((string) pathinfo($archivo['name'], PATHINFO_EXTENSION));
-            if ($extension !== 'json') {
-                throw new \InvalidArgumentException('El archivo debe ser .json.');
+            if ($extension !== 'lic') {
+                throw new \InvalidArgumentException('El archivo debe ser .lic.');
             }
 
             $contenido = file_get_contents($archivo['tmp_name']);
-            if ($contenido === false) {
+            if ($contenido === false || trim($contenido) === '') {
                 throw new \RuntimeException('No se pudo leer el archivo.');
             }
 
-            $json = json_decode($contenido, true);
-            if (!is_array($json) || empty($json['modulos'])) {
-                throw new \InvalidArgumentException('El archivo JSON no tiene el formato esperado (falta "modulos").');
+            $payload = $this->licenciaCifradoServicio->descifrar($contenido);
+
+            $ruc = trim((string) ($payload['ruc'] ?? ''));
+            $modulos = $payload['modulos'] ?? [];
+            if ($ruc === '' || !is_array($modulos) || empty($modulos)) {
+                throw new \InvalidArgumentException('La licencia no tiene el formato esperado (falta RUC o módulos).');
             }
 
-            // La empresa de la licencia: viene en el JSON o se usa la empresa del usuario
-            $empresaId = isset($json['empresa_id'])
-                ? (int) $json['empresa_id']
-                : (int) $usuario['empresa_id'];
+            $empresa = $this->licenciaModelo->buscarEmpresaPorRuc($ruc);
+            if ($empresa === null) {
+                throw new \InvalidArgumentException("No existe una empresa activa con RUC {$ruc} registrada en este sistema.");
+            }
+            $empresaId = (int) $empresa['sis_empresa_id'];
 
             if (!$this->esSuperusuario($usuario) && $empresaId !== (int) $usuario['empresa_id']) {
                 throw new \InvalidArgumentException('No puede activar licencias de otra empresa.');
             }
 
-            $this->licenciaModelo->guardarDesdeJson($empresaId, $json, (int) $usuario['id']);
-            $this->sesion->guardarMensaje('success', 'Licencia activada', 'Los módulos han sido activados correctamente.');
+            $tipo        = trim((string) ($payload['tipo'] ?? 'DEMO'));
+            $fechaInicio = trim((string) ($payload['fecha_inicio'] ?? date('Y-m-d')));
+            $fechaFin    = trim((string) ($payload['fecha_fin'] ?? date('Y-m-d')));
+
+            $this->licenciaModelo->guardarLicencia($empresaId, $tipo, $fechaInicio, $fechaFin, $modulos, trim($contenido), (int) $usuario['id']);
+            $this->sesion->guardarMensaje('success', 'Licencia activada', 'Módulos activados para ' . $empresa['sis_empresa_razon_social'] . '.');
         } catch (Throwable $excepcion) {
             $this->registrarErrorCrud('ACTIVAR LICENCIA', $excepcion);
             $this->sesion->guardarMensaje('error', 'No se pudo activar', $excepcion->getMessage());
@@ -110,7 +122,9 @@ final class LicenciaControlador
 
     /**
      * ***************************************************************************
-     * * GENERA Y DESCARGA UN JSON DE LICENCIA (SOLO SUPERUSUARIO).
+     * * GENERA Y DESCARGA UN ARCHIVO .LIC CIFRADO (SOLO SUPERUSUARIO).
+     * * NO DEPENDE DE NINGUNA EMPRESA REGISTRADA EN ESTA BASE: SE IDENTIFICA POR
+     * * RUC PORQUE ESTA PENSADO PARA CLIENTES EN OTRAS INSTALACIONES.
      * ***************************************************************************
      */
     public function generar(): void
@@ -125,20 +139,26 @@ final class LicenciaControlador
         }
 
         try {
-            $empresaId   = (int) ($_POST['empresa_id'] ?? 0);
-            $tipo        = in_array($_POST['tipo'] ?? '', ['TRIAL', 'FULL', 'MODULAR'], true) ? $_POST['tipo'] : 'TRIAL';
+            $ruc         = trim((string) ($_POST['ruc'] ?? ''));
+            $razonSocial = trim((string) ($_POST['razon_social'] ?? ''));
+            $tipo        = in_array($_POST['tipo'] ?? '', ['DEMO', 'PAGO', 'GRATUITO'], true) ? $_POST['tipo'] : 'DEMO';
             $fechaInicio = trim((string) ($_POST['fecha_inicio'] ?? date('Y-m-d')));
             $fechaFin    = trim((string) ($_POST['fecha_fin'] ?? date('Y-m-d', strtotime('+1 year'))));
-            $modulosIds  = array_map('intval', $_POST['modulos'] ?? []);
+            $modulos     = array_values(array_filter(array_map('strval', $_POST['modulos'] ?? [])));
 
-            if ($empresaId <= 0 || empty($modulosIds)) {
-                throw new \InvalidArgumentException('Empresa y al menos un módulo son obligatorios.');
+            if (!ValidadorIdentificacion::validarRuc($ruc)) {
+                throw new \InvalidArgumentException('El RUC ingresado no es válido.');
+            }
+            if ($razonSocial === '') {
+                throw new \InvalidArgumentException('La razón social es obligatoria.');
+            }
+            if (empty($modulos)) {
+                throw new \InvalidArgumentException('Debe seleccionar al menos un módulo.');
             }
 
-            $modulos = array_map(fn (int $id) => ['modulo_id' => $id], $modulosIds);
-
-            $licenciaJson = [
-                'empresa_id'   => $empresaId,
+            $payload = [
+                'ruc'          => $ruc,
+                'razon_social' => $razonSocial,
                 'tipo'         => $tipo,
                 'fecha_inicio' => $fechaInicio,
                 'fecha_fin'    => $fechaFin,
@@ -147,10 +167,10 @@ final class LicenciaControlador
                 'modulos'      => $modulos,
             ];
 
-            $contenido = json_encode($licenciaJson, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
-            $nombreArchivo = 'licencia_' . $empresaId . '_' . date('Ymd_His') . '.json';
+            $contenido = $this->licenciaCifradoServicio->cifrar($payload);
+            $nombreArchivo = 'licencia_' . $ruc . '_' . date('Ymd_His') . '.lic';
 
-            header('Content-Type: application/json; charset=utf-8');
+            header('Content-Type: application/octet-stream');
             header('Content-Disposition: attachment; filename="' . $nombreArchivo . '"');
             header('Content-Length: ' . strlen($contenido));
             header('Cache-Control: no-cache');
