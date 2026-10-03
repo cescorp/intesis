@@ -172,7 +172,7 @@ final class UsuarioControlador
             $this->obtenerAsignacionValida($asignacionId);
             $clave = (string) ($_POST['clave'] ?? '');
             $confirmar = (string) ($_POST['confirmar_clave'] ?? '');
-            if (strlen($clave) < 8 || $clave !== $confirmar) {
+            if (strlen($clave) < 4 || $clave !== $confirmar) {
                 throw new \InvalidArgumentException('USUARIO_CLAVE_INVALIDA');
             }
 
@@ -291,7 +291,7 @@ final class UsuarioControlador
             throw new \InvalidArgumentException('USUARIO_CORREO_REGISTRADO');
         }
 
-        if ($incluyeClave && (strlen($datos['clave']) < 8 || $datos['clave'] !== $datos['confirmar_clave'])) {
+        if ($incluyeClave && (strlen($datos['clave']) < 4 || $datos['clave'] !== $datos['confirmar_clave'])) {
             throw new \InvalidArgumentException('USUARIO_CLAVE_INVALIDA');
         }
     }

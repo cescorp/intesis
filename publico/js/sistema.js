@@ -503,7 +503,7 @@
                 return;
             }
 
-            if (claveVisible && (clave.length < 8 || clave !== confirmarClave)) {
+            if (claveVisible && (clave.length < 4 || clave !== confirmarClave)) {
                 evento.preventDefault();
                 mostrarMensaje('USUARIO_CLAVE_INVALIDA');
             }
@@ -515,7 +515,7 @@
         formularioClave.addEventListener('submit', (evento) => {
             const clave = document.getElementById('clave_nueva').value;
             const confirmarClave = document.getElementById('clave_confirmar').value;
-            if (clave.length < 8 || clave !== confirmarClave) {
+            if (clave.length < 4 || clave !== confirmarClave) {
                 evento.preventDefault();
                 mostrarMensaje('USUARIO_CLAVE_INVALIDA');
             }
