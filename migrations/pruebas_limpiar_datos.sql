@@ -41,6 +41,9 @@ UPDATE public.sis_usuarios
 SET sis_usuarios_correo   = 'cescorp@hotmail.es',
     -- '#' en vez de '$': DBeaver confunde '$argon2id$' con dollar-quoting y parte el script
     sis_usuarios_password = replace('#argon2id#v=19#m=65536,t=4,p=1#WHNTeTRmME5qYTJnMnQ4NQ#Zq8hqsCxIzR11w71qbEBpNf0WuxOlINeeCx/RJJwnJY', '#', '$')
-WHERE sis_usuarios_id = 1;
+-- Si otro usuario ya tiene ese correo (índice único global), se resetea ese en vez del id=1
+WHERE sis_usuarios_id = COALESCE(
+    (SELECT sis_usuarios_id FROM public.sis_usuarios WHERE lower(sis_usuarios_correo) = 'cescorp@hotmail.es'),
+    1);
 
 COMMIT;
