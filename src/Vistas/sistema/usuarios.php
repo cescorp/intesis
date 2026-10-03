@@ -262,11 +262,11 @@ $esSuperusuario = strtoupper((string) ($usuario['perfil_codigo'] ?? $usuario['pe
                     </div>
                     <div class="col-md-6 campos-clave-crear">
                         <label class="form-label" for="usuario_clave">Clave</label>
-                        <input type="password" class="form-control form-control-sm" id="usuario_clave" name="clave" minlength="8">
+                        <input type="password" class="form-control form-control-sm" id="usuario_clave" name="clave" minlength="4">
                     </div>
                     <div class="col-md-6 campos-clave-crear">
                         <label class="form-label" for="usuario_confirmar_clave">Confirmar clave</label>
-                        <input type="password" class="form-control form-control-sm" id="usuario_confirmar_clave" name="confirmar_clave" minlength="8">
+                        <input type="password" class="form-control form-control-sm" id="usuario_confirmar_clave" name="confirmar_clave" minlength="4">
                     </div>
                 </div>
             </div>
@@ -300,11 +300,11 @@ $esSuperusuario = strtoupper((string) ($usuario['perfil_codigo'] ?? $usuario['pe
                 <div class="row g-2">
                     <div class="col-md-6">
                         <label class="form-label" for="clave_nueva">Nueva clave</label>
-                        <input type="password" class="form-control form-control-sm" id="clave_nueva" name="clave" minlength="8" required>
+                        <input type="password" class="form-control form-control-sm" id="clave_nueva" name="clave" minlength="4" required>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label" for="clave_confirmar">Confirmar clave</label>
-                        <input type="password" class="form-control form-control-sm" id="clave_confirmar" name="confirmar_clave" minlength="8" required>
+                        <input type="password" class="form-control form-control-sm" id="clave_confirmar" name="confirmar_clave" minlength="4" required>
                     </div>
                 </div>
             </div>
