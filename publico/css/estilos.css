@@ -1410,3 +1410,25 @@ body {
 }
 .consulta-stock-ventana iframe { flex: 1; width: 100%; border: 0; }
 .consulta-stock-aviso { margin: auto; color: #6c757d; }
+/* ── Galeria de producto: imagen ampliada (sistema.js abrirVisorGaleria) ─────
+   Se dibuja dentro del modal abierto; por eso position: fixed y z-index sobre el. */
+.galeria-ampliable { cursor: zoom-in; }
+.galeria-ampliable:focus-visible { outline: 3px solid #1f6f68; outline-offset: 2px; }
+.visor-imagen {
+    position: fixed; inset: 0; z-index: 2100; background: rgba(10, 20, 19, .88);
+    display: flex; align-items: center; justify-content: center; gap: 1rem; padding: 3rem 1rem;
+}
+.visor-imagen-figura { margin: 0; display: flex; flex-direction: column; align-items: center; gap: .5rem; max-width: 100%; }
+.visor-imagen-figura img { max-width: min(92vw, 1400px); max-height: 82vh; object-fit: contain; background: #fff; border-radius: 4px; }
+.visor-imagen-contador { color: #e6f1f0; font-size: .85rem; }
+.visor-imagen button {
+    border: 0; border-radius: 50%; width: 2.6rem; height: 2.6rem; flex: none;
+    background: rgba(255, 255, 255, .15); color: #fff; font-size: 1.2rem;
+}
+.visor-imagen button:hover { background: rgba(255, 255, 255, .3); }
+.visor-imagen button:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+.visor-imagen-cerrar { position: absolute; top: .75rem; right: .75rem; }
+@media (max-width: 575.98px) {
+    .visor-imagen { gap: .25rem; padding: 3rem .25rem; }
+    .visor-imagen-figura img { max-width: 80vw; }
+}
