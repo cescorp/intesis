@@ -207,7 +207,7 @@ $msgAnular    = $msgs['CONFIRMAR_ANULAR_FACTURA'] ?? null;
                 <div class="row g-0 adjuntos-cuerpo">
                     <div class="col-lg-5 p-3 adjuntos-lateral">
                         <?php if ($permisos['adjuntos_subir'] ?? false): ?>
-                        <label class="zona-adjuntos" id="zonaAdjuntos">
+                        <label class="zona-subida" id="zonaAdjuntos">
                             <input type="file" id="inpAdjuntos" multiple hidden
                                 accept="application/pdf,image/jpeg,image/png,image/webp,image/gif">
                             <i class="bi bi-cloud-arrow-up"></i>
@@ -236,16 +236,6 @@ $msgAnular    = $msgs['CONFIRMAR_ANULAR_FACTURA'] ?? null;
 }
 .adjuntos-cuerpo { min-height: 65vh; }
 .adjuntos-lateral { border-right: 1px solid #dee2e6; max-height: 75vh; overflow-y: auto; }
-.zona-adjuntos {
-    display: flex; flex-direction: column; align-items: center; gap: .15rem; margin: 0;
-    padding: 1.1rem .75rem; text-align: center; cursor: pointer; border-radius: 6px;
-    border: 2px dashed #1f6f68; color: #1f6f68; background: #fff; transition: background-color .15s;
-}
-.zona-adjuntos .bi { font-size: 1.6rem; }
-.zona-adjuntos:hover, .zona-adjuntos.arrastrando { background: #e6f1f0; }
-.zona-adjuntos:focus-within { outline: 2px solid #1f6f68; outline-offset: 2px; }
-.adjunto-cola { font-size: .8rem; padding: .35rem 0; }
-.adjunto-cola .progress { height: 4px; }
 .adjunto-fila {
     display: flex; align-items: center; gap: .5rem; padding: .35rem .4rem;
     border-left: 3px solid transparent; border-radius: 4px; cursor: pointer;
@@ -264,9 +254,9 @@ $msgAnular    = $msgs['CONFIRMAR_ANULAR_FACTURA'] ?? null;
     .adjuntos-lateral { border-right: 0; border-bottom: 1px solid #dee2e6; max-height: none; }
     .visor-adjuntos, .adjuntos-cuerpo { min-height: 50vh; }
 }
-@media (prefers-reduced-motion: reduce) { .zona-adjuntos { transition: none; } }
 </style>
 
+<script src="<?= $appUrl ?>/publico/js/subida-archivos.js?v=<?= filemtime($configuracion->raiz() . '/publico/js/subida-archivos.js') ?>"></script>
 <script>
 (function () {
     'use strict';
@@ -513,17 +503,11 @@ $msgAnular    = $msgs['CONFIRMAR_ANULAR_FACTURA'] ?? null;
     }
 
     // ── Adjuntos ─────────────────────────────────────────────────────────────
-    // Los archivos se suben de uno en uno con XMLHttpRequest porque fetch() no informa
-    // el avance de la subida y se necesita mostrar el % de cada archivo.
-    const MIMES_ADJUNTOS = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-    const adj = { facturaId: 0, boton: null, lista: [], activoId: 0, maxMb: 80, cola: Promise.resolve() };
+    // La subida (cola, % por archivo, validacion previa) es la comun: publico/js/subida-archivos.js
+    const MIMES_ADJUNTOS = <?= json_encode(\Intesis\Servicios\AlmacenArchivosServicio::TIPOS_PDF_E_IMAGENES) ?>;
+    const adj = { facturaId: 0, boton: null, lista: [], activoId: 0, maxMb: 80 };
     const q = (sel) => document.querySelector(sel);
-
-    function tamanoLegible(bytes) {
-        const b = Number(bytes) || 0;
-        if (b >= 1048576) return (b / 1048576).toFixed(1) + ' MB';
-        return Math.max(1, Math.round(b / 1024)) + ' KB';
-    }
+    const tamanoLegible = IntesisSubida.tamanoLegible;
 
     function urlAdjunto(id) {
         return appUrl + '/ventas/facturas/adjuntos/ver?archivo_id=' + encodeURIComponent(id);
@@ -583,72 +567,18 @@ $msgAnular    = $msgs['CONFIRMAR_ANULAR_FACTURA'] ?? null;
         }
     }
 
-    /** Fila de progreso de un archivo; devuelve funciones para actualizarla. */
-    function crearFilaCola(nombre) {
-        const fila = document.createElement('div');
-        fila.className = 'adjunto-cola';
-        fila.innerHTML = `
-            <div class="d-flex justify-content-between gap-2">
-                <span class="text-truncate">${escHtml(nombre)}</span>
-                <span class="adj-estado text-muted">En espera</span>
-            </div>
-            <div class="progress mt-1"><div class="progress-bar" style="width:0%;background:#1f6f68"></div></div>`;
-        q('#colaAdjuntos').appendChild(fila);
-        return {
-            avance(pct) {
-                fila.querySelector('.progress-bar').style.width = pct + '%';
-                fila.querySelector('.adj-estado').textContent = pct < 100 ? `Procesando ${pct}%` : 'Guardando...';
-            },
-            error(mensaje) {
-                fila.querySelector('.progress').remove();
-                const estado = fila.querySelector('.adj-estado');
-                estado.className = 'adj-estado text-danger';
-                estado.textContent = 'No se subió';
-                fila.insertAdjacentHTML('beforeend', `<div class="text-danger small">${escHtml(mensaje)} <button type="button" class="btn btn-link btn-sm p-0 align-baseline adj-cerrar-error">Quitar</button></div>`);
-            },
-            quitar() { fila.remove(); },
-        };
-    }
-
-    function subirArchivo(archivo, filaCola) {
-        return new Promise((resolver) => {
-            const datos = new FormData();
-            datos.append('factura_id', adj.facturaId);
-            datos.append('archivo', archivo);
-            const xhr = new XMLHttpRequest();
-            xhr.open('POST', appUrl + '/ventas/facturas/adjuntos/subir');
-            xhr.upload.onprogress = (e) => { if (e.lengthComputable) filaCola.avance(Math.round(e.loaded * 100 / e.total)); };
-            xhr.onload = () => {
-                let json = null;
-                try { json = JSON.parse(xhr.responseText); } catch { /* respuesta no JSON: error del servidor */ }
-                if (json?.ok) {
-                    adj.lista.push({ ...json.data.adjunto, sis_archivos_id: Number(json.data.adjunto.sis_archivos_id) });
-                    filaCola.quitar();
-                    mostrarEnVisor(Number(json.data.adjunto.sis_archivos_id));
-                    actualizarContador();
-                } else {
-                    filaCola.error(json?.mensaje || 'El servidor rechazó el archivo (puede superar el límite de subida).');
-                }
-                resolver();
-            };
-            xhr.onerror = () => { filaCola.error('Sin conexión con el servidor.'); resolver(); };
-            xhr.send(datos);
-        });
-    }
-
-    /** Valida tipo y tamaño antes de subir (el servidor vuelve a validarlo) y encola las subidas. */
     function agregarArchivos(archivos) {
-        [...archivos].forEach(archivo => {
-            const fila = crearFilaCola(archivo.name);
-            if (!MIMES_ADJUNTOS.includes(archivo.type)) {
-                fila.error('Tipo no permitido. Solo PDF e imágenes (JPG, PNG, WEBP, GIF).');
-                return;
-            }
-            if (archivo.size > adj.maxMb * 1048576) {
-                fila.error(`Supera el máximo de ${adj.maxMb} MB.`);
-                return;
-            }
-            adj.cola = adj.cola.then(() => subirArchivo(archivo, fila));
+        IntesisSubida.subirArchivos(archivos, {
+            url: appUrl + '/ventas/facturas/adjuntos/subir',
+            campos: { factura_id: adj.facturaId },
+            contenedorCola: q('#colaAdjuntos'),
+            reglas: { maxMb: adj.maxMb, mimes: MIMES_ADJUNTOS },
+            alSubir: (json) => {
+                const nuevo = { ...json.data.adjunto, sis_archivos_id: Number(json.data.adjunto.sis_archivos_id) };
+                adj.lista.push(nuevo);
+                mostrarEnVisor(nuevo.sis_archivos_id);
+                actualizarContador();
+            },
         });
     }
 
@@ -664,17 +594,7 @@ $msgAnular    = $msgs['CONFIRMAR_ANULAR_FACTURA'] ?? null;
         cargarAdjuntos();
     });
 
-    const zona = q('#zonaAdjuntos');
-    if (zona) {
-        q('#inpAdjuntos').addEventListener('change', (e) => { agregarArchivos(e.target.files); e.target.value = ''; });
-        ['dragenter', 'dragover'].forEach(ev => zona.addEventListener(ev, (e) => { e.preventDefault(); zona.classList.add('arrastrando'); }));
-        ['dragleave', 'drop'].forEach(ev => zona.addEventListener(ev, (e) => { e.preventDefault(); zona.classList.remove('arrastrando'); }));
-        zona.addEventListener('drop', (e) => agregarArchivos(e.dataTransfer.files));
-    }
-
-    q('#colaAdjuntos').addEventListener('click', (e) => {
-        if (e.target.closest('.adj-cerrar-error')) e.target.closest('.adjunto-cola').remove();
-    });
+    if (q('#zonaAdjuntos')) IntesisSubida.conectarZona(q('#zonaAdjuntos'), q('#inpAdjuntos'), agregarArchivos);
 
     q('#listaAdjuntos').addEventListener('click', async (e) => {
         const fila = e.target.closest('.adjunto-fila');

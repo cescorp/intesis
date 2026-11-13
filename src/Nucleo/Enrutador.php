@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Intesis\Nucleo;
 
+use Intesis\Controladores\ArchivoControlador;
 use Intesis\Controladores\ArchivoProductoControlador;
 use Intesis\Controladores\AutenticacionControlador;
 use Intesis\Controladores\BodegaControlador;
@@ -54,6 +55,7 @@ final class Enrutador
         private ProformaControlador $proformaControlador,
         private FacturaControlador $facturaControlador,
         private LicenciaControlador $licenciaControlador,
+        private ArchivoControlador $archivoControlador,
         private Configuracion $configuracion,
         private Vista $vista,
         private Sesion $sesion
@@ -920,6 +922,28 @@ final class Enrutador
         }
         if ($metodo === 'POST' && $ruta === '/ventas/formas-pago/eliminar') {
             $this->facturaControlador->formaPagoEliminar();
+            return;
+        }
+
+        // Modulo Archivos
+        $rutasArchivos = [
+            'GET /archivos'                    => 'index',
+            'GET /archivos/arbol'              => 'arbol',
+            'GET /archivos/contenido'          => 'contenido',
+            'GET /archivos/info'               => 'info',
+            'GET /archivos/ver'                => 'ver',
+            'GET /archivos/descargar'          => 'descargar',
+            'GET /archivos/compartidos'        => 'compartidos',
+            'POST /archivos/subir'             => 'subir',
+            'POST /archivos/renombrar'         => 'renombrar',
+            'POST /archivos/eliminar'          => 'eliminar',
+            'POST /archivos/compartir'         => 'compartir',
+            'POST /archivos/carpetas/crear'     => 'crearCarpeta',
+            'POST /archivos/carpetas/renombrar' => 'renombrarCarpeta',
+            'POST /archivos/carpetas/eliminar'  => 'eliminarCarpeta',
+        ];
+        if (isset($rutasArchivos["$metodo $ruta"])) {
+            $this->archivoControlador->{$rutasArchivos["$metodo $ruta"]}();
             return;
         }
 

@@ -20,6 +20,7 @@ Corregir la causa raíz, no el síntoma. Si una función compartida falla, se ar
 Todo archivo que suba un usuario se guarda con `AlmacenArchivosServicio::guardar()` (`src/Servicios/AlmacenArchivosServicio.php`) y se registra en `sis_archivos` (entidad = `tabla` + `id_padre`). No se escribe `move_uploaded_file` ni SQL de `sis_archivos` en otros lugares.
 - Ubicación central: `almacenamiento/archivos/adjuntos/empresa_{id}/{tabla}/{año}/{mes}/{código-único}.{ext}`.
 - Límite por archivo: cada módulo lo pasa por parámetro; el máximo absoluto es **80 MB** (`AlmacenArchivosServicio::MAX_MB`).
-- El tipo se valida por el contenido real del archivo, no por la extensión.
+- El tipo se valida por el contenido real del archivo, no por la extensión. Cada módulo elige `TIPOS_PDF_E_IMAGENES` o `CUALQUIER_TIPO` (todo excepto ejecutables y scripts).
+- En el navegador la subida se hace con `publico/js/subida-archivos.js` (`IntesisSubida`): cola, % por archivo y validación previa.
 - Eliminar es lógico (`sis_archivos_estado = 0`); el archivo físico se conserva.
 - Excepción histórica: la galería de productos sigue en `almacenamiento/archivos/productos/` con su propio controlador.

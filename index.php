@@ -39,6 +39,7 @@ require_once __DIR__ . '/src/Modelos/ProformaModelo.php';
 require_once __DIR__ . '/src/Modelos/FacturaModelo.php';
 require_once __DIR__ . '/src/Modelos/FormaPagoModelo.php';
 require_once __DIR__ . '/src/Modelos/ArchivoModelo.php';
+require_once __DIR__ . '/src/Modelos/GestorArchivosModelo.php';
 if (is_file(__DIR__ . '/vendor/autoload.php')) {
     require_once __DIR__ . '/vendor/autoload.php';
 }
@@ -79,6 +80,7 @@ require_once __DIR__ . '/src/Controladores/ProformaControlador.php';
 require_once __DIR__ . '/src/Controladores/FacturaControlador.php';
 require_once __DIR__ . '/src/Modelos/LicenciaModelo.php';
 require_once __DIR__ . '/src/Controladores/LicenciaControlador.php';
+require_once __DIR__ . '/src/Controladores/ArchivoControlador.php';
 
 use Intesis\Nucleo\Aplicacion;
 

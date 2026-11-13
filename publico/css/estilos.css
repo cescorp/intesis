@@ -1378,6 +1378,22 @@ body {
     display: none;
 }
 
+/* ── Subida de archivos (publico/js/subida-archivos.js) ─────────────────────
+   Zona para soltar/seleccionar y cola con % por archivo. Compartido por
+   Adjuntos de facturas y el modulo Archivos. */
+.zona-subida {
+    display: flex; flex-direction: column; align-items: center; gap: .15rem; margin: 0;
+    padding: 1.1rem .75rem; text-align: center; cursor: pointer; border-radius: 6px;
+    border: 2px dashed #1f6f68; color: #1f6f68; background: #fff; transition: background-color .15s;
+}
+.zona-subida .bi { font-size: 1.6rem; }
+.zona-subida:hover, .zona-subida.arrastrando { background: #e6f1f0; }
+.zona-subida:focus-within { outline: 2px solid #1f6f68; outline-offset: 2px; }
+.subida-cola { font-size: .8rem; padding: .35rem 0; }
+.subida-cola .progress { height: 4px; }
+.subida-cola .progress-bar { width: 0; background: #1f6f68; }
+@media (prefers-reduced-motion: reduce) { .zona-subida { transition: none; } }
+
 /* Consulta de stock F2 (sistema.js): capa por encima de modales (1055) y SweetAlert (1060) */
 .consulta-stock-capa {
     position: fixed; inset: 0; z-index: 2000; background: rgba(15, 30, 29, .45);

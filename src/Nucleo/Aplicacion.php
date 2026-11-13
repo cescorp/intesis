@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Intesis\Nucleo;
 
 use Intesis\Controladores\AutenticacionControlador;
+use Intesis\Controladores\ArchivoControlador;
 use Intesis\Controladores\ArchivoProductoControlador;
 use Intesis\Controladores\BodegaControlador;
 use Intesis\Controladores\CategoriaControlador;
@@ -49,6 +50,7 @@ use Intesis\Modelos\ProformaModelo;
 use Intesis\Modelos\FacturaModelo;
 use Intesis\Modelos\FormaPagoModelo;
 use Intesis\Modelos\ArchivoModelo;
+use Intesis\Modelos\GestorArchivosModelo;
 use Intesis\Modelos\LicenciaModelo;
 use Intesis\Modelos\TipoDocumentoModelo;
 use Intesis\Modelos\UsuarioEmpresaModelo;
@@ -163,6 +165,7 @@ final class Aplicacion
             new ProformaControlador($vista, $sesion, $proformaModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores, $generadorPdf),
             new FacturaControlador($vista, $sesion, $facturaModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores, $generadorPdf, $facturacionElectronicaServicio, $formaPagoModelo, $almacenArchivosServicio, $archivoModelo),
             new LicenciaControlador($vista, $sesion, $licenciaModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores, $licenciaCifradoServicio),
+            new ArchivoControlador($vista, $sesion, new GestorArchivosModelo($conexion), $almacenArchivosServicio, $menuModelo, $configuracion, $registroErrores),
             $configuracion,
             $vista,
             $sesion
