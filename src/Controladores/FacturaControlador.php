@@ -675,7 +675,7 @@ final class FacturaControlador
                 'producto_id'     => (int)   ($l['producto_id']    ?? 0),
                 'codigo'          => trim((string) ($l['codigo']   ?? '')),
                 'descripcion'     => trim((string) ($l['descripcion'] ?? '')),
-                'cantidad'        => round((float) ($l['cantidad']  ?? 0), 2),
+                'cantidad'        => (float) ($l['cantidad'] ?? 0),
                 'precio'          => round((float) ($l['precio']    ?? 0), 6),
                 'descuento'       => round((float) ($l['descuento'] ?? 0), 2),
                 'descuento_valor' => round((float) ($l['descuento_valor'] ?? 0), 4),
@@ -717,6 +717,9 @@ final class FacturaControlador
             $n = $i + 1;
             if ($l['producto_id'] <= 0) throw new \InvalidArgumentException("Línea {$n}: seleccione un producto.");
             if ($l['cantidad'] <= 0)    throw new \InvalidArgumentException("Línea {$n}: la cantidad debe ser mayor a cero.");
+            // Se venden unidades enteras; una cantidad con decimales se rechaza en vez de redondearla
+            // para no facturar algo distinto a lo que el usuario escribió.
+            if (floor($l['cantidad']) != $l['cantidad']) throw new \InvalidArgumentException("Línea {$n}: la cantidad debe ser un número entero.");
             if ($l['precio'] < 0)       throw new \InvalidArgumentException("Línea {$n}: el precio no puede ser negativo.");
         }
     }

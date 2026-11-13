@@ -775,7 +775,7 @@ function crearFila(datos) {
       <td data-label="Cant.">
         <div class="input-group input-group-sm">
           <button type="button" class="input-group-text inp-stock-display btn-ver-stock-bodegas" style="color:#6c757d;cursor:pointer;font-size:.72rem" title="Ver stock por bodega">${datos.inv_stock_cantidad_disponible !== undefined ? Math.round(parseFloat(datos.inv_stock_cantidad_disponible)) : '—'}</button>
-          <input type="number" class="form-control form-control-sm text-center inp-cantidad" value="${datos.cantidad||1}" min="0.01" step="1">
+          <input type="number" class="form-control form-control-sm text-center inp-cantidad" value="${datos.cantidad||1}" min="1" step="1" inputmode="numeric">
         </div>
       </td>
       <td data-label="Precio"><input type="number" class="form-control form-control-sm inp-precio" value="${parseFloat(datos.precio||datos.pvp||0).toFixed(4)}" min="0" step="0.000001"></td>
@@ -916,6 +916,11 @@ cuerpoDetalle.addEventListener('input', (e) => {
     const tr = e.target.closest('tr');
     if (!tr) return;
     if (e.target.matches('.inp-cantidad')) calcularFila(tr);
+});
+// Las cantidades de venta son unidades enteras: se bloquea el separador decimal
+// al teclear (el backend igual rechaza cantidades con decimales).
+cuerpoDetalle.addEventListener('keydown', (e) => {
+    if (e.target.matches('.inp-cantidad') && ['.', ',', 'e', 'E', '-', '+'].includes(e.key)) e.preventDefault();
 });
 cuerpoDetalle.addEventListener('change', (e) => {
     const tr = e.target.closest('tr');
@@ -1373,7 +1378,7 @@ function construirPayload() {
         const productoId = tr.querySelector('.inp-producto-id').value;
         const codigo     = tr.querySelector('.inp-codigo').value.trim();
         const descripcion= tr.querySelector('.inp-descripcion').value.trim();
-        const cantidad   = parseFloat((parseFloat(tr.querySelector('.inp-cantidad').value) || 0).toFixed(2));
+        const cantidad   = parseFloat(tr.querySelector('.inp-cantidad').value) || 0;
         const precio     = parseFloat(tr.querySelector('.inp-precio').value)   || 0;
         const ivaS       = tr.querySelector('.inp-iva');
         const ivaId      = ivaS?.value ? parseInt(ivaS.value) : 0;
