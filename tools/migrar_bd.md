@@ -52,6 +52,25 @@ DB_PASSWORD=nueva_clave_postgres
 APP_RAIZ=C:/xampp/htdocs/intesis
 ```
 
+### 6. Verificar migraciones pendientes
+
+Cada vez que se actualice el código en el PC destino (copia o `git pull`):
+
+```bat
+C:\xampp\php\php.exe C:\xampp\htdocs\intesis\tools\migraciones.php
+```
+
+- `OK: la base de datos esta al dia` → nada que hacer.
+- `FALTAN N migraciones: ...` → lista los archivos de `migrations/` que esa BD no tiene. Para ejecutarlas en orden:
+
+```bat
+C:\xampp\php\php.exe C:\xampp\htdocs\intesis\tools\migraciones.php --aplicar
+```
+
+Lo aplicado queda registrado en la tabla `sis_migracion` (viaja dentro del dump). Si una falla, se detiene ahí y no ejecuta las siguientes.
+
+> `--marcar-todas` registra todo como aplicado **sin ejecutar nada**. Úsalo solo una vez en una BD que sabes que ya está al día pero aún no tiene `sis_migracion` (por ejemplo, restaurada de un dump anterior al 2026-11-12). Nunca lo uses para "silenciar" el aviso.
+
 ---
 
 ## Alternativa: dump solo estructura + catálogo (sin datos operativos)
@@ -75,6 +94,7 @@ REM 2. Solo datos de tablas catálogo
   -t sis_plan ^
   -t sis_plan_modulo ^
   -t ven_forma_pago ^
+  -t sis_migracion ^
   -f "C:\intesis_catalogo.dump"
 ```
 
