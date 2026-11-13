@@ -923,6 +923,31 @@ final class Enrutador
             return;
         }
 
+        if ($metodo === 'GET' && $ruta === '/ventas/entidades-bancarias') {
+            $this->facturaControlador->entidadesBancariasListar();
+            return;
+        }
+        if ($metodo === 'POST' && $ruta === '/ventas/entidades-bancarias/crear') {
+            $this->facturaControlador->entidadBancariaGuardar(false);
+            return;
+        }
+        if ($metodo === 'POST' && $ruta === '/ventas/entidades-bancarias/editar') {
+            $this->facturaControlador->entidadBancariaGuardar(true);
+            return;
+        }
+        if ($metodo === 'POST' && $ruta === '/ventas/entidades-bancarias/activar') {
+            $this->facturaControlador->entidadBancariaCambiarEstado('A');
+            return;
+        }
+        if ($metodo === 'POST' && $ruta === '/ventas/entidades-bancarias/inactivar') {
+            $this->facturaControlador->entidadBancariaCambiarEstado('I');
+            return;
+        }
+        if ($metodo === 'POST' && $ruta === '/ventas/entidades-bancarias/eliminar') {
+            $this->facturaControlador->entidadBancariaEliminar();
+            return;
+        }
+
         http_response_code(404);
         $this->vista->renderizar('errores/error404', [
             'titulo' => 'Pagina no encontrada',
