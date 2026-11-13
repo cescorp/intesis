@@ -19,7 +19,9 @@ final class PerfilModelo
      */
     public function listar(int $empresaId, bool $verTodas): array
     {
-        $filtro = $verTodas ? '' : 'WHERE p.sis_empresa_id = :empresa_id';
+        // $verTodas solo es true para el superusuario. Los demas ven su empresa sin el perfil
+        // SUPERUSUARIO (igual que en Usuarios: no pueden verlo ni administrarlo).
+        $filtro = $verTodas ? '' : "WHERE p.sis_empresa_id = :empresa_id AND p.sis_perfil_codigo <> 'SUPERUSUARIO'";
         $sentencia = $this->conexionBaseDatos->obtener()->prepare("
             SELECT p.*, e.sis_empresa_nombre_comercial,
                 (SELECT count(*) FROM sis_usuario_empresa ue WHERE ue.sis_perfil_id = p.sis_perfil_id) AS total_usuarios
