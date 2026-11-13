@@ -4,6 +4,10 @@ Una entrada por tarea terminada (ver [reglas.md](reglas.md)). Lo más reciente a
 
 ## 2026-11-13
 
+- **Perfiles: perfil SUPERUSUARIO oculto y protegido para no superusuarios** — `b272e5a`
+  Seguridad, igual que en Usuarios. La lista de Perfiles ya no muestra SUPERUSUARIO a quien no lo es, y `permisos()` rechaza cambiar los permisos de ese perfil si no se es superusuario (antes se le podían quitar y dejar al administrador sin acceso). Editar y eliminar ya estaban protegidos.
+  Archivos: `src/Controladores/PerfilControlador.php`, `src/Modelos/PerfilModelo.php`.
+
 - **Usuarios: un no superusuario ya no ve ni administra superusuarios** — `e89b0d2`
   Seguridad. Antes, un usuario con permisos de Usuarios (ej. GERENCIA) veía al superusuario y podía editarlo, bloquearlo o restablecerle la clave (y entrar con sus privilegios); además `obtenerAsignacionValida()` no revisaba la empresa (se podía actuar sobre usuarios de otra empresa por id) y se podía asignar el perfil SUPERUSUARIO a uno mismo o a un usuario nuevo. Ahora: la lista y el combo de perfiles excluyen SUPERUSUARIO para no superusuarios, y en el servidor toda acción sobre un usuario valida empresa y que no sea superusuario, y crear/editar rechaza asignar ese perfil.
   Archivos: `src/Controladores/UsuarioControlador.php`, `src/Modelos/UsuarioEmpresaModelo.php`.
