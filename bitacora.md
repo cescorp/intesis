@@ -4,6 +4,10 @@ Una entrada por tarea terminada (ver [reglas.md](reglas.md)). Lo más reciente a
 
 ## 2026-11-12
 
+- **Consulta de stock global con F2** — `c8bb459`
+  En cualquier pantalla con sesión, F2 muestra/oculta una capa (por encima de modales y SweetAlert) con la pantalla Stock en un iframe (`/inventario/stock?embebido=1`: sin menú ni Plantilla/Importar/Registrar, no consume el mensaje flash). Solo consulta: la pantalla de abajo no se recarga ni cambia; al cerrar se devuelve el cursor al campo donde estaba. Se crea en el primer F2 y conserva la búsqueda; botón ↻ para recargar. Suspende el focus trap de los modales Bootstrap abiertos mientras está visible. Sin permiso `/inventario/stock/ver` muestra un aviso.
+  Archivos: `publico/js/sistema.js`, `publico/css/estilos.css`, `src/Controladores/StockControlador.php`, `src/Vistas/inventario/stock.php`.
+
 - **Clientes › Historial de ventas: adjuntos en solo consulta** — `a94c044`
   En Facturas y Notas de Venta, botón 📎 con contador que abre la lista y el visor PDF/imagen, sin subir, renombrar ni eliminar (Proformas no tiene adjuntos). Reutiliza `/ventas/facturas/adjuntos` y `/ventas/facturas/adjuntos/ver`: ahora también los permite quien tiene `/ventas/clientes/ver` (`FacturaControlador::puedeConsultarAdjuntos()`). `listarPorCliente()` devuelve `adjuntos_total`. Sin migración.
   Archivos: `src/Vistas/ventas/clientes.php`, `src/Controladores/FacturaControlador.php`, `src/Modelos/FacturaModelo.php`.
