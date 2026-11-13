@@ -497,9 +497,26 @@
                 asignacionesValidas = asignacionesValidas && empresasAsignadas.size > 0;
             }
 
-            if (!asignacionesValidas || !nombre || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) {
+            // Se indica exactamente que falta: el mensaje generico pedia "empresa" aunque la
+            // empresa ya iba sola (usuario con una sola empresa) y lo que faltaba era el nombre.
+            const correoValido = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo);
+            if (!asignacionesValidas || !nombre || !correoValido) {
                 evento.preventDefault();
-                mostrarMensaje('USUARIO_DATOS_OBLIGATORIOS');
+                const faltantes = [];
+                if (!asignacionesValidas) {
+                    const empresaVisible = !asignacionMultipleVisible && document.getElementById('usuario_empresa_id').type !== 'hidden';
+                    if (asignacionMultipleVisible) faltantes.push({ texto: 'empresa y perfil en cada asignación', campo: document.querySelector('.asignacion-empresa') });
+                    else {
+                        if (!empresa && empresaVisible) faltantes.push({ texto: 'empresa', campo: document.getElementById('usuario_empresa_id') });
+                        if (!perfil) faltantes.push({ texto: 'perfil', campo: document.getElementById('usuario_perfil_id') });
+                    }
+                }
+                if (!nombre) faltantes.push({ texto: 'nombre', campo: document.getElementById('usuario_nombre') });
+                if (!correoValido) faltantes.push({ texto: 'un correo válido', campo: document.getElementById('usuario_correo') });
+                const base = obtenerMensaje('USUARIO_DATOS_OBLIGATORIOS', { titulo: 'Datos incompletos', icono: 'error' });
+                const lista = faltantes.map((f) => f.texto);
+                mostrarAlerta({ ...base, texto: `Falta ${lista.length > 1 ? lista.slice(0, -1).join(', ') + ' y ' + lista.at(-1) : lista[0] || 'completar los datos'}.` })
+                    .then(() => faltantes[0]?.campo?.focus());
                 return;
             }
 

@@ -4,6 +4,10 @@ Una entrada por tarea terminada (ver [reglas.md](reglas.md)). Lo más reciente a
 
 ## 2026-11-13
 
+- **Usuarios: el aviso de datos incompletos dice qué falta** — `f33cdc6`
+  Al crear/editar usuario el aviso era genérico ("Seleccione empresa, perfil, nombre y correo valido") y parecía pedir la empresa aunque esta ya va sola cuando el usuario tiene una sola empresa; lo que faltaba era el nombre. Ahora lista solo lo que falta (ej. "Falta nombre.") y lleva el cursor a ese campo.
+  Archivo: `publico/js/sistema.js`.
+
 - **Perfiles: perfil SUPERUSUARIO oculto y protegido para no superusuarios** — `b272e5a`
   Seguridad, igual que en Usuarios. La lista de Perfiles ya no muestra SUPERUSUARIO a quien no lo es, y `permisos()` rechaza cambiar los permisos de ese perfil si no se es superusuario (antes se le podían quitar y dejar al administrador sin acceso). Editar y eliminar ya estaban protegidos.
   Archivos: `src/Controladores/PerfilControlador.php`, `src/Modelos/PerfilModelo.php`.
