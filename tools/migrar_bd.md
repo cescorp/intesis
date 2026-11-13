@@ -71,6 +71,17 @@ Lo aplicado queda registrado en la tabla `sis_migracion` (viaja dentro del dump)
 
 > `--marcar-todas` registra todo como aplicado **sin ejecutar nada**. Úsalo solo una vez en una BD que sabes que ya está al día pero aún no tiene `sis_migracion` (por ejemplo, restaurada de un dump anterior al 2026-11-12). Nunca lo uses para "silenciar" el aviso.
 
+### 7. Cambiar la clave de un usuario (si se olvidó)
+
+En PowerShell, desde `C:\xampp\htdocs\intesis` (la clave se pide oculta y no queda en el historial):
+
+```powershell
+$s = Read-Host "Nueva clave" -AsSecureString
+$env:NUEVA_CLAVE = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($s))
+C:\xampp\php\php.exe tools\cambiar_clave.php usuario@dominio.com
+Remove-Item Env:NUEVA_CLAVE
+```
+
 ---
 
 ## Alternativa: dump solo estructura + catálogo (sin datos operativos)
