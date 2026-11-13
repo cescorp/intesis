@@ -579,6 +579,7 @@ const ivaDefault     = <?= (int) $ivaDefault ?>;
 const ivaDefaultVal  = <?= (float) $ivaDefaultValor ?>;
 const lineasIni      = <?= $lineasJson ?>;
 const permisosFormaPago = <?= json_encode($permisosFormaPago ?? [], JSON_UNESCAPED_UNICODE) ?>;
+const sinBodega = <?= !empty($sinBodega) ? 'true' : 'false' ?>;
 let entidadesBancarias = <?= json_encode(array_values($entidadesBancarias ?? []), JSON_UNESCAPED_UNICODE) ?>;
 const configDescuento = <?= json_encode($configDescuento ?? ['formula' => 'C', 'max_facturas' => 0, 'max_notas_venta' => 0], JSON_UNESCAPED_UNICODE) ?>;
 
@@ -777,6 +778,7 @@ function crearFila(datos) {
           <button type="button" class="input-group-text inp-stock-display btn-ver-stock-bodegas" style="color:#6c757d;cursor:pointer;font-size:.72rem" title="Ver stock por bodega">${datos.inv_stock_cantidad_disponible !== undefined ? Math.round(parseFloat(datos.inv_stock_cantidad_disponible)) : '—'}</button>
           <input type="number" class="form-control form-control-sm text-center inp-cantidad" value="${datos.cantidad||1}" min="1" step="1" inputmode="numeric">
         </div>
+        <div class="small text-danger text-end inp-cantidad-aviso d-none"></div>
       </td>
       <td data-label="Precio"><input type="number" class="form-control form-control-sm inp-precio" value="${parseFloat(datos.precio||datos.pvp||0).toFixed(4)}" min="0" step="0.000001"></td>
       <td data-label="IVA">
@@ -808,6 +810,13 @@ function crearFila(datos) {
         inpCod.disabled = true;
         inpCod.classList.add('bg-light');
         tr.querySelector('.inp-codigo-lock')?.classList.remove('d-none');
+        // Linea de una factura guardada: al editar, el backend devuelve primero su stock,
+        // asi que lo disponible para esta linea es el stock actual mas lo que ya tenia.
+        if (datos.inv_stock_cantidad_disponible !== undefined && datos.inv_stock_cantidad_disponible !== null) {
+            const disponible = parseFloat(datos.inv_stock_cantidad_disponible) + (parseFloat(datos.cantidad) || 0);
+            tr.querySelector('.inp-stock').value = disponible;
+            tr.querySelector('.inp-stock-display').textContent = Math.round(disponible);
+        }
     }
 
     let busquedaDirecta = false;
@@ -915,8 +924,34 @@ const cuerpoDetalle = document.getElementById('cuerpoDetalle');
 cuerpoDetalle.addEventListener('input', (e) => {
     const tr = e.target.closest('tr');
     if (!tr) return;
-    if (e.target.matches('.inp-cantidad')) calcularFila(tr);
+    if (e.target.matches('.inp-cantidad')) {
+        limitarCantidadAlStock(tr);
+        calcularFila(tr);
+    }
 });
+
+/* Stock disponible de la linea en la bodega de la venta (null si aun no hay producto) */
+function stockDeLinea(tr) {
+    if (!tr.querySelector('.inp-producto-id').value) return null;
+    const v = tr.querySelector('.inp-stock').value;
+    return v === '' ? null : Math.floor(parseFloat(v) || 0);
+}
+
+/**
+ * La cantidad de una linea no puede dejar la bodega en negativo: si se excede, se
+ * corrige al maximo disponible y se avisa en la misma linea. El backend vuelve a
+ * validarlo al guardar (FacturaModelo::validarStock).
+ */
+function limitarCantidadAlStock(tr) {
+    const inp   = tr.querySelector('.inp-cantidad');
+    const aviso = tr.querySelector('.inp-cantidad-aviso');
+    const stock = stockDeLinea(tr);
+    const excede = stock !== null && (parseInt(inp.value) || 0) > stock;
+    if (excede) inp.value = stock;
+    inp.classList.toggle('is-invalid', excede);
+    aviso.textContent = excede ? `Máx. ${stock} disponible` : '';
+    aviso.classList.toggle('d-none', !excede);
+}
 // Las cantidades de venta son unidades enteras: se bloquea el separador decimal
 // al teclear (el backend igual rechaza cantidades con decimales).
 cuerpoDetalle.addEventListener('keydown', (e) => {
@@ -1007,6 +1042,7 @@ function cargarProductoEnFila(tr, prod) {
     if (existente) {
         const inpCant = existente.querySelector('.inp-cantidad');
         inpCant.value = (parseInt(inpCant.value) || 0) + 1;
+        limitarCantidadAlStock(existente);
         calcularFila(existente);
         tr.querySelector('.inp-codigo').value = '';
         existente.classList.add('table-success');
@@ -1014,11 +1050,20 @@ function cargarProductoEnFila(tr, prod) {
         return inpCant;
     }
 
+    // Sin stock en la bodega de la venta no se puede vender: el producto no se carga
+    const stockBodega = parseFloat(prod.stock_mi_bodega ?? 0);
+    if (stockBodega <= 0) {
+        tr.querySelector('.inp-codigo').value = '';
+        Swal.fire({ icon: 'warning', title: 'Sin stock', text: `"${prod.inv_producto_nombre || ''}" no tiene stock en la bodega de esta venta.` })
+            .then(() => tr.querySelector('.inp-codigo')?.focus());
+        return null;
+    }
+
     tr.dataset.productoId = productoId;
     const pvp       = parseFloat(prod.pvp || 0);
     const descMax   = parseFloat(prod.descuento_max || 0);
     const precioMin = descMax > 0 ? parseFloat((pvp * (1 - descMax / 100)).toFixed(6)) : 0;
-    const stock     = parseFloat(prod.stock_mi_bodega ?? prod.stock_total ?? prod.inv_stock_cantidad_disponible ?? 0);
+    const stock     = stockBodega;
     tr.dataset.pvp       = pvp;
     tr.dataset.precioMin = precioMin;
     const inpCodigo = tr.querySelector('.inp-codigo');
@@ -1034,6 +1079,7 @@ function cargarProductoEnFila(tr, prod) {
     tr.querySelector('.inp-producto-id').value       = String(prod.inv_producto_id || '');
     tr.querySelector('.inp-stock').value             = stock;
     tr.querySelector('.inp-stock-display').textContent = Math.round(stock);
+    limitarCantidadAlStock(tr);
     calcularFila(tr);
     return tr.querySelector('.inp-cantidad');
 }
@@ -1408,10 +1454,18 @@ function construirFormasPago(total) {
     return { ok: true, formas: [{ forma_pago_id: fpId, monto: parseFloat(total.toFixed(2)), nombre, comprobante, dias, entidad_id }] };
 }
 
+// Lineas que se envian al guardar. Una linea sin producto y sin codigo escrito es la
+// fila en blanco que queda lista para el siguiente producto: se ignora. Si tiene codigo
+// escrito pero no se eligio producto, se envia para que el backend avise del olvido.
+function filasAGuardar() {
+    return [...document.querySelectorAll('#cuerpoDetalle tr')].filter(tr =>
+        tr.querySelector('.inp-producto-id').value || tr.querySelector('.inp-codigo').value.trim());
+}
+
 function construirPayload() {
     const clienteId = parseInt(q('#cliente_id').value || 0);
     if (!clienteId) return null;
-    const filas = document.querySelectorAll('#cuerpoDetalle tr');
+    const filas = filasAGuardar();
     if (!filas.length) return null;
 
     let base0 = 0, baseIva = 0, totalIva = 0;
@@ -1492,8 +1546,7 @@ q('#btnGuardar').addEventListener('click', async () => {
         q('#ruc_input').focus();
         return;
     }
-    const filas = document.querySelectorAll('#cuerpoDetalle tr');
-    if (!filas.length) {
+    if (!filasAGuardar().length) {
         Swal.fire({ title: 'Error', text: 'Agregue al menos un producto.', icon: 'warning', confirmButtonColor: '#1f6f68' });
         return;
     }
@@ -1530,8 +1583,9 @@ q('#btnGuardar').addEventListener('click', async () => {
         actualizarCambio();
         q('#cfmTitulo').textContent = 'Calculadora';
         q('#panelCalculadora').classList.remove('d-none');
+        // Se enfoca cuando el modal termino de abrirse; antes Bootstrap mueve el foco al modal
+        q('#modalConfirmacion').addEventListener('shown.bs.modal', () => q('#cfmRecibido').focus(), { once: true });
         bootstrap.Modal.getOrCreateInstance(q('#modalConfirmacion')).show();
-        setTimeout(() => q('#cfmRecibido')?.focus(), 300);
 
         q('#btnFacturar').onclick = () => ejecutarGuardar(payload);
     } else {
@@ -1566,6 +1620,14 @@ crearFila(<?= json_encode([
 <?php else: ?>
 crearFila({});
 <?php endif; ?>
+
+// Sin bodega asignada no hay de donde descontar stock: se avisa y se bloquea el detalle.
+if (sinBodega) {
+    cuerpoDetalle.querySelectorAll('input, select, button').forEach(el => { el.disabled = true; });
+    q('#btnAgregarLinea').disabled = true;
+    q('#btnGuardar').disabled = true;
+    Swal.fire({ icon: 'warning', title: 'No tiene bodega asignada', text: 'Pida a un administrador que le asigne una bodega en Inventario → Bodegas para poder vender.' });
+}
 
 <?php if ($esEdicion): ?>
 (function() {
