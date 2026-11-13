@@ -4,6 +4,10 @@ Una entrada por tarea terminada (ver [reglas.md](reglas.md)). Lo más reciente a
 
 ## 2026-11-13
 
+- **Usuarios: un no superusuario ya no ve ni administra superusuarios** — `e89b0d2`
+  Seguridad. Antes, un usuario con permisos de Usuarios (ej. GERENCIA) veía al superusuario y podía editarlo, bloquearlo o restablecerle la clave (y entrar con sus privilegios); además `obtenerAsignacionValida()` no revisaba la empresa (se podía actuar sobre usuarios de otra empresa por id) y se podía asignar el perfil SUPERUSUARIO a uno mismo o a un usuario nuevo. Ahora: la lista y el combo de perfiles excluyen SUPERUSUARIO para no superusuarios, y en el servidor toda acción sobre un usuario valida empresa y que no sea superusuario, y crear/editar rechaza asignar ese perfil.
+  Archivos: `src/Controladores/UsuarioControlador.php`, `src/Modelos/UsuarioEmpresaModelo.php`.
+
 - **PDF de factura autorizada en formato oficial del SRI (RIDE)** — `51c7d6b`
   `generarFacturaAutorizada()` ahora usa la misma plantilla SRI que Compras (`src/Servicios/PdfSri/Plantillas.php`, `gpdf_html_documento()`), con los datos armados igual que el XML enviado al SRI (dirección de la empresa, una forma de pago por el total, obligado a contabilidad SI, info adicional Email/Teléfono/Observación). La plantilla ya no dice "12%" fijo: usa `iva_porcentaje` o lo deduce de iva/subtotal (corrige también el PDF de Compras). Factura CREADA y Nota de venta conservan su formato.
   Archivos: `src/Servicios/GeneradorPdf.php`, `src/Servicios/PdfSri/Plantillas.php`.
