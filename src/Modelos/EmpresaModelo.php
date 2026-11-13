@@ -359,7 +359,7 @@ final class EmpresaModelo
     {
         $formas = [
             ['nombre' => 'EFECTIVO', 'codigo_sri' => '01', 'calculadora' => 'S', 'tipo' => 'EFECTIVO'],
-            ['nombre' => 'TRANSFERENCIA', 'codigo_sri' => '16', 'calculadora' => 'N', 'tipo' => 'TRANSFERENCIA'],
+            ['nombre' => 'TRANSFERENCIA', 'codigo_sri' => '20', 'calculadora' => 'N', 'tipo' => 'TRANSFERENCIA'],
             ['nombre' => 'TARJETA CRÉDITO', 'codigo_sri' => '19', 'calculadora' => 'N', 'tipo' => 'TARJETA_CREDITO'],
         ];
 

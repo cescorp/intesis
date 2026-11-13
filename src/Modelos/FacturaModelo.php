@@ -284,9 +284,14 @@ final class FacturaModelo
             INSERT INTO ven_documento_forma_pago (
                 ven_documento_id, ven_forma_pago_id, ven_documento_forma_pago_monto,
                 ven_documento_forma_pago_nombre, ven_documento_forma_pago_comprobante,
-                ven_documento_forma_pago_dias, usuario_crea
+                ven_documento_forma_pago_dias, ven_entidad_bancaria_id, usuario_crea
             ) VALUES (
-                :documento_id, :forma_pago_id, :monto, :nombre, :comprobante, :dias, :usuario
+                :documento_id, :forma_pago_id, :monto, :nombre, :comprobante, :dias,
+                -- solo se acepta una entidad de la misma empresa del documento
+                (SELECT eb.ven_entidad_bancaria_id FROM ven_entidad_bancaria eb
+                   JOIN ven_documento d ON d.sis_empresa_id = eb.sis_empresa_id
+                  WHERE eb.ven_entidad_bancaria_id = :entidad_id AND d.ven_documento_id = :documento_id2),
+                :usuario
             )
         ");
         foreach ($formasPago as $f) {
@@ -297,6 +302,8 @@ final class FacturaModelo
                 'nombre'       => $f['nombre'] !== '' ? $f['nombre'] : null,
                 'comprobante'  => $f['comprobante'] !== '' ? $f['comprobante'] : null,
                 'dias'         => $f['dias'] > 0 ? $f['dias'] : null,
+                'entidad_id'   => $f['entidad_id'] ?? 0,
+                'documento_id2' => $documentoId,
                 'usuario'      => $usuarioId,
             ]);
         }
@@ -424,7 +431,8 @@ final class FacturaModelo
     public function listarFormasPago(int $empresaId): array
     {
         $sentencia = $this->pdo()->prepare("
-            SELECT ven_forma_pago_id, ven_forma_pago_nombre, ven_forma_pago_calculadora, ven_forma_pago_tipo
+            SELECT ven_forma_pago_id, ven_forma_pago_nombre, ven_forma_pago_calculadora, ven_forma_pago_tipo,
+                   ven_forma_pago_usa_entidad_bancaria
             FROM ven_forma_pago
             WHERE sis_empresa_id = :empresa_id AND ven_forma_pago_estado = 'A'
             ORDER BY ven_forma_pago_nombre

@@ -111,6 +111,7 @@ final class FacturaControlador
             'empresas'       => $this->facturaModelo->listarEmpresasActivas($verTodas, $empresaId),
             'ivaList'        => $this->facturaModelo->listarIva($empresaId),
             'formasPago'     => $this->facturaModelo->listarFormasPago($empresaId),
+            'entidadesBancarias' => $this->formaPagoModelo->listarEntidades($empresaId, true),
             'bodegas'        => $verTodas ? [] : $this->facturaModelo->listarBodegasPermitidas($empresaId, (int) $usuario['id']),
             'esSuperusuario' => $verTodas,
             'permisos'       => $this->obtenerPermisos($usuario),
@@ -145,6 +146,7 @@ final class FacturaControlador
             'empresas'       => $this->facturaModelo->listarEmpresasActivas($verTodas, $empresaId),
             'ivaList'        => $this->facturaModelo->listarIva($empresaId),
             'formasPago'     => $this->facturaModelo->listarFormasPago($empresaId),
+            'entidadesBancarias' => $this->formaPagoModelo->listarEntidades($empresaId, true),
             'bodegas'        => $verTodas ? [] : $this->facturaModelo->listarBodegasPermitidas($empresaId, (int) $usuario['id']),
             'esSuperusuario' => $verTodas,
             'permisos'       => $this->obtenerPermisos($usuario),
@@ -330,9 +332,9 @@ final class FacturaControlador
         $empresaId = (int) $usuario['empresa_id'];
 
         try {
-            [$nombre, $codigoSri, $calculadora, $tipo] = $this->normalizarDatosFormaPago();
+            [$nombre, $codigoSri, $calculadora, $tipo, $usaEntidad] = $this->normalizarDatosFormaPago();
             $this->validarDatosFormaPago($empresaId, $nombre, null);
-            $id = $this->formaPagoModelo->crear($empresaId, $nombre, $codigoSri, $calculadora, $tipo, (int) $usuario['id']);
+            $id = $this->formaPagoModelo->crear($empresaId, $nombre, $codigoSri, $calculadora, $tipo, $usaEntidad, (int) $usuario['id']);
             $this->responderJson(true, 'OK', 'Forma de pago creada correctamente.', ['forma_pago' => $this->formaPagoModelo->buscar($id)]);
         } catch (Throwable $excepcion) {
             $this->registrarErrorCrud('CREAR FORMA DE PAGO', $excepcion);
@@ -349,9 +351,9 @@ final class FacturaControlador
         try {
             $id = (int) ($_POST['forma_pago_id'] ?? 0);
             $registro = $this->obtenerFormaPagoPermitida($id, $empresaId);
-            [$nombre, $codigoSri, $calculadora, $tipo] = $this->normalizarDatosFormaPago();
+            [$nombre, $codigoSri, $calculadora, $tipo, $usaEntidad] = $this->normalizarDatosFormaPago();
             $this->validarDatosFormaPago($empresaId, $nombre, (int) $registro['ven_forma_pago_id']);
-            $this->formaPagoModelo->actualizar($id, $nombre, $codigoSri, $calculadora, $tipo, (int) $usuario['id']);
+            $this->formaPagoModelo->actualizar($id, $nombre, $codigoSri, $calculadora, $tipo, $usaEntidad, (int) $usuario['id']);
             $this->responderJson(true, 'OK', 'Forma de pago actualizada correctamente.', ['forma_pago' => $this->formaPagoModelo->buscar($id)]);
         } catch (Throwable $excepcion) {
             $this->registrarErrorCrud('EDITAR FORMA DE PAGO', $excepcion);
@@ -408,17 +410,28 @@ final class FacturaControlador
 
     private function normalizarDatosFormaPago(): array
     {
-        $tiposValidos = ['EFECTIVO', 'TARJETA_CREDITO', 'TRANSFERENCIA', 'CREDITO', 'DEPOSITO', 'DEUNA', 'OTRO'];
+        // Codigo SRI (tabla 24 formas de pago) se deduce del tipo, no se captura.
+        $sriPorTipo = [
+            'EFECTIVO'        => '01',
+            'CREDITO'         => '01',
+            'OTRO'            => '01',
+            'TARJETA_DEBITO'  => '16',
+            'TARJETA_CREDITO' => '19',
+            'TRANSFERENCIA'   => '20',
+            'DEPOSITO'        => '20',
+            'DEUNA'           => '20',
+        ];
         $tipo = strtoupper(trim((string) ($_POST['tipo'] ?? 'OTRO')));
-        if (!in_array($tipo, $tiposValidos, true)) {
+        if (!isset($sriPorTipo[$tipo])) {
             $tipo = 'OTRO';
         }
 
         return [
             mb_strtoupper(trim((string) ($_POST['nombre'] ?? '')), 'UTF-8'),
-            trim((string) ($_POST['codigo_sri'] ?? '')),
+            $sriPorTipo[$tipo],
             !empty($_POST['calculadora']) ? 'S' : 'N',
             $tipo,
+            !empty($_POST['usa_entidad']) ? 'S' : 'N',
         ];
     }
 
@@ -440,6 +453,87 @@ final class FacturaControlador
         }
         if ((int) $registro['sis_empresa_id'] !== $empresaId) {
             throw new \InvalidArgumentException('Sin acceso a este registro.');
+        }
+        return $registro;
+    }
+
+    // =========================================================================
+    // MINI-CRUD ENTIDADES BANCARIAS (boton "+" junto al combo Entidad bancaria)
+    // =========================================================================
+
+    public function entidadesBancariasListar(): void
+    {
+        $usuario = $this->exigirSesionJson();
+        $this->exigirPermisoJson('/ventas/facturas/crear');
+        $this->responderJson(true, 'OK', '', [
+            'entidades' => $this->formaPagoModelo->listarEntidades((int) $usuario['empresa_id']),
+        ]);
+    }
+
+    public function entidadBancariaGuardar(bool $editar): void
+    {
+        $usuario   = $this->exigirSesionJson();
+        $this->exigirPermisoJson($editar ? '/ventas/entidades-bancarias/editar' : '/ventas/entidades-bancarias/crear');
+        $empresaId = (int) $usuario['empresa_id'];
+
+        try {
+            $id     = $editar ? (int) $this->obtenerEntidadPermitida($empresaId)['ven_entidad_bancaria_id'] : null;
+            $nombre = mb_strtoupper(trim((string) ($_POST['nombre'] ?? '')), 'UTF-8');
+            if ($nombre === '') {
+                throw new \InvalidArgumentException('El nombre es obligatorio.');
+            }
+            if ($this->formaPagoModelo->existeNombreEntidad($empresaId, $nombre, $id)) {
+                throw new \InvalidArgumentException("Ya existe una entidad bancaria con el nombre \"$nombre\".");
+            }
+            if ($editar) {
+                $this->formaPagoModelo->actualizarEntidad($id, $nombre, (int) $usuario['id']);
+            } else {
+                $id = $this->formaPagoModelo->crearEntidad($empresaId, $nombre, (int) $usuario['id']);
+            }
+            $this->responderJson(true, 'OK', 'Entidad bancaria guardada.', ['entidad' => $this->formaPagoModelo->buscarEntidad($id)]);
+        } catch (Throwable $excepcion) {
+            $this->registrarErrorCrud($editar ? 'EDITAR ENTIDAD BANCARIA' : 'CREAR ENTIDAD BANCARIA', $excepcion);
+            $this->responderJson(false, 'ERROR_VALIDACION', $excepcion->getMessage());
+        }
+    }
+
+    public function entidadBancariaCambiarEstado(string $estado): void
+    {
+        $usuario = $this->exigirSesionJson();
+        $this->exigirPermisoJson('/ventas/entidades-bancarias/inactivar');
+        try {
+            $entidad = $this->obtenerEntidadPermitida((int) $usuario['empresa_id']);
+            $this->formaPagoModelo->cambiarEstadoEntidad((int) $entidad['ven_entidad_bancaria_id'], $estado, (int) $usuario['id']);
+            $this->responderJson(true, 'OK', $estado === 'A' ? 'Entidad bancaria activada.' : 'Entidad bancaria inactivada.');
+        } catch (Throwable $excepcion) {
+            $this->registrarErrorCrud('CAMBIAR ESTADO ENTIDAD BANCARIA', $excepcion);
+            $this->responderJson(false, 'ERROR_VALIDACION', $excepcion->getMessage());
+        }
+    }
+
+    public function entidadBancariaEliminar(): void
+    {
+        $usuario = $this->exigirSesionJson();
+        $this->exigirPermisoJson('/ventas/entidades-bancarias/eliminar');
+        try {
+            $id = (int) $this->obtenerEntidadPermitida((int) $usuario['empresa_id'])['ven_entidad_bancaria_id'];
+            if ($this->formaPagoModelo->entidadEnUso($id)) {
+                throw new \InvalidArgumentException('No se puede eliminar: está en uso en documentos existentes. Puede inactivarla.');
+            }
+            $this->formaPagoModelo->eliminarEntidad($id);
+            $this->responderJson(true, 'OK', 'Entidad bancaria eliminada.');
+        } catch (Throwable $excepcion) {
+            $this->registrarErrorCrud('ELIMINAR ENTIDAD BANCARIA', $excepcion);
+            $this->responderJson(false, 'ERROR_VALIDACION', $excepcion->getMessage());
+        }
+    }
+
+    private function obtenerEntidadPermitida(int $empresaId): array
+    {
+        $id = (int) ($_POST['entidad_id'] ?? 0);
+        $registro = $id > 0 ? $this->formaPagoModelo->buscarEntidad($id) : null;
+        if (!$registro || (int) $registro['sis_empresa_id'] !== $empresaId) {
+            throw new \InvalidArgumentException('Entidad bancaria no válida.');
         }
         return $registro;
     }
@@ -567,6 +661,7 @@ final class FacturaControlador
                 'nombre'        => trim((string) ($f['nombre']       ?? '')),
                 'comprobante'   => trim((string) ($f['comprobante']  ?? '')),
                 'dias'          => (int)   ($f['dias']          ?? 0),
+                'entidad_id'    => (int)   ($f['entidad_id']    ?? 0),
             ];
         }
         return $formas;
@@ -660,6 +755,10 @@ final class FacturaControlador
             'editar'    => $this->menuModelo->tienePermiso($eId, $pId, '/ventas/formas-pago/editar'),
             'inactivar' => $this->menuModelo->tienePermiso($eId, $pId, '/ventas/formas-pago/inactivar'),
             'eliminar'  => $this->menuModelo->tienePermiso($eId, $pId, '/ventas/formas-pago/eliminar'),
+            'entidad_crear'     => $this->menuModelo->tienePermiso($eId, $pId, '/ventas/entidades-bancarias/crear'),
+            'entidad_editar'    => $this->menuModelo->tienePermiso($eId, $pId, '/ventas/entidades-bancarias/editar'),
+            'entidad_inactivar' => $this->menuModelo->tienePermiso($eId, $pId, '/ventas/entidades-bancarias/inactivar'),
+            'entidad_eliminar'  => $this->menuModelo->tienePermiso($eId, $pId, '/ventas/entidades-bancarias/eliminar'),
         ];
     }
 

@@ -144,7 +144,7 @@ foreach ($formasPago as $fp) {
                 </div>
                 <!-- Fila 2: forma de pago + datos de contacto del cliente -->
                 <div class="row g-2">
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <label class="form-label mb-0 small">Forma de pago <span class="text-danger">*</span></label>
                         <div class="input-group input-group-sm">
                             <select id="selFormaPago" class="form-select form-select-sm">
@@ -152,6 +152,7 @@ foreach ($formasPago as $fp) {
                                 <option value="<?= $fp['ven_forma_pago_id'] ?>"
                                     data-calculadora="<?= $fp['ven_forma_pago_calculadora'] ?? 'N' ?>"
                                     data-tipo="<?= htmlspecialchars($fp['ven_forma_pago_tipo'] ?? 'OTRO') ?>"
+                                    data-entidad="<?= ($fp['ven_forma_pago_usa_entidad_bancaria'] ?? 'N') === 'S' ? 'S' : 'N' ?>"
                                     <?= $editFormaPagoId === (int)$fp['ven_forma_pago_id'] ? 'selected' : '' ?>>
                                     <?= htmlspecialchars($fp['ven_forma_pago_nombre']) ?>
                                 </option>
@@ -162,7 +163,7 @@ foreach ($formasPago as $fp) {
                             <?php endif; ?>
                         </div>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <label class="form-label mb-0 small">Correo</label>
                         <input type="text" id="cliente_correo_display" class="form-control form-control-sm" disabled
                             placeholder="—"
@@ -173,6 +174,15 @@ foreach ($formasPago as $fp) {
                         <input type="text" id="cliente_telefono_display" class="form-control form-control-sm" disabled
                             placeholder="—"
                             value="<?= $esEdicion ? htmlspecialchars($factura['ven_cliente_telefono'] ?? '') : '' ?>">
+                    </div>
+                    <div class="col-md-2 d-none" id="fp_campo_entidad_cont">
+                        <label class="form-label mb-0 small">Entidad bancaria</label>
+                        <div class="input-group input-group-sm">
+                            <select id="fp_datos_entidad" class="form-select form-select-sm"></select>
+                            <?php if ($permisosFormaPago['entidad_crear'] ?? false): ?>
+                            <button class="btn btn-outline-secondary" type="button" id="btnAbrirEntidades" title="Administrar entidades bancarias"><i class="bi bi-plus-lg"></i></button>
+                            <?php endif; ?>
+                        </div>
                     </div>
                     <div class="col-md-2 d-none" id="fp_campo_nombre_cont">
                         <label class="form-label mb-0 small">Nombre</label>
@@ -194,8 +204,8 @@ foreach ($formasPago as $fp) {
                             <div id="fp_mixto_checklist" class="d-flex flex-wrap gap-3 mb-2"></div>
                             <div class="table-responsive">
                                 <table class="table table-sm table-bordered mb-1" style="font-size:.8rem">
-                                    <thead class="table-light"><tr><th>Forma de pago</th><th style="width:20%">Nombre</th><th style="width:20%">No. Comprobante</th><th style="width:15%" class="text-end">Monto</th></tr></thead>
-                                    <tbody id="fp_mixto_filas"><tr><td colspan="4" class="text-center text-muted py-2">Marque al menos una forma de pago arriba</td></tr></tbody>
+                                    <thead class="table-light"><tr><th>Forma de pago</th><th style="width:20%">Entidad bancaria</th><th style="width:18%">Nombre</th><th style="width:18%">No. Comprobante</th><th style="width:15%" class="text-end">Monto</th></tr></thead>
+                                    <tbody id="fp_mixto_filas"><tr><td colspan="5" class="text-center text-muted py-2">Marque al menos una forma de pago arriba</td></tr></tbody>
                                 </table>
                             </div>
                             <div class="text-end small">
@@ -456,6 +466,37 @@ foreach ($formasPago as $fp) {
     </div>
 </div>
 
+<!-- ═══ MODAL ENTIDADES BANCARIAS (mini CRUD) ═══ -->
+<div class="modal fade modal-intesis" id="modalEntidades" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <div><p class="modal-etiqueta mb-0">Ventas</p><h2 class="modal-title h6 mb-0">Entidades bancarias</h2></div>
+                <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body py-2">
+                <form id="formEntidad" class="row g-2 align-items-end mb-3 border rounded p-2 mx-0">
+                    <div class="col-12 small fw-semibold" id="eb_modo_titulo"></div>
+                    <div class="col">
+                        <label class="form-label mb-0 small">Nombre</label>
+                        <input type="text" id="eb_nombre" class="form-control form-control-sm" maxlength="100">
+                    </div>
+                    <div class="col-auto d-flex gap-1">
+                        <button type="button" id="btnCancelarEntidad" class="btn btn-sm btn-secundario d-none">Cancelar</button>
+                        <button type="submit" id="btnGuardarEntidad" class="btn btn-sm btn-intesis">Guardar</button>
+                    </div>
+                </form>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0" style="font-size:.82rem">
+                        <thead class="table-light"><tr><th>Nombre</th><th class="text-center">Estado</th><th class="text-end">Acciones</th></tr></thead>
+                        <tbody id="cuerpoEntidadesModal"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- ═══ MODAL FORMAS DE PAGO (mini CRUD) ═══ -->
 <div class="modal fade modal-intesis" id="modalFormasPago" tabindex="-1" data-bs-backdrop="static">
     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
@@ -465,15 +506,12 @@ foreach ($formasPago as $fp) {
                 <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body py-2">
-                <form id="formFormaPago" class="row g-2 align-items-end mb-3 border-bottom pb-3">
+                <form id="formFormaPago" class="row g-2 align-items-end mb-3 border rounded p-2 mx-0">
                     <input type="hidden" id="fp_id">
+                    <div class="col-12 small fw-semibold" id="fp_modo_titulo"><i class="bi bi-plus-lg me-1"></i>Nueva forma de pago</div>
                     <div class="col-md-4">
                         <label class="form-label mb-0 small">Nombre</label>
                         <input type="text" id="fp_nombre" class="form-control form-control-sm" maxlength="100">
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label mb-0 small">Cod. SRI</label>
-                        <input type="text" id="fp_codigo_sri" class="form-control form-control-sm" maxlength="2">
                     </div>
                     <div class="col-md-3">
                         <label class="form-label mb-0 small">Tipo</label>
@@ -481,6 +519,7 @@ foreach ($formasPago as $fp) {
                             <option value="OTRO">Otro (sin campos extra)</option>
                             <option value="EFECTIVO">Efectivo</option>
                             <option value="TARJETA_CREDITO">Tarjeta Crédito</option>
+                            <option value="TARJETA_DEBITO">Tarjeta Débito</option>
                             <option value="TRANSFERENCIA">Transferencia</option>
                             <option value="CREDITO">Crédito</option>
                             <option value="DEPOSITO">Depósito</option>
@@ -488,19 +527,37 @@ foreach ($formasPago as $fp) {
                         </select>
                     </div>
                     <div class="col-md-1">
-                        <div class="form-check form-switch switch-intesis mt-4">
+                        <div class="form-check form-switch switch-intesis mt-4" title="Calculadora de cambio al facturar">
                             <input class="form-check-input" type="checkbox" role="switch" id="fp_calculadora">
                             <label class="form-check-label small" for="fp_calculadora">Calc.</label>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="form-check form-switch switch-intesis mt-4" title="Pide entidad bancaria al facturar">
+                            <input class="form-check-input" type="checkbox" role="switch" id="fp_usa_entidad">
+                            <label class="form-check-label small" for="fp_usa_entidad">Entidad bancaria</label>
                         </div>
                     </div>
                     <div class="col-md-2 d-flex gap-1">
                         <button type="button" id="btnCancelarFormaPago" class="btn btn-sm btn-secundario flex-fill d-none">Cancelar</button>
                         <button type="submit" id="btnGuardarFormaPago" class="btn btn-sm btn-intesis flex-fill">Guardar</button>
                     </div>
+                    <div class="col-12 small text-muted">SRI: <span id="fp_sri_texto"></span> <span class="fst-italic">(automático según el tipo)</span></div>
+                    <div class="col-12 d-none" id="fp_calc_ejemplo">
+                        <div class="border rounded bg-light p-2 small">
+                            <i class="bi bi-calculator me-1"></i><strong>Calculadora de cambio:</strong>
+                            al facturar con esta forma de pago se pide el valor recibido y se muestra el cambio. Pruebe:
+                            <div class="d-flex flex-wrap align-items-center gap-2 mt-1">
+                                <span>Total <strong>$23.50</strong></span><i class="bi bi-arrow-right"></i>
+                                <span>Recibido $</span><input type="number" id="fp_calc_recibido" class="form-control form-control-sm" style="width:90px" value="30.00" min="0" step="0.01">
+                                <i class="bi bi-arrow-right"></i><span>Cambio <strong id="fp_calc_cambio">$6.50</strong></span>
+                            </div>
+                        </div>
+                    </div>
                 </form>
                 <div class="table-responsive">
                     <table class="table table-sm table-hover mb-0" style="font-size:.82rem">
-                        <thead class="table-light"><tr><th>Nombre</th><th>Cod. SRI</th><th>Tipo</th><th class="text-center">Calculadora</th><th class="text-center">Estado</th><th class="text-end">Acciones</th></tr></thead>
+                        <thead class="table-light"><tr><th>Nombre</th><th>Tipo</th><th class="text-center">Calculadora</th><th class="text-center">Entidad bancaria</th><th class="text-center">Estado</th><th class="text-end">Acciones</th></tr></thead>
                         <tbody id="cuerpoFormasPagoModal"><tr><td colspan="6" class="text-center text-muted py-3">Cargando...</td></tr></tbody>
                     </table>
                 </div>
@@ -522,6 +579,7 @@ const ivaDefault     = <?= (int) $ivaDefault ?>;
 const ivaDefaultVal  = <?= (float) $ivaDefaultValor ?>;
 const lineasIni      = <?= $lineasJson ?>;
 const permisosFormaPago = <?= json_encode($permisosFormaPago ?? [], JSON_UNESCAPED_UNICODE) ?>;
+let entidadesBancarias = <?= json_encode(array_values($entidadesBancarias ?? []), JSON_UNESCAPED_UNICODE) ?>;
 const configDescuento = <?= json_encode($configDescuento ?? ['formula' => 'C', 'max_facturas' => 0, 'max_notas_venta' => 0], JSON_UNESCAPED_UNICODE) ?>;
 
 /* ── Calcula subtotal/iva/total aplicando la formula A/B/C de descuento ──── */
@@ -569,7 +627,19 @@ const fetchJson = async (url) => { const r = await fetch(url); if (!r.ok) throw 
 const bodegaParam = () => { const v = q('#selBodega')?.value; return v ? '&bodega_id=' + encodeURIComponent(v) : ''; };
 
 /* ── Forma de pago: tipos con campos extra y panel Mixto ──────────────────── */
-const TIPOS_CON_NOMBRE_COMPROBANTE = ['TARJETA_CREDITO', 'TRANSFERENCIA', 'DEPOSITO', 'DEUNA'];
+const TIPOS_CON_NOMBRE_COMPROBANTE = ['TARJETA_CREDITO', 'TARJETA_DEBITO', 'TRANSFERENCIA', 'DEPOSITO', 'DEUNA'];
+
+/* Opciones del combo Entidad bancaria (solo activas) */
+function opcionesEntidad(seleccionada) {
+    return '<option value="">Seleccione</option>' + entidadesBancarias
+        .filter(e => e.ven_entidad_bancaria_estado === 'A')
+        .map(e => `<option value="${e.ven_entidad_bancaria_id}" ${String(e.ven_entidad_bancaria_id) === String(seleccionada) ? 'selected' : ''}>${esc(e.ven_entidad_bancaria_nombre)}</option>`)
+        .join('');
+}
+function refrescarCombosEntidad() {
+    q('#fp_datos_entidad').innerHTML = opcionesEntidad(q('#fp_datos_entidad').value);
+    q('#fp_mixto_filas').querySelectorAll('.mx-entidad').forEach(s => { s.innerHTML = opcionesEntidad(s.value); });
+}
 
 function agregarOpcionMixto(select) {
     if ([...select.options].some(o => o.dataset.tipo === 'MIXTO')) return;
@@ -589,6 +659,7 @@ function actualizarCamposFormaPago() {
     q('#fp_campo_nombre_cont').classList.toggle('d-none', !TIPOS_CON_NOMBRE_COMPROBANTE.includes(tipo));
     q('#fp_campo_comprobante_cont').classList.toggle('d-none', !TIPOS_CON_NOMBRE_COMPROBANTE.includes(tipo));
     q('#fp_campo_dias_cont').classList.toggle('d-none', tipo !== 'CREDITO');
+    q('#fp_campo_entidad_cont').classList.toggle('d-none', opt?.dataset?.entidad !== 'S');
     const esMixto = tipo === 'MIXTO';
     q('#fp_panel_mixto').classList.toggle('d-none', !esMixto);
     if (esMixto) renderizarChecklistMixto();
@@ -598,7 +669,7 @@ function renderizarChecklistMixto() {
     const cont = q('#fp_mixto_checklist');
     cont.innerHTML = opcionesFormaPagoParaMixto().map(o => `
         <div class="form-check">
-            <input class="form-check-input chk-mixto-fp" type="checkbox" value="${o.value}" data-nombre="${esc(o.text)}" data-tipo="${o.dataset.tipo}" id="chk_mixto_${o.value}">
+            <input class="form-check-input chk-mixto-fp" type="checkbox" value="${o.value}" data-nombre="${esc(o.text)}" data-tipo="${o.dataset.tipo}" data-entidad="${o.dataset.entidad || 'N'}" id="chk_mixto_${o.value}">
             <label class="form-check-label small" for="chk_mixto_${o.value}">${esc(o.text)}</label>
         </div>
     `).join('');
@@ -613,11 +684,12 @@ function actualizarFilasMixto() {
             nombre: tr.querySelector('.mx-nombre')?.value || '',
             comprobante: tr.querySelector('.mx-comprobante')?.value || '',
             monto: tr.querySelector('.mx-monto')?.value || '',
+            entidad: tr.querySelector('.mx-entidad')?.value || '',
         };
     });
     const marcados = [...q('#fp_mixto_checklist').querySelectorAll('.chk-mixto-fp:checked')];
     if (!marcados.length) {
-        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-2">Marque al menos una forma de pago arriba</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-2">Marque al menos una forma de pago arriba</td></tr>';
         actualizarSumaMixto();
         return;
     }
@@ -626,6 +698,7 @@ function actualizarFilasMixto() {
         const prev = previos[chk.value] || {};
         return `<tr data-fp="${chk.value}">
             <td class="align-middle">${esc(chk.dataset.nombre)}</td>
+            <td>${chk.dataset.entidad === 'S' ? `<select class="form-select form-select-sm mx-entidad">${opcionesEntidad(prev.entidad)}</select>` : '<span class="text-muted">—</span>'}</td>
             <td>${conDatos ? `<input type="text" class="form-control form-control-sm mx-nombre" value="${esc(prev.nombre || '')}">` : '<span class="text-muted">—</span>'}</td>
             <td>${conDatos ? `<input type="text" class="form-control form-control-sm mx-comprobante" value="${esc(prev.comprobante || '')}">` : '<span class="text-muted">—</span>'}</td>
             <td><input type="number" class="form-control form-control-sm text-end mx-monto" min="0" step="0.01" value="${esc(prev.monto || '')}"></td>
@@ -654,6 +727,7 @@ q('#fp_mixto_filas').addEventListener('input', (e) => {
     if (e.target.classList.contains('mx-monto')) actualizarSumaMixto();
 });
 agregarOpcionMixto(q('#selFormaPago'));
+q('#fp_datos_entidad').innerHTML = opcionesEntidad('');
 actualizarCamposFormaPago();
 
 /* ── Tipo documento: título dinámico ────────────────────────────────────── */
@@ -1265,6 +1339,7 @@ function construirFormasPago(total) {
             nombre: tr.querySelector('.mx-nombre')?.value.trim() || '',
             comprobante: tr.querySelector('.mx-comprobante')?.value.trim() || '',
             dias: 0,
+            entidad_id: parseInt(tr.querySelector('.mx-entidad')?.value) || 0,
         }));
         const suma = formas.reduce((acc, f) => acc + f.monto, 0);
         if (Math.abs(suma - total) > 0.01) {
@@ -1282,7 +1357,8 @@ function construirFormasPago(total) {
     if (tipo === 'CREDITO' && dias <= 0) {
         return { ok: false, mensaje: 'Ingrese los días de crédito.' };
     }
-    return { ok: true, formas: [{ forma_pago_id: fpId, monto: parseFloat(total.toFixed(2)), nombre, comprobante, dias }] };
+    const entidad_id = opt?.dataset?.entidad === 'S' ? (parseInt(q('#fp_datos_entidad').value) || 0) : 0;
+    return { ok: true, formas: [{ forma_pago_id: fpId, monto: parseFloat(total.toFixed(2)), nombre, comprobante, dias, entidad_id }] };
 }
 
 function construirPayload() {
@@ -1461,12 +1537,51 @@ if (btnAbrirFormasPago) {
         formaPagoEditandoId = null;
         q('#fp_id').value = '';
         q('#fp_nombre').value = '';
-        q('#fp_codigo_sri').value = '';
         q('#fp_tipo').value = 'OTRO';
         q('#fp_calculadora').checked = false;
+        q('#fp_usa_entidad').checked = false;
         q('#btnCancelarFormaPago').classList.add('d-none');
         q('#btnGuardarFormaPago').innerHTML = 'Guardar';
+        pintarModoFormaPago(null);
     }
+
+    /* Crear vs editar: titulo, fondo del formulario y fila resaltada */
+    function pintarModoFormaPago(nombre) {
+        const editando = nombre !== null;
+        q('#fp_modo_titulo').innerHTML = editando
+            ? `<i class="bi bi-pencil me-1"></i>Editando: ${esc(nombre)}`
+            : '<i class="bi bi-plus-lg me-1"></i>Nueva forma de pago';
+        q('#formFormaPago').classList.toggle('bg-warning-subtle', editando);
+        q('#formFormaPago').classList.toggle('border-warning', editando);
+        q('#cuerpoFormasPagoModal').querySelectorAll('tr[data-fp-id]').forEach(tr =>
+            tr.classList.toggle('table-warning', editando && tr.dataset.fpId === String(formaPagoEditandoId)));
+        actualizarSriYCalc();
+    }
+
+    /* Mismo mapa que FacturaControlador::normalizarDatosFormaPago() */
+    const sriPorTipo = {
+        EFECTIVO: '01', CREDITO: '01', OTRO: '01',
+        TARJETA_DEBITO: '16', TARJETA_CREDITO: '19',
+        TRANSFERENCIA: '20', DEPOSITO: '20', DEUNA: '20',
+    };
+    const sriDescripcion = {
+        '01': 'Sin utilización del sistema financiero',
+        '16': 'Tarjeta de débito',
+        '19': 'Tarjeta de crédito',
+        '20': 'Otros con utilización del sistema financiero',
+    };
+    function actualizarSriYCalc() {
+        const cod = sriPorTipo[q('#fp_tipo').value] || '01';
+        q('#fp_sri_texto').textContent = `${cod} - ${sriDescripcion[cod]}`;
+        q('#fp_calc_ejemplo').classList.toggle('d-none', !q('#fp_calculadora').checked);
+        const recibido = parseFloat(q('#fp_calc_recibido').value) || 0;
+        q('#fp_calc_cambio').textContent = '$' + Math.max(0, recibido - 23.50).toFixed(2);
+    }
+    q('#fp_tipo').addEventListener('change', actualizarSriYCalc);
+    q('#fp_calculadora').addEventListener('change', actualizarSriYCalc);
+    q('#fp_calc_recibido').addEventListener('input', actualizarSriYCalc);
+    // Es solo un ejemplo: Enter aqui no debe guardar la forma de pago
+    q('#fp_calc_recibido').addEventListener('keydown', (e) => { if (e.key === 'Enter') e.preventDefault(); });
 
     function sincronizarSelectFormaPago(lista, seleccionarId) {
         const select = q('#selFormaPago');
@@ -1476,6 +1591,7 @@ if (btnAbrirFormasPago) {
             const opcion = new Option(fp.ven_forma_pago_nombre, fp.ven_forma_pago_id);
             opcion.dataset.calculadora = fp.ven_forma_pago_calculadora || 'N';
             opcion.dataset.tipo = fp.ven_forma_pago_tipo || 'OTRO';
+            opcion.dataset.entidad = fp.ven_forma_pago_usa_entidad_bancaria === 'S' ? 'S' : 'N';
             select.add(opcion);
         });
         agregarOpcionMixto(select);
@@ -1489,6 +1605,7 @@ if (btnAbrirFormasPago) {
     const etiquetasTipoFormaPago = {
         EFECTIVO: 'Efectivo',
         TARJETA_CREDITO: 'Tarjeta Crédito',
+        TARJETA_DEBITO: 'Tarjeta Débito',
         TRANSFERENCIA: 'Transferencia',
         CREDITO: 'Crédito',
         DEPOSITO: 'Depósito',
@@ -1514,11 +1631,11 @@ if (btnAbrirFormasPago) {
             if (permisosFormaPago.eliminar) {
                 acciones += `<button type="button" class="btn btn-sm btn-outline-danger btn-eliminar-forma-pago" data-id="${fp.ven_forma_pago_id}" title="Eliminar"><i class="bi bi-trash"></i></button>`;
             }
-            return `<tr>
+            return `<tr data-fp-id="${fp.ven_forma_pago_id}">
               <td>${esc(fp.ven_forma_pago_nombre)}</td>
-              <td>${esc(fp.ven_forma_pago_codigo_sri || '—')}</td>
               <td>${esc(etiquetasTipoFormaPago[fp.ven_forma_pago_tipo] || 'Otro')}</td>
               <td class="text-center">${fp.ven_forma_pago_calculadora === 'S' ? 'Si' : 'No'}</td>
+              <td class="text-center">${fp.ven_forma_pago_usa_entidad_bancaria === 'S' ? 'Si' : 'No'}</td>
               <td class="text-center"><span class="badge ${activo ? 'bg-success' : 'bg-secondary'}">${activo ? 'Activo' : 'Inactivo'}</span></td>
               <td class="text-end">${acciones}</td>
             </tr>`;
@@ -1557,9 +1674,9 @@ if (btnAbrirFormasPago) {
         }
         const form = new FormData();
         form.append('nombre', nombre);
-        form.append('codigo_sri', q('#fp_codigo_sri').value.trim());
         form.append('tipo', q('#fp_tipo').value);
         if (q('#fp_calculadora').checked) form.append('calculadora', '1');
+        if (q('#fp_usa_entidad').checked) form.append('usa_entidad', '1');
         if (formaPagoEditandoId) form.append('forma_pago_id', String(formaPagoEditandoId));
 
         const url = appUrl + (formaPagoEditandoId ? '/ventas/formas-pago/editar' : '/ventas/formas-pago/crear');
@@ -1587,11 +1704,12 @@ if (btnAbrirFormasPago) {
             formaPagoEditandoId = fp.ven_forma_pago_id;
             q('#fp_id').value = fp.ven_forma_pago_id;
             q('#fp_nombre').value = fp.ven_forma_pago_nombre;
-            q('#fp_codigo_sri').value = fp.ven_forma_pago_codigo_sri || '';
             q('#fp_tipo').value = fp.ven_forma_pago_tipo || 'OTRO';
             q('#fp_calculadora').checked = fp.ven_forma_pago_calculadora === 'S';
+            q('#fp_usa_entidad').checked = fp.ven_forma_pago_usa_entidad_bancaria === 'S';
             q('#btnCancelarFormaPago').classList.remove('d-none');
             q('#btnGuardarFormaPago').innerHTML = 'Actualizar';
+            pintarModoFormaPago(fp.ven_forma_pago_nombre);
             q('#fp_nombre').focus();
             return;
         }
@@ -1634,6 +1752,146 @@ if (btnAbrirFormasPago) {
             } catch (error) {
                 Swal.fire({ icon: 'error', title: 'No se pudo eliminar', text: error.message || '' });
             }
+        }
+    });
+}
+
+/* ── Mini CRUD: Entidades bancarias ──────────────────────────────────── */
+const btnAbrirEntidades = q('#btnAbrirEntidades');
+if (btnAbrirEntidades) {
+    let entidadEditandoId = null;
+
+    function resetFormularioEntidad() {
+        entidadEditandoId = null;
+        q('#eb_nombre').value = '';
+        q('#btnCancelarEntidad').classList.add('d-none');
+        q('#btnGuardarEntidad').innerHTML = 'Guardar';
+        pintarModoEntidad(null);
+    }
+
+    function pintarModoEntidad(nombre) {
+        const editando = nombre !== null;
+        q('#eb_modo_titulo').innerHTML = editando
+            ? `<i class="bi bi-pencil me-1"></i>Editando: ${esc(nombre)}`
+            : '<i class="bi bi-plus-lg me-1"></i>Nueva entidad bancaria';
+        q('#formEntidad').classList.toggle('bg-warning-subtle', editando);
+        q('#formEntidad').classList.toggle('border-warning', editando);
+        q('#cuerpoEntidadesModal').querySelectorAll('tr[data-eb-id]').forEach(tr =>
+            tr.classList.toggle('table-warning', editando && tr.dataset.ebId === String(entidadEditandoId)));
+    }
+
+    function renderEntidades() {
+        const tbody = q('#cuerpoEntidadesModal');
+        if (!entidadesBancarias.length) {
+            tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted py-3">Sin entidades bancarias</td></tr>';
+            return;
+        }
+        tbody.innerHTML = entidadesBancarias.map(eb => {
+            const activo = eb.ven_entidad_bancaria_estado === 'A';
+            let acciones = '';
+            if (permisosFormaPago.entidad_editar) {
+                acciones += `<button type="button" class="btn btn-sm btn-outline-secondary btn-editar-entidad" data-id="${eb.ven_entidad_bancaria_id}" title="Editar"><i class="bi bi-pencil"></i></button> `;
+            }
+            if (permisosFormaPago.entidad_inactivar) {
+                acciones += `<button type="button" class="btn btn-sm btn-outline-secondary btn-toggle-entidad" data-id="${eb.ven_entidad_bancaria_id}" data-activo="${activo ? '1' : '0'}" title="${activo ? 'Inactivar' : 'Activar'}"><i class="bi ${activo ? 'bi-toggle-on' : 'bi-toggle-off'}"></i></button> `;
+            }
+            if (permisosFormaPago.entidad_eliminar) {
+                acciones += `<button type="button" class="btn btn-sm btn-outline-danger btn-eliminar-entidad" data-id="${eb.ven_entidad_bancaria_id}" title="Eliminar"><i class="bi bi-trash"></i></button>`;
+            }
+            return `<tr data-eb-id="${eb.ven_entidad_bancaria_id}">
+              <td>${esc(eb.ven_entidad_bancaria_nombre)}</td>
+              <td class="text-center"><span class="badge ${activo ? 'bg-success' : 'bg-secondary'}">${activo ? 'Activo' : 'Inactivo'}</span></td>
+              <td class="text-end">${acciones}</td>
+            </tr>`;
+        }).join('');
+        pintarModoEntidad(entidadEditandoId ? q('#eb_nombre').value : null);
+    }
+
+    /* Recarga la lista y actualiza los combos de la factura sin perder lo elegido */
+    async function cargarEntidades(seleccionarId) {
+        try {
+            const json = await fetchJson(appUrl + '/ventas/entidades-bancarias');
+            entidadesBancarias = json.data?.entidades || [];
+            renderEntidades();
+            refrescarCombosEntidad();
+            if (seleccionarId && !q('#fp_campo_entidad_cont').classList.contains('d-none')) {
+                q('#fp_datos_entidad').value = String(seleccionarId);
+            }
+        } catch {
+            q('#cuerpoEntidadesModal').innerHTML = '<tr><td colspan="3" class="text-center text-danger py-3">Error al cargar</td></tr>';
+        }
+    }
+
+    async function postEntidad(ruta, datos) {
+        const form = new FormData();
+        Object.entries(datos).forEach(([k, v]) => form.append(k, v));
+        const resp = await fetch(appUrl + ruta, { method: 'POST', body: form });
+        const json = await resp.json();
+        if (!json.ok) throw new Error(json.mensaje || 'No se pudo completar la acción.');
+        return json;
+    }
+
+    btnAbrirEntidades.addEventListener('click', () => {
+        resetFormularioEntidad();
+        renderEntidades();
+        bootstrap.Modal.getOrCreateInstance(q('#modalEntidades')).show();
+        cargarEntidades();
+    });
+
+    q('#btnCancelarEntidad').addEventListener('click', resetFormularioEntidad);
+
+    q('#formEntidad').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const nombre = q('#eb_nombre').value.trim();
+        if (!nombre) {
+            Swal.fire({ icon: 'warning', title: 'Datos incompletos', text: 'El nombre es obligatorio.' });
+            return;
+        }
+        try {
+            const datos = { nombre };
+            if (entidadEditandoId) datos.entidad_id = entidadEditandoId;
+            const json = await postEntidad(entidadEditandoId ? '/ventas/entidades-bancarias/editar' : '/ventas/entidades-bancarias/crear', datos);
+            resetFormularioEntidad();
+            cargarEntidades(json.data.entidad.ven_entidad_bancaria_id);
+        } catch (error) {
+            Swal.fire({ icon: 'error', title: 'No se pudo guardar', text: error.message || 'Revise los datos.' });
+        }
+    });
+
+    q('#cuerpoEntidadesModal').addEventListener('click', async (e) => {
+        const btnEditar   = e.target.closest('.btn-editar-entidad');
+        const btnToggle   = e.target.closest('.btn-toggle-entidad');
+        const btnEliminar = e.target.closest('.btn-eliminar-entidad');
+
+        if (btnEditar) {
+            const eb = entidadesBancarias.find(x => String(x.ven_entidad_bancaria_id) === btnEditar.dataset.id);
+            if (!eb) return;
+            entidadEditandoId = eb.ven_entidad_bancaria_id;
+            q('#eb_nombre').value = eb.ven_entidad_bancaria_nombre;
+            q('#btnCancelarEntidad').classList.remove('d-none');
+            q('#btnGuardarEntidad').innerHTML = 'Actualizar';
+            pintarModoEntidad(eb.ven_entidad_bancaria_nombre);
+            q('#eb_nombre').focus();
+            return;
+        }
+
+        try {
+            if (btnToggle) {
+                const activo = btnToggle.dataset.activo === '1';
+                await postEntidad(activo ? '/ventas/entidades-bancarias/inactivar' : '/ventas/entidades-bancarias/activar', { entidad_id: btnToggle.dataset.id });
+                cargarEntidades();
+            }
+            if (btnEliminar) {
+                const confirmacion = await Swal.fire({
+                    icon: 'warning', title: '¿Eliminar entidad bancaria?', text: 'Esta acción no se puede deshacer.',
+                    showCancelButton: true, confirmButtonText: 'Eliminar', cancelButtonText: 'Cancelar', confirmButtonColor: '#dc3545',
+                });
+                if (!confirmacion.isConfirmed) return;
+                await postEntidad('/ventas/entidades-bancarias/eliminar', { entidad_id: btnEliminar.dataset.id });
+                cargarEntidades();
+            }
+        } catch (error) {
+            Swal.fire({ icon: 'error', title: 'No se pudo completar', text: error.message || '' });
         }
     });
 }
