@@ -387,7 +387,7 @@ $appUrl    = rtrim($configuracion->obtener('APP_URL', ''), '/');
         if (a.previsualizable && a.sis_archivos_mime === 'application/pdf') {
             visor.innerHTML = `<iframe src="${url}" title="${esc(a.sis_archivos_nombre)}"></iframe>`;
         } else if (a.previsualizable) {
-            visor.innerHTML = `<img src="${url}" alt="${esc(a.sis_archivos_nombre)}">`;
+            visor.innerHTML = `<img src="${url}" alt="${esc(a.sis_archivos_nombre)}" class="imagen-ampliable" tabindex="0" role="button" title="Doble clic o Enter para ampliar">`;
         } else {
             visor.innerHTML = `<div class="visor-ficha">
                 <i class="bi ${iconoArchivo(a)}"></i>

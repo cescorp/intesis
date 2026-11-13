@@ -546,7 +546,7 @@ document.addEventListener('DOMContentLoaded', function () {
             ? '<p class="text-muted small m-0">Elija un adjunto de la lista para verlo aquí.</p>'
             : (a.sis_archivos_mime === 'application/pdf'
                 ? `<iframe src="${urlAdjunto(a.sis_archivos_id)}" title="${esc(a.sis_archivos_nombre)}"></iframe>`
-                : `<img src="${urlAdjunto(a.sis_archivos_id)}" alt="${esc(a.sis_archivos_nombre)}">`);
+                : `<img src="${urlAdjunto(a.sis_archivos_id)}" alt="${esc(a.sis_archivos_nombre)}" class="imagen-ampliable" tabindex="0" role="button" title="Doble clic o Enter para ampliar">`);
     }
 
     modal.addEventListener('click', async (e) => {

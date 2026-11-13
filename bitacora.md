@@ -4,6 +4,10 @@ Una entrada por tarea terminada (ver [reglas.md](reglas.md)). Lo más reciente a
 
 ## 2026-11-12
 
+- **Visor de imagen con zoom, compartido (galería y adjuntos)** — `3c35641`
+  El visor ampliado de la galería pasó a ser un componente genérico en `sistema.js`: cualquier `<img class="imagen-ampliable">` se abre con doble clic, Enter o Espacio (si está dentro de `[data-galeria]` se recorren las del grupo). Zoom con rueda hacia el cursor, botones −/＋/⟲ con %, doble clic 100%↔200%, arrastrar para mover, pellizco en celular y teclas + − 0. Se usa en Galería de productos, Adjuntos de facturas, Archivos e Historial de Clientes.
+  Archivos: `publico/js/sistema.js`, `publico/css/estilos.css`, `src/Vistas/ventas/facturas.php`, `src/Vistas/archivos/index.php`, `src/Vistas/ventas/clientes.php`.
+
 - **Botón "Tomar foto" en Adjuntos de facturas y en Archivos** — `e81d355`
   Solo en pantallas táctiles: abre la cámara trasera del celular con el input nativo (`capture="environment"`, funciona por http en la red local; `getUserMedia` exigiría HTTPS). La foto se renombra `Foto AAAA-MM-DD HH.MM.SS` y se sube por la misma cola con %. Función compartida `IntesisSubida.conectarCamara()`.
   Archivos: `publico/js/subida-archivos.js`, `publico/css/estilos.css`, `src/Vistas/ventas/facturas.php`, `src/Vistas/archivos/index.php`.

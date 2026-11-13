@@ -1406,12 +1406,12 @@
             return;
         }
         const soloLectura = contenedor.dataset.soloLectura === '1';
-        contenedor._imagenesGaleria = imagenes;
+        contenedor.dataset.galeria = '1'; // el visor recorre todas las imagenes de la galeria
         imagenes.forEach((imagen, indice) => {
             const item = document.createElement('div');
             item.className = 'galeria-producto-item';
             item.innerHTML = `
-                <img src="${imagen.url}" alt="${imagen.archivo}" class="galeria-ampliable" data-indice="${indice}"
+                <img src="${imagen.url}" alt="${imagen.archivo}" class="imagen-ampliable"
                      tabindex="0" role="button" title="Doble clic o Enter para ampliar"
                      aria-label="Ampliar imagen ${indice + 1} de ${imagenes.length}">
                 ${soloLectura ? '' : `<div class="galeria-producto-acciones">
@@ -1424,34 +1424,63 @@
     };
 
     /**
-     * Imagen ampliada de la galeria, sobre la misma pantalla (sin abrir otra pestaña).
-     * Se inserta dentro del modal abierto: fuera de el, el focus trap de Bootstrap le
-     * quitaria el foco y no funcionaria el teclado (Esc, flechas, Tab).
+     * Visor de imagen ampliada con zoom, compartido por todo el sistema.
+     * Cualquier <img class="imagen-ampliable"> se abre con doble clic, Enter o Espacio.
+     * Si la imagen esta dentro de un [data-galeria], se recorren todas las de ese grupo.
+     *
+     * Se inserta dentro del modal abierto (si lo hay): fuera de el, el focus trap de
+     * Bootstrap le quitaria el foco y no funcionaria el teclado.
      */
-    const visorGaleria = { imagenes: [], indice: 0, origen: null, elemento: null };
+    const ZOOM_MIN = 0.5;
+    const ZOOM_MAX = 4;
+    const ZOOM_PASO = 0.25;
+    const visor = { imagenes: [], indice: 0, origen: null, elemento: null, escala: 1, x: 0, y: 0, punteros: new Map(), pinza: null };
 
-    const cerrarVisorGaleria = () => {
-        visorGaleria.elemento?.remove();
-        visorGaleria.elemento = null;
-        visorGaleria.origen?.focus();
+    const aplicarZoom = () => {
+        const v = visor.elemento;
+        v.querySelector('.visor-imagen-lienzo img').style.transform = `translate(${visor.x}px, ${visor.y}px) scale(${visor.escala})`;
+        v.querySelector('.visor-imagen-zoom').textContent = Math.round(visor.escala * 100) + '%';
+        v.querySelector('.visor-imagen-lienzo').classList.toggle('con-zoom', visor.escala > 1);
+    };
+
+    /** Cambia la escala manteniendo fijo el punto (px, py) de la pantalla (el cursor o el centro). */
+    const zoomEn = (nuevaEscala, px, py) => {
+        const lienzo = visor.elemento.querySelector('.visor-imagen-lienzo').getBoundingClientRect();
+        const escala = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, nuevaEscala));
+        const cx = (px ?? lienzo.left + lienzo.width / 2) - (lienzo.left + lienzo.width / 2);
+        const cy = (py ?? lienzo.top + lienzo.height / 2) - (lienzo.top + lienzo.height / 2);
+        const factor = escala / visor.escala;
+        visor.x = cx - factor * (cx - visor.x);
+        visor.y = cy - factor * (cy - visor.y);
+        visor.escala = escala;
+        if (escala === 1) { visor.x = 0; visor.y = 0; }
+        aplicarZoom();
+    };
+
+    const reajustarZoom = () => { visor.escala = 1; visor.x = 0; visor.y = 0; aplicarZoom(); };
+
+    const cerrarVisorImagen = () => {
+        visor.elemento?.remove();
+        visor.elemento = null;
+        visor.origen?.focus();
     };
 
     const mostrarImagenVisor = (indice) => {
-        const total = visorGaleria.imagenes.length;
-        visorGaleria.indice = (indice + total) % total;
-        const imagen = visorGaleria.imagenes[visorGaleria.indice];
-        const v = visorGaleria.elemento;
-        v.querySelector('img').src = imagen.url;
-        v.querySelector('img').alt = imagen.archivo;
-        v.querySelector('.visor-imagen-contador').textContent = `${visorGaleria.indice + 1} de ${total}`;
+        const total = visor.imagenes.length;
+        visor.indice = (indice + total) % total;
+        const imagen = visor.imagenes[visor.indice];
+        const img = visor.elemento.querySelector('.visor-imagen-lienzo img');
+        img.src = imagen.src;
+        img.alt = imagen.alt;
+        visor.elemento.querySelector('.visor-imagen-contador').textContent = total > 1 ? `${visor.indice + 1} de ${total}` : imagen.alt;
+        reajustarZoom();
     };
 
-    const abrirVisorGaleria = (miniatura) => {
-        const contenedor = miniatura.closest('#galeriaProductoContenedor');
-        visorGaleria.imagenes = contenedor?._imagenesGaleria || [];
-        if (!visorGaleria.imagenes.length) return;
-        visorGaleria.origen = miniatura;
-        const varias = visorGaleria.imagenes.length > 1;
+    const abrirVisorImagen = (origen) => {
+        const grupo = origen.closest('[data-galeria]');
+        visor.imagenes = grupo ? [...grupo.querySelectorAll('img.imagen-ampliable')] : [origen];
+        visor.origen = origen;
+        const varias = visor.imagenes.length > 1;
 
         const v = document.createElement('div');
         v.className = 'visor-imagen';
@@ -1459,24 +1488,81 @@
         v.setAttribute('aria-modal', 'true');
         v.setAttribute('aria-label', 'Imagen ampliada');
         v.innerHTML = `
-            <button type="button" class="visor-imagen-cerrar" title="Cerrar (Esc)" aria-label="Cerrar"><i class="bi bi-x-lg"></i></button>
+            <div class="visor-imagen-barra">
+                <button type="button" data-zoom="menos" title="Alejar (−)" aria-label="Alejar"><i class="bi bi-zoom-out"></i></button>
+                <span class="visor-imagen-zoom" aria-live="polite">100%</span>
+                <button type="button" data-zoom="mas" title="Acercar (+)" aria-label="Acercar"><i class="bi bi-zoom-in"></i></button>
+                <button type="button" data-zoom="ajustar" title="Ajustar a la pantalla (0)" aria-label="Ajustar a la pantalla"><i class="bi bi-arrow-counterclockwise"></i></button>
+                <button type="button" class="visor-imagen-cerrar" title="Cerrar (Esc)" aria-label="Cerrar"><i class="bi bi-x-lg"></i></button>
+            </div>
             ${varias ? '<button type="button" class="visor-imagen-nav anterior" title="Anterior (←)" aria-label="Imagen anterior"><i class="bi bi-chevron-left"></i></button>' : ''}
-            <figure class="visor-imagen-figura"><img alt=""><figcaption class="visor-imagen-contador"></figcaption></figure>
+            <figure class="visor-imagen-figura">
+                <div class="visor-imagen-lienzo"><img alt="" draggable="false"></div>
+                <figcaption class="visor-imagen-contador"></figcaption>
+            </figure>
             ${varias ? '<button type="button" class="visor-imagen-nav siguiente" title="Siguiente (→)" aria-label="Imagen siguiente"><i class="bi bi-chevron-right"></i></button>' : ''}`;
-        (miniatura.closest('.modal') || document.body).appendChild(v);
-        visorGaleria.elemento = v;
-        mostrarImagenVisor(Number(miniatura.dataset.indice) || 0);
+        (origen.closest('.modal') || document.body).appendChild(v);
+        visor.elemento = v;
+        mostrarImagenVisor(Math.max(0, visor.imagenes.indexOf(origen)));
+
+        const lienzo = v.querySelector('.visor-imagen-lienzo');
 
         v.addEventListener('click', (e) => {
-            if (e.target.closest('.visor-imagen-cerrar') || e.target === v) cerrarVisorGaleria();
-            else if (e.target.closest('.anterior')) mostrarImagenVisor(visorGaleria.indice - 1);
-            else if (e.target.closest('.siguiente')) mostrarImagenVisor(visorGaleria.indice + 1);
+            const zoom = e.target.closest('[data-zoom]')?.dataset.zoom;
+            if (zoom === 'mas') zoomEn(visor.escala + ZOOM_PASO);
+            else if (zoom === 'menos') zoomEn(visor.escala - ZOOM_PASO);
+            else if (zoom === 'ajustar') reajustarZoom();
+            else if (e.target.closest('.visor-imagen-cerrar') || e.target === v) cerrarVisorImagen();
+            else if (e.target.closest('.anterior')) mostrarImagenVisor(visor.indice - 1);
+            else if (e.target.closest('.siguiente')) mostrarImagenVisor(visor.indice + 1);
         });
+
+        // Rueda: acerca/aleja hacia donde apunta el cursor
+        lienzo.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            zoomEn(visor.escala * (e.deltaY < 0 ? 1.15 : 1 / 1.15), e.clientX, e.clientY);
+        }, { passive: false });
+
+        // Doble clic en la imagen ampliada: alterna ajustada / 200% en ese punto
+        lienzo.addEventListener('dblclick', (e) => {
+            e.stopPropagation();
+            if (visor.escala > 1) reajustarZoom(); else zoomEn(2, e.clientX, e.clientY);
+        });
+
+        // Arrastrar para mover con zoom; con dos dedos, pellizcar para hacer zoom
+        lienzo.addEventListener('pointerdown', (e) => {
+            lienzo.setPointerCapture(e.pointerId);
+            visor.punteros.set(e.pointerId, { x: e.clientX, y: e.clientY });
+            if (visor.punteros.size === 2) {
+                const [a, b] = [...visor.punteros.values()];
+                visor.pinza = { distancia: Math.hypot(a.x - b.x, a.y - b.y), escala: visor.escala };
+            }
+        });
+        lienzo.addEventListener('pointermove', (e) => {
+            const anterior = visor.punteros.get(e.pointerId);
+            if (!anterior) return;
+            visor.punteros.set(e.pointerId, { x: e.clientX, y: e.clientY });
+            if (visor.punteros.size === 2 && visor.pinza) {
+                const [a, b] = [...visor.punteros.values()];
+                zoomEn(visor.pinza.escala * Math.hypot(a.x - b.x, a.y - b.y) / visor.pinza.distancia, (a.x + b.x) / 2, (a.y + b.y) / 2);
+            } else if (visor.punteros.size === 1 && visor.escala > 1) {
+                visor.x += e.clientX - anterior.x;
+                visor.y += e.clientY - anterior.y;
+                aplicarZoom();
+            }
+        });
+        const soltar = (e) => { visor.punteros.delete(e.pointerId); if (visor.punteros.size < 2) visor.pinza = null; };
+        lienzo.addEventListener('pointerup', soltar);
+        lienzo.addEventListener('pointercancel', soltar);
+
         v.addEventListener('keydown', (e) => {
-            // Se detiene aqui para que Esc no cierre tambien el modal de la galeria
-            if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); cerrarVisorGaleria(); return; }
-            if (e.key === 'ArrowLeft' && varias) { e.preventDefault(); mostrarImagenVisor(visorGaleria.indice - 1); return; }
-            if (e.key === 'ArrowRight' && varias) { e.preventDefault(); mostrarImagenVisor(visorGaleria.indice + 1); return; }
+            // Se detiene aqui para que Esc no cierre tambien el modal donde esta el visor
+            if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); cerrarVisorImagen(); return; }
+            if (e.key === 'ArrowLeft' && varias) { e.preventDefault(); mostrarImagenVisor(visor.indice - 1); return; }
+            if (e.key === 'ArrowRight' && varias) { e.preventDefault(); mostrarImagenVisor(visor.indice + 1); return; }
+            if (e.key === '+' || e.key === '=') { e.preventDefault(); zoomEn(visor.escala + ZOOM_PASO); return; }
+            if (e.key === '-') { e.preventDefault(); zoomEn(visor.escala - ZOOM_PASO); return; }
+            if (e.key === '0') { e.preventDefault(); reajustarZoom(); return; }
             if (e.key === 'Tab') {
                 // Tab recorre solo los botones del visor
                 const botones = [...v.querySelectorAll('button')];
@@ -1489,14 +1575,14 @@
     };
 
     document.addEventListener('dblclick', (e) => {
-        const miniatura = e.target.closest('.galeria-ampliable');
-        if (miniatura) abrirVisorGaleria(miniatura);
+        const imagen = e.target.closest('img.imagen-ampliable');
+        if (imagen && !imagen.closest('.visor-imagen')) abrirVisorImagen(imagen);
     });
     document.addEventListener('keydown', (e) => {
-        const miniatura = e.target.closest?.('.galeria-ampliable');
-        if (miniatura && (e.key === 'Enter' || e.key === ' ')) {
+        const imagen = e.target.closest?.('img.imagen-ampliable');
+        if (imagen && (e.key === 'Enter' || e.key === ' ')) {
             e.preventDefault();
-            abrirVisorGaleria(miniatura);
+            abrirVisorImagen(imagen);
         }
     });
 
