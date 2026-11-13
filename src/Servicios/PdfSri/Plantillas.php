@@ -246,19 +246,37 @@ if (!function_exists('gpdf_factura')) {
 
         $html .= '</tbody></table>';
         $html .= gpdf_bloque_pagos($pagos);
+        $tarifa = gpdf_porcentaje_iva($cabecera);
         $html .= '<table class="gpdf-tabla gpdf-totales">
-            <tr><td>SUBTOTAL 12%</td><td class="gpdf-derecha">' . gpdf_moneda(gpdf_valor($cabecera, 'subtotal_iva', 0)) . '</td></tr>
+            <tr><td>SUBTOTAL ' . ($tarifa !== '' ? $tarifa : 'GRAVADO') . '</td><td class="gpdf-derecha">' . gpdf_moneda(gpdf_valor($cabecera, 'subtotal_iva', 0)) . '</td></tr>
             <tr><td>SUBTOTAL 0%</td><td class="gpdf-derecha">' . gpdf_moneda(gpdf_valor($cabecera, 'subtotal_0', 0)) . '</td></tr>
             <tr><td>SUBTOTAL NO OBJETO DE IVA</td><td class="gpdf-derecha">' . gpdf_moneda(gpdf_valor($cabecera, 'subtotal_no_objeto_iva', 0)) . '</td></tr>
             <tr><td>SUBTOTAL EXENTO DE IVA</td><td class="gpdf-derecha">' . gpdf_moneda(gpdf_valor($cabecera, 'subtotal_exento_iva', 0)) . '</td></tr>
             <tr><td>SUBTOTAL SIN IMPUESTOS</td><td class="gpdf-derecha">' . gpdf_moneda(gpdf_valor($cabecera, 'total_sin_impuestos', 0)) . '</td></tr>
             <tr><td>TOTAL DESCUENTO</td><td class="gpdf-derecha">' . gpdf_moneda(gpdf_valor($cabecera, 'total_descuento', 0)) . '</td></tr>
-            <tr><td>IVA 12%</td><td class="gpdf-derecha">' . gpdf_moneda(gpdf_valor($cabecera, 'iva', 0)) . '</td></tr>
+            <tr><td>IVA ' . $tarifa . '</td><td class="gpdf-derecha">' . gpdf_moneda(gpdf_valor($cabecera, 'iva', 0)) . '</td></tr>
             <tr><td>VALOR TOTAL</td><td class="gpdf-derecha">' . gpdf_moneda(gpdf_valor($cabecera, 'importe_total', 0)) . '</td></tr>
         </table><div class="gpdf-limpiar"></div>';
         $html .= gpdf_info_adicional($infoAdicional);
 
         return $html;
+    }
+}
+
+if (!function_exists('gpdf_porcentaje_iva')) {
+    /**
+     * Etiqueta de la tarifa de IVA ("15%"). Antes estaba fija en 12% y quedo desactualizada
+     * al cambiar la tarifa en Ecuador. Usa 'iva_porcentaje' si viene; si no, la deduce de
+     * iva / subtotal gravado (sirve para documentos de Compras leidos del XML).
+     */
+    function gpdf_porcentaje_iva($cabecera)
+    {
+        $porcentaje = gpdf_valor($cabecera, 'iva_porcentaje', null);
+        if ($porcentaje === null || $porcentaje === '') {
+            $base = (float) gpdf_valor($cabecera, 'subtotal_iva', 0);
+            $porcentaje = $base > 0 ? round((float) gpdf_valor($cabecera, 'iva', 0) * 100 / $base) : null;
+        }
+        return $porcentaje === null ? '' : rtrim(rtrim(number_format((float) $porcentaje, 2, '.', ''), '0'), '.') . '%';
     }
 }
 

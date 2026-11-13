@@ -2,6 +2,16 @@
 
 Una entrada por tarea terminada (ver [reglas.md](reglas.md)). Lo más reciente arriba.
 
+## 2026-11-13
+
+- **PDF de factura autorizada en formato oficial del SRI (RIDE)** — `51c7d6b`
+  `generarFacturaAutorizada()` ahora usa la misma plantilla SRI que Compras (`src/Servicios/PdfSri/Plantillas.php`, `gpdf_html_documento()`), con los datos armados igual que el XML enviado al SRI (dirección de la empresa, una forma de pago por el total, obligado a contabilidad SI, info adicional Email/Teléfono/Observación). La plantilla ya no dice "12%" fijo: usa `iva_porcentaje` o lo deduce de iva/subtotal (corrige también el PDF de Compras). Factura CREADA y Nota de venta conservan su formato.
+  Archivos: `src/Servicios/GeneradorPdf.php`, `src/Servicios/PdfSri/Plantillas.php`.
+
+- **PDF de factura autorizada salía vacío (0 páginas)** — `51c7d6b`
+  `GeneradorPdf::generarFacturaAutorizada()` devolvía el HTML sin convertirlo a PDF; el navegador recibía HTML como `application/pdf` y no mostraba nada (sin error en el log). Ahora pasa por `generarDesdeHtml()`, igual que la proforma. Afectaba también al PDF adjunto del correo que se envía al autorizar. Además se agrega el mensaje `CONFIRMAR_ANULAR_FACTURA`, que faltaba y dejaba un aviso en el log en cada carga de Facturas.
+  Archivo: `src/Servicios/GeneradorPdf.php`. Migración: `20261113_0900_mensaje_anular_factura.sql`.
+
 ## 2026-11-12
 
 - **Visor de imagen con zoom, compartido (galería y adjuntos)** — `3c35641`
