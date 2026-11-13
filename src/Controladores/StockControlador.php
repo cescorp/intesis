@@ -42,8 +42,15 @@ final class StockControlador
         $this->exigirPermiso('/inventario/stock/ver');
         $verTodas = $this->esSuperusuario($usuario);
         $empresaId = $verTodas ? (int) ($_GET['empresa_id'] ?? $usuario['empresa_id']) : (int) $usuario['empresa_id'];
+        // embebido=1: la consulta global F2 (sistema.js) carga esta pantalla en un iframe,
+        // sin menu ni acciones: solo consulta.
+        $embebido = !empty($_GET['embebido']);
+        $permisos = $embebido
+            ? ['registrar' => false, 'importar' => false, 'confirmar' => false, 'plantilla' => false]
+            : $this->obtenerPermisos($usuario);
 
         $this->vista->renderizar('inventario/stock', [
+            'embebido' => $embebido,
             'titulo' => 'Stock',
             'usuario' => $usuario,
             'menus' => $this->menuModelo->listarMenusPorPerfil((int) $usuario['empresa_id'], (int) $usuario['perfil_id']),
@@ -52,8 +59,9 @@ final class StockControlador
             'bodegas' => $this->stockModelo->listarBodegas($empresaId),
             'stock' => $this->stockModelo->listarStockGlobal($empresaId),
             'esSuperusuario' => $verTodas,
-            'permisos' => $this->obtenerPermisos($usuario),
-            'mensaje' => $this->sesion->consumirMensaje(),
+            'permisos' => $permisos,
+            // En el iframe no se consume el mensaje: es de la pantalla de abajo
+            'mensaje' => $embebido ? null : $this->sesion->consumirMensaje(),
             'mensajesSistema' => $this->mensajeSistemaModelo->listarPorCodigos(['USUARIO_DATOS_OBLIGATORIOS']),
         ]);
     }

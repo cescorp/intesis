@@ -2900,3 +2900,94 @@
         });
     });
 })();
+
+// ── Consulta de stock F2 ──────────────────────────────────────────────────
+// F2 muestra/oculta una capa con la pantalla Stock (/inventario/stock?embebido=1) en un
+// iframe, desde cualquier pantalla y encima de cualquier modal. Es solo consulta: no
+// recarga ni toca la pantalla de abajo. El iframe se crea en el primer F2 y luego solo
+// se oculta, para conservar la busqueda; el boton ↻ lo recarga con el stock al dia.
+(() => {
+    const enIframeStock = window.self !== window.top && document.body.classList.contains('stock-embebido');
+    if (enIframeStock) {
+        // Dentro del iframe, F2 cierra la capa del padre (mismo origen)
+        document.addEventListener('keydown', (evento) => {
+            if (evento.key !== 'F2') return;
+            evento.preventDefault();
+            window.parent.INTESIS_CONSULTA_STOCK?.alternar();
+        });
+        return;
+    }
+    // Solo en pantallas con sesion (layout con menu); no en el login
+    if (window.self !== window.top || !document.querySelector('.app-wrapper')) return;
+
+    const urlStock = (document.body.dataset.baseUrl || '') + '/inventario/stock?embebido=1';
+    let capa = null;
+    let focoAnterior = null;
+
+    const construir = () => {
+        capa = document.createElement('div');
+        capa.className = 'consulta-stock-capa';
+        capa.hidden = true;
+        capa.innerHTML = `
+            <div class="consulta-stock-ventana" role="dialog" aria-modal="true" aria-label="Consulta de stock">
+                <div class="consulta-stock-cabecera">
+                    <strong><i class="bi bi-boxes"></i> Consulta de stock</strong>
+                    <span class="small text-muted ms-2">Solo consulta · F2 para mostrar/ocultar</span>
+                    <button type="button" class="btn btn-sm btn-outline-secondary ms-auto consulta-stock-recargar" title="Recargar stock"><i class="bi bi-arrow-clockwise"></i></button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary consulta-stock-cerrar" title="Cerrar (F2)"><i class="bi bi-x-lg"></i></button>
+                </div>
+                <iframe title="Consulta de stock"></iframe>
+                <p class="consulta-stock-aviso" hidden>Su perfil no tiene permiso para consultar stock.</p>
+            </div>`;
+        document.body.appendChild(capa);
+
+        const iframe = capa.querySelector('iframe');
+        iframe.addEventListener('load', () => {
+            // Sin permiso el servidor redirige a otra pagina: se muestra el aviso en su lugar
+            let esStock = false;
+            try { esStock = iframe.contentDocument.body.classList.contains('stock-embebido'); } catch { esStock = false; }
+            iframe.hidden = !esStock;
+            capa.querySelector('.consulta-stock-aviso').hidden = esStock;
+            if (esStock && !capa.hidden) iframe.contentWindow.focus();
+        });
+        capa.querySelector('.consulta-stock-recargar').addEventListener('click', () => { iframe.src = urlStock; });
+        capa.querySelector('.consulta-stock-cerrar').addEventListener('click', () => alternar());
+        capa.addEventListener('mousedown', (evento) => { if (evento.target === capa) alternar(); });
+        iframe.src = urlStock;
+    };
+
+    // Un modal de Bootstrap abierto devuelve el foco a si mismo y no dejaria escribir en
+    // la capa: se suspende su "focus trap" mientras la capa esta visible.
+    const trampasDeFoco = (activar) => {
+        document.querySelectorAll('.modal.show').forEach((modal) => {
+            const trampa = window.bootstrap?.Modal.getInstance(modal)?._focustrap;
+            if (trampa) activar ? trampa.activate() : trampa.deactivate();
+        });
+    };
+
+    const alternar = () => {
+        if (!capa) construir();
+        const mostrar = capa.hidden;
+        if (mostrar) {
+            focoAnterior = document.activeElement;
+            trampasDeFoco(false);
+            capa.hidden = false;
+            const iframe = capa.querySelector('iframe');
+            if (!iframe.hidden) iframe.contentWindow?.focus();
+        } else {
+            capa.hidden = true;
+            trampasDeFoco(true);
+            // Devuelve el cursor al campo donde estaba el usuario
+            if (focoAnterior && document.contains(focoAnterior)) focoAnterior.focus();
+        }
+    };
+
+    window.INTESIS_CONSULTA_STOCK = { alternar };
+
+    document.addEventListener('keydown', (evento) => {
+        if (evento.key !== 'F2') return;
+        evento.preventDefault();
+        evento.stopPropagation();
+        alternar();
+    }, true);
+})();
