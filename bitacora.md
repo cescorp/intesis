@@ -4,6 +4,10 @@ Una entrada por tarea terminada (ver [reglas.md](reglas.md)). Lo más reciente a
 
 ## 2026-11-12
 
+- **Nueva factura: ignorar línea en blanco al guardar y foco en Valor recibido** — `fb3e392`
+  Las líneas sin producto y sin código escrito no se envían (`filasAGuardar()`); si hay código escrito sin producto elegido, sigue avisando. Al abrir la calculadora el foco queda en Valor recibido (tras `shown.bs.modal`).
+  Archivo: `src/Vistas/ventas/factura_form.php`.
+
 - **Nueva factura: calculadora no permite cobrar de menos** — `bb3d288`
   El modal con calculadora se titula "Calculadora"; si el valor recibido es menor al total, el cambio sale negativo en rojo y Facturar queda deshabilitado (`actualizarCambio()`).
   Archivo: `src/Vistas/ventas/factura_form.php`.
