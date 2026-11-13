@@ -737,15 +737,24 @@ async function abrirCodProv(tr, texto) {
                 text: '¿Asignar a código interno existente?',
                 icon: 'question',
                 showCancelButton: true,
-                cancelButtonText: 'Buscar',
+                cancelButtonText: `Crear ${esc(texto)}`,
                 confirmButtonText: 'Asignar',
                 confirmButtonColor: '#1f6f68',
                 returnFocus: false,
             });
             if (res.isConfirmed) {
-                setTimeout(() => tr.querySelector('.inp-cod-interno')?.focus(), 0);
-                return;
+                // Asignar: buscador de codigo interno con el listado completo
+                abrirModalCodInterno('');
+            } else if (res.dismiss === Swal.DismissReason.cancel) {
+                // Crear: modal Cod. Proveedor con el formulario de crear ya abierto
+                q('#buscarCodProvInput').value = texto;
+                bootstrap.Modal.getOrCreateInstance(q('#modalProductosCodProv')).show();
+                await buscarPorCodProv(texto);
+                mostrarPanelNuevoProducto(texto);
+            } else {
+                filaActual = null;
             }
+            return;
         }
         abrirModalCodProv(texto);
     } finally {
