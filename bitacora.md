@@ -4,7 +4,7 @@ Una entrada por tarea terminada (ver [reglas.md](reglas.md)). Lo más reciente a
 
 ## 2026-11-12
 
-- **Módulo Archivos: carpetas por usuario, versiones, compartir y accesos** — *(pendiente de commit)*
+- **Módulo Archivos: carpetas por usuario, versiones, compartir y accesos** — `2dd8a09`
   Menú "Archivos": árbol de carpetas colapsable (Mis archivos / Compartido conmigo), subida igual que en Facturas (cualquier tipo excepto ejecutables/scripts, 80 MB), mismo nombre y extensión en la carpeta = versión nueva, visor PDF/imagen o ficha con Descargar, modal Compartir (usuarios de la empresa, solo ver y descargar; compartir una carpeta comparte su contenido) y modal ⓘ con datos, versiones, con quién está compartido (directo o por carpeta) y accesos (quién abrió/descargó y cuándo). La subida en el navegador quedó en `publico/js/subida-archivos.js`, compartida con Adjuntos de facturas. `AlmacenArchivosServicio` ahora acepta `CUALQUIER_TIPO` (bloquea por extensión y por contenido ejecutable) y versiones.
   Migración: `20261112_1500_modulo_archivos.sql` (`sis_carpeta`, `sis_compartido`, `sis_archivo_acceso`, versión en `sis_archivos`, menú y permisos `/archivos/*`).
 
