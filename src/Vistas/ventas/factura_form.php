@@ -428,7 +428,7 @@ foreach ($formasPago as $fp) {
     <div class="modal-dialog modal-sm modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header py-2">
-                <h6 class="modal-title"><i class="bi bi-receipt-cutoff me-2 text-intesis"></i>Confirmar Factura</h6>
+                <h6 class="modal-title"><i class="bi bi-receipt-cutoff me-2 text-intesis"></i><span id="cfmTitulo">Confirmar Factura</span></h6>
                 <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body py-3">
@@ -1358,12 +1358,18 @@ function mostrarErrorAprob(msg) {
 }
 
 /* ── Calculadora en modal confirmacion ──────────────────────────────────── */
-q('#cfmRecibido').addEventListener('input', () => {
+// Si lo recibido no cubre el total, el cambio se muestra negativo en rojo y no se
+// permite facturar: evita registrar una venta en efectivo cobrada de menos.
+function actualizarCambio() {
     const total    = parseFloat(q('#cfmTotal').value.replace(',', '.')) || 0;
     const recibido = parseFloat(q('#cfmRecibido').value) || 0;
-    const cambio   = Math.max(0, recibido - total);
+    const cambio   = Math.round((recibido - total) * 100) / 100;
+    const falta    = cambio < 0;
     q('#cfmCambio').value = cambio.toFixed(2);
-});
+    q('#cfmCambio').classList.toggle('text-danger', falta);
+    q('#btnFacturar').disabled = falta;
+}
+q('#cfmRecibido').addEventListener('input', actualizarCambio);
 
 /* ── Construir payload para guardar ─────────────────────────────────────── */
 function construirFormasPago(total) {
@@ -1521,7 +1527,8 @@ q('#btnGuardar').addEventListener('click', async () => {
         /* Mostrar modal de confirmacion con calculadora */
         q('#cfmTotal').value   = payload.total.toFixed(2);
         q('#cfmRecibido').value = '';
-        q('#cfmCambio').value  = '';
+        actualizarCambio();
+        q('#cfmTitulo').textContent = 'Calculadora';
         q('#panelCalculadora').classList.remove('d-none');
         bootstrap.Modal.getOrCreateInstance(q('#modalConfirmacion')).show();
         setTimeout(() => q('#cfmRecibido')?.focus(), 300);
@@ -1530,6 +1537,8 @@ q('#btnGuardar').addEventListener('click', async () => {
     } else {
         /* Sin calculadora: modal sin panel, confirmar y guardar */
         q('#cfmTotal').value = payload.total.toFixed(2);
+        q('#cfmTitulo').textContent = 'Confirmar Factura';
+        q('#btnFacturar').disabled = false;
         q('#panelCalculadora').classList.add('d-none');
         bootstrap.Modal.getOrCreateInstance(q('#modalConfirmacion')).show();
 
