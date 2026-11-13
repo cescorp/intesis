@@ -4,6 +4,10 @@ Una entrada por tarea terminada (ver [reglas.md](reglas.md)). Lo más reciente a
 
 ## 2026-11-12
 
+- **Nueva factura: no vender más del stock de la bodega de la venta** — `d5363db`
+  En la línea, la cantidad se corrige al máximo disponible con aviso "Máx. N disponible"; producto sin stock en la bodega no se carga. Sin bodega asignada: aviso "No tiene bodega asignada" y detalle bloqueado; el backend ya no usa en silencio la primera bodega de la empresa (solo el superusuario). Corregido: con "vender de todas las bodegas" se validaba contra el stock total pero se descontaba de una sola bodega, que podía quedar en negativo; ahora siempre se valida contra la bodega de la que se descuenta.
+  Archivos: `src/Vistas/ventas/factura_form.php`, `src/Controladores/FacturaControlador.php`, `src/Modelos/FacturaModelo.php`.
+
 - **Nueva factura: ignorar línea en blanco al guardar y foco en Valor recibido** — `fb3e392`
   Las líneas sin producto y sin código escrito no se envían (`filasAGuardar()`); si hay código escrito sin producto elegido, sigue avisando. Al abrir la calculadora el foco queda en Valor recibido (tras `shown.bs.modal`).
   Archivo: `src/Vistas/ventas/factura_form.php`.
