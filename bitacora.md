@@ -4,6 +4,10 @@ Una entrada por tarea terminada (ver [reglas.md](reglas.md)). Lo más reciente a
 
 ## 2026-11-13
 
+- **Movimientos: botón Anular parecía deshabilitado y no dejaba escribir el motivo** — *(pendiente de commit)*
+  Dos causas. (1) Los botones del pie del detalle (Aprobar, Recibir, Anular) usaban `btn-activar`/`btn-inactivar`, clases de los íconos de tabla que solo dan color, sin borde ni fondo; ahora son `btn-intesis` y `btn-outline-danger`. (2) El SweetAlert del motivo se dibuja fuera del modal de Bootstrap y la trampa de foco del modal le quitaba el cursor. Arreglo global en `sistema.js`: un listener `focusin` en captura deja pasar el foco a cualquier SweetAlert, así que sirve para todos los Swal con campo de texto abiertos sobre un modal.
+  Archivo: `publico/js/sistema.js`.
+
 - **Movimientos internos: el usuario de la bodega origen no veía sus transferencias** — `3e78d1d`
   La lista, para quien no es superusuario, solo mostraba movimientos cuya bodega **destino** era del usuario. El gerente de MATRIZ no veía las transferencias MATRIZ → MACHACHI que él mismo creó y debe aprobar/despachar (ni sus ajustes de egreso). Ahora cuenta si alguna línea tiene su bodega como origen **o** destino.
   Archivos: `src/Modelos/MovimientoInternoModelo.php`, `src/Controladores/MovimientoInternoControlador.php`.
