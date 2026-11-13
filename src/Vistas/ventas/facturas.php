@@ -551,7 +551,7 @@ $msgAnular    = $msgs['CONFIRMAR_ANULAR_FACTURA'] ?? null;
         if (!a) return '<p class="text-muted small m-0">Elija un adjunto de la lista para verlo aquí.</p>';
         return a.sis_archivos_mime === 'application/pdf'
             ? `<iframe src="${urlAdjunto(a.sis_archivos_id)}" title="${escHtml(a.sis_archivos_nombre)}"></iframe>`
-            : `<img src="${urlAdjunto(a.sis_archivos_id)}" alt="${escHtml(a.sis_archivos_nombre)}">`;
+            : `<img src="${urlAdjunto(a.sis_archivos_id)}" alt="${escHtml(a.sis_archivos_nombre)}" class="imagen-ampliable" tabindex="0" role="button" title="Doble clic o Enter para ampliar">`;
     }
 
     async function cargarAdjuntos() {
