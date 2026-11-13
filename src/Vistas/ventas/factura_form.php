@@ -2042,4 +2042,18 @@ if (btnAbrirEntidades) {
 }
 </style>
 
+<?php if (!$esEdicion): ?>
+<script>
+// Aviso temprano si no hay secuencia (solo al crear: editar no consume numero).
+// Se re-consulta al cambiar tipo (Factura/Nota de venta) o empresa (superusuario).
+document.addEventListener('DOMContentLoaded', () => IntesisSecuencia.vigilar({
+    tipo: () => document.getElementById('selTipoDoc')?.value || 'FACTURA_VENTA',
+    modulo: 'VENTAS',
+    empresa: () => document.getElementById('selEmpresa')?.value || 0,
+    antesDe: document.querySelector('.app-content .container-fluid > .card'),
+    botones: '#btnGuardar', // Facturar esta dentro del modal que abre Guardar
+    reRevisarEn: ['#selTipoDoc', '#selEmpresa'],
+}));
+</script>
+<?php endif; ?>
 <?php require $configuracion->raiz() . '/src/Vistas/plantillas/pie.php'; ?>

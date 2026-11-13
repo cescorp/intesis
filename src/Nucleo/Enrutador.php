@@ -327,6 +327,11 @@ final class Enrutador
             return;
         }
 
+        if ($metodo === 'GET' && $ruta === '/sistema/configuracion/secuencias/estado') {
+            $this->configuracionControlador->estadoSecuencia();
+            return;
+        }
+
         if ($metodo === 'GET' && $ruta === '/sistema/configuracion/licencia') {
             $this->licenciaControlador->listar();
             return;
