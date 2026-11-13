@@ -104,6 +104,8 @@ final class FacturaControlador
         $verTodas  = $this->esSuperusuario($usuario);
         $empresaId = (int) $usuario['empresa_id'];
 
+        $bodegas = $verTodas ? [] : $this->facturaModelo->listarBodegasPermitidas($empresaId, (int) $usuario['id']);
+
         $this->vista->renderizar('ventas/factura_form', [
             'titulo'         => 'Nueva Factura',
             'usuario'        => $usuario,
@@ -112,7 +114,9 @@ final class FacturaControlador
             'ivaList'        => $this->facturaModelo->listarIva($empresaId),
             'formasPago'     => $this->facturaModelo->listarFormasPago($empresaId),
             'entidadesBancarias' => $this->formaPagoModelo->listarEntidades($empresaId, true),
-            'bodegas'        => $verTodas ? [] : $this->facturaModelo->listarBodegasPermitidas($empresaId, (int) $usuario['id']),
+            'bodegas'        => $bodegas,
+            // Sin bodega asignada no se puede vender: la vista avisa y bloquea el detalle
+            'sinBodega'      => !$verTodas && !$bodegas,
             'esSuperusuario' => $verTodas,
             'permisos'       => $this->obtenerPermisos($usuario),
             'permisosFormaPago' => $this->obtenerPermisosFormaPago($usuario),
@@ -139,6 +143,8 @@ final class FacturaControlador
             $this->redirigir('/ventas/facturas');
         }
 
+        $bodegas = $verTodas ? [] : $this->facturaModelo->listarBodegasPermitidas($empresaId, (int) $usuario['id']);
+
         $this->vista->renderizar('ventas/factura_form', [
             'titulo'         => 'Editar Factura',
             'usuario'        => $usuario,
@@ -147,7 +153,9 @@ final class FacturaControlador
             'ivaList'        => $this->facturaModelo->listarIva($empresaId),
             'formasPago'     => $this->facturaModelo->listarFormasPago($empresaId),
             'entidadesBancarias' => $this->formaPagoModelo->listarEntidades($empresaId, true),
-            'bodegas'        => $verTodas ? [] : $this->facturaModelo->listarBodegasPermitidas($empresaId, (int) $usuario['id']),
+            'bodegas'        => $bodegas,
+            // Sin bodega asignada no se puede vender: la vista avisa y bloquea el detalle
+            'sinBodega'      => !$verTodas && !$bodegas,
             'esSuperusuario' => $verTodas,
             'permisos'       => $this->obtenerPermisos($usuario),
             'permisosFormaPago' => $this->obtenerPermisosFormaPago($usuario),
@@ -185,13 +193,13 @@ final class FacturaControlador
             $this->validarLineas($lineas);
             $this->validarDescuentoMaximo($empresaId, $cabecera);
 
-            $ventaTodasBodegas = $this->esSuperusuario($usuario) || !empty($usuario['venta_todas_bodegas']);
+            $esSuperusuario = $this->esSuperusuario($usuario);
 
             if ($esEdicion) {
-                $this->facturaModelo->actualizar($facturaId, $cabecera, $lineas, (int) $usuario['id'], $ventaTodasBodegas);
+                $this->facturaModelo->actualizar($facturaId, $cabecera, $lineas, (int) $usuario['id'], $esSuperusuario);
                 $this->responderJson(true, 'OK', 'Factura actualizada correctamente.', ['factura_id' => $facturaId]);
             } else {
-                $nuevoId = $this->facturaModelo->crear($cabecera, $lineas, (int) $usuario['id'], $ventaTodasBodegas);
+                $nuevoId = $this->facturaModelo->crear($cabecera, $lineas, (int) $usuario['id'], $esSuperusuario);
                 $this->responderJson(true, 'OK', 'Factura creada correctamente.', ['factura_id' => $nuevoId]);
             }
         } catch (Throwable $excepcion) {
@@ -284,10 +292,17 @@ final class FacturaControlador
             $this->responderJson(true, 'OK', '', ['productos' => []]);
         }
 
-        $bodegaSeleccionada = (int) ($_GET['bodega_id'] ?? 0);
-        $bodegaId = ($this->esSuperusuario($usuario) || !empty($usuario['venta_todas_bodegas']))
-            ? null
-            : ($bodegaSeleccionada > 0 ? $bodegaSeleccionada : $this->facturaModelo->obtenerBodegaUsuario($empresaId, (int) $usuario['id']));
+        // El stock "mi bodega" es el de la bodega de la venta: la elegida si esta permitida,
+        // si no la por defecto del usuario (misma regla que al guardar).
+        try {
+            $bodegaSeleccionada = (int) ($_GET['bodega_id'] ?? 0);
+            $permitidas = array_map('intval', array_column($this->facturaModelo->listarBodegasPermitidas($empresaId, (int) $usuario['id']), 'inv_bodega_id'));
+            $bodegaId = in_array($bodegaSeleccionada, $permitidas, true)
+                ? $bodegaSeleccionada
+                : $this->facturaModelo->obtenerBodegaUsuario($empresaId, (int) $usuario['id'], $this->esSuperusuario($usuario));
+        } catch (Throwable $excepcion) {
+            $this->responderJson(false, 'ERROR_VALIDACION', $excepcion->getMessage());
+        }
 
         $this->responderJson(true, 'OK', '', [
             'productos' => $this->facturaModelo->buscarProductos($empresaId, $termino, $bodegaId),

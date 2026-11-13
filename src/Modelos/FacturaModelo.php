@@ -183,17 +183,18 @@ final class FacturaModelo
     // CREAR
     // =========================================================================
 
-    public function crear(array $cabecera, array $lineas, int $usuarioId, bool $ventaTodasBodegas = false): int
+    public function crear(array $cabecera, array $lineas, int $usuarioId, bool $esSuperusuario = false): int
     {
         $pdo = $this->pdo();
         $pdo->beginTransaction();
         try {
             $empresaId = (int) $cabecera['empresa_id'];
             $tipoCodigo = $cabecera['tipo_doc'] === 'NOTA_VENTA' ? 'NOTA_VENTA' : 'FACTURA_VENTA';
-            $bodegaId  = $this->resolverBodega($pdo, $empresaId, $usuarioId, (int) ($cabecera['bodega_id'] ?? 0));
+            $bodegaId  = $this->resolverBodega($pdo, $empresaId, $usuarioId, (int) ($cabecera['bodega_id'] ?? 0), $esSuperusuario);
             $numero    = $this->secuenciaModelo->obtenerSiguiente($pdo, $empresaId, $tipoCodigo, 'VENTAS', $bodegaId);
 
-            $this->validarStock($pdo, $empresaId, $lineas, $ventaTodasBodegas ? null : $bodegaId);
+            // Siempre contra la bodega de la que se descuenta, para que ninguna quede en negativo
+            $this->validarStock($pdo, $empresaId, $lineas, $bodegaId);
 
             $diasCredito = $this->obtenerDiasCredito($cabecera['formas_pago']);
 
@@ -313,7 +314,7 @@ final class FacturaModelo
     // ACTUALIZAR (solo estado CREADA)
     // =========================================================================
 
-    public function actualizar(int $facturaId, array $cabecera, array $lineas, int $usuarioId, bool $ventaTodasBodegas = false): void
+    public function actualizar(int $facturaId, array $cabecera, array $lineas, int $usuarioId, bool $esSuperusuario = false): void
     {
         $pdo = $this->pdo();
         $pdo->beginTransaction();
@@ -326,8 +327,9 @@ final class FacturaModelo
             $this->revertirStockYKardex($pdo, $facturaId, $usuarioId);
 
             $empresaId = (int) $cabecera['empresa_id'];
-            $bodegaId  = $this->resolverBodega($pdo, $empresaId, $usuarioId, (int) ($cabecera['bodega_id'] ?? 0));
-            $this->validarStock($pdo, $empresaId, $lineas, $ventaTodasBodegas ? null : $bodegaId);
+            $bodegaId  = $this->resolverBodega($pdo, $empresaId, $usuarioId, (int) ($cabecera['bodega_id'] ?? 0), $esSuperusuario);
+            // Siempre contra la bodega de la que se descuenta, para que ninguna quede en negativo
+            $this->validarStock($pdo, $empresaId, $lineas, $bodegaId);
 
             $diasCredito = $this->obtenerDiasCredito($cabecera['formas_pago']);
 
@@ -505,7 +507,11 @@ final class FacturaModelo
         return $sentencia->fetchAll();
     }
 
-    public function buscarProductos(int $empresaId, string $termino, ?int $bodegaId = null): array
+    /**
+     * stock_mi_bodega es el stock de la bodega de la venta (de la que se descontara);
+     * stock_total es informativo, suma todas las bodegas.
+     */
+    public function buscarProductos(int $empresaId, string $termino, int $bodegaId): array
     {
         $like = '%' . $termino . '%';
         $sentencia = $this->pdo()->prepare("
@@ -547,18 +553,10 @@ final class FacturaModelo
             'empresa_id'  => $empresaId, 'empresa_id2' => $empresaId,
             'empresa_id3' => $empresaId, 'empresa_id4' => $empresaId,
             'empresa_id5' => $empresaId,
-            'bodega_id'   => $bodegaId ?? 0,
+            'bodega_id'   => $bodegaId,
             'like' => $like, 'like2' => $like,
         ]);
-        $productos = $sentencia->fetchAll();
-
-        if ($bodegaId === null) {
-            foreach ($productos as &$p) {
-                $p['stock_mi_bodega'] = $p['stock_total'];
-            }
-        }
-
-        return $productos;
+        return $sentencia->fetchAll();
     }
 
     /**
@@ -623,24 +621,18 @@ final class FacturaModelo
     // HELPERS PRIVADOS
     // =========================================================================
 
-    private function validarStock(\PDO $pdo, int $empresaId, array $lineas, ?int $bodegaId = null): void
+    private function validarStock(\PDO $pdo, int $empresaId, array $lineas, int $bodegaId): void
     {
-        $filtroBodega = $bodegaId !== null ? 'AND inv_bodega_id = :bodega_id' : '';
+        $stmt = $pdo->prepare("
+            SELECT COALESCE(SUM(inv_stock_cantidad_disponible), 0) AS stock
+            FROM inv_stock
+            WHERE sis_empresa_id = :empresa_id AND inv_producto_id = :producto_id
+              AND inv_bodega_id = :bodega_id
+        ");
         foreach ($lineas as $linea) {
             $productoId = (int) $linea['producto_id'];
             $cantidad   = (float) $linea['cantidad'];
-
-            $stmt = $pdo->prepare("
-                SELECT COALESCE(SUM(inv_stock_cantidad_disponible), 0) AS stock
-                FROM inv_stock
-                WHERE sis_empresa_id = :empresa_id AND inv_producto_id = :producto_id
-                {$filtroBodega}
-            ");
-            $parametros = ['empresa_id' => $empresaId, 'producto_id' => $productoId];
-            if ($bodegaId !== null) {
-                $parametros['bodega_id'] = $bodegaId;
-            }
-            $stmt->execute($parametros);
+            $stmt->execute(['empresa_id' => $empresaId, 'producto_id' => $productoId, 'bodega_id' => $bodegaId]);
             $stock = (float) $stmt->fetchColumn();
 
             if ($stock < $cantidad) {
@@ -876,20 +868,20 @@ final class FacturaModelo
         return $doc;
     }
 
-    public function obtenerBodegaUsuario(int $empresaId, int $usuarioId): int
+    public function obtenerBodegaUsuario(int $empresaId, int $usuarioId, bool $esSuperusuario = false): int
     {
-        return $this->obtenerBodegaId($this->pdo(), $empresaId, $usuarioId);
+        return $this->obtenerBodegaId($this->pdo(), $empresaId, $usuarioId, $esSuperusuario);
     }
 
     /**
      * ***************************************************************************
      * * LISTA LAS BODEGAS REALES (NO VIRTUALES) ASIGNADAS AL USUARIO PARA VENDER.
+     * * SOLO LAS ASIGNADAS: UN USUARIO SIN BODEGAS NO PUEDE ELEGIR NINGUNA.
      * ***************************************************************************
      */
     public function listarBodegasPermitidas(int $empresaId, int $usuarioId): array
     {
-        $pdo = $this->pdo();
-        $stmt = $pdo->prepare("
+        $stmt = $this->pdo()->prepare("
             SELECT b.inv_bodega_id, b.inv_bodega_codigo, b.inv_bodega_nombre
             FROM inv_bodega_usuarios bu
             INNER JOIN inv_bodega b  ON b.inv_bodega_id  = bu.inv_bodega_id
@@ -902,55 +894,53 @@ final class FacturaModelo
             ORDER BY b.inv_bodega_codigo
         ");
         $stmt->execute(['empresa_id' => $empresaId, 'usuario_id' => $usuarioId]);
-        $asignadas = $stmt->fetchAll();
-        if ($asignadas) {
-            return $asignadas;
-        }
-
-        $stmt2 = $pdo->prepare("
-            SELECT inv_bodega_id, inv_bodega_codigo, inv_bodega_nombre
-            FROM inv_bodega
-            WHERE sis_empresa_id = :empresa_id AND inv_bodega_virtual = FALSE
-            ORDER BY inv_bodega_codigo
-        ");
-        $stmt2->execute(['empresa_id' => $empresaId]);
-        return $stmt2->fetchAll();
+        return $stmt->fetchAll();
     }
 
     /**
      * ***************************************************************************
-     * * VALIDA QUE LA BODEGA ELEGIDA POR EL USUARIO ESTE ENTRE LAS PERMITIDAS;
-     * * SI NO SE ELIGIO NINGUNA O NO ES VALIDA, CAE A LA DETECCION AUTOMATICA.
+     * * DEVUELVE LA BODEGA DE LA VENTA: LA ELEGIDA SI ESTA ENTRE LAS PERMITIDAS,
+     * * SI NO, LA BODEGA POR DEFECTO DEL USUARIO.
      * ***************************************************************************
      */
-    private function resolverBodega(\PDO $pdo, int $empresaId, int $usuarioId, int $bodegaSolicitada): int
+    private function resolverBodega(\PDO $pdo, int $empresaId, int $usuarioId, int $bodegaSolicitada, bool $esSuperusuario): int
     {
-        if ($bodegaSolicitada <= 0) {
-            return $this->obtenerBodegaId($pdo, $empresaId, $usuarioId);
-        }
-        $permitidas = $this->listarBodegasPermitidas($empresaId, $usuarioId);
-        foreach ($permitidas as $b) {
-            if ((int) $b['inv_bodega_id'] === $bodegaSolicitada) {
-                return $bodegaSolicitada;
+        if ($bodegaSolicitada > 0) {
+            foreach ($this->listarBodegasPermitidas($empresaId, $usuarioId) as $b) {
+                if ((int) $b['inv_bodega_id'] === $bodegaSolicitada) {
+                    return $bodegaSolicitada;
+                }
             }
         }
-        return $this->obtenerBodegaId($pdo, $empresaId, $usuarioId);
+        return $this->obtenerBodegaId($pdo, $empresaId, $usuarioId, $esSuperusuario);
     }
 
-    private function obtenerBodegaId(\PDO $pdo, int $empresaId, int $usuarioId): int
+    /**
+     * Bodega por defecto: la predeterminada del usuario, o la primera que tenga asignada.
+     * Un usuario sin bodegas asignadas no puede vender (de cual bodega saldria el stock).
+     * Solo el superusuario, que normalmente no tiene bodegas asignadas, usa la primera
+     * bodega de la empresa.
+     */
+    private function obtenerBodegaId(\PDO $pdo, int $empresaId, int $usuarioId, bool $esSuperusuario = false): int
     {
         $stmt = $pdo->prepare("
             SELECT bu.inv_bodega_id
             FROM inv_bodega_usuarios bu
-            INNER JOIN inv_bodega b ON b.inv_bodega_id = bu.inv_bodega_id
+            INNER JOIN inv_bodega b  ON b.inv_bodega_id  = bu.inv_bodega_id
+            INNER JOIN sis_estado es ON es.sis_estado_id = b.sis_estado_id
             WHERE bu.sis_empresa_id = :empresa_id AND bu.sis_usuarios_id = :usuario_id
               AND bu.inv_bodega_usuarios_estado = 1 AND b.inv_bodega_virtual = FALSE
-              AND bu.inv_bodega_usuarios_predeterminada = TRUE
+              AND es.sis_estado_codigo = 'ACTIVO'
+            ORDER BY bu.inv_bodega_usuarios_predeterminada DESC, b.inv_bodega_codigo
             LIMIT 1
         ");
         $stmt->execute(['empresa_id' => $empresaId, 'usuario_id' => $usuarioId]);
         $id = (int) $stmt->fetchColumn();
         if ($id > 0) return $id;
+
+        if (!$esSuperusuario) {
+            throw new RuntimeException('No tiene bodega asignada.');
+        }
 
         $stmt2 = $pdo->prepare("
             SELECT inv_bodega_id FROM inv_bodega
