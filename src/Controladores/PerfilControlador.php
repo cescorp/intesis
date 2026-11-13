@@ -121,6 +121,11 @@ final class PerfilControlador
             $perfilId = (int) ($_POST['perfil_id'] ?? 0);
             $perfil = $this->obtenerPerfilValido($perfilId);
             $this->validarAlcanceEmpresa((int) $perfil['sis_empresa_id'], $usuario);
+            // Sin esto, quien no es superusuario podria quitarle los permisos al superusuario
+            // y dejarlo sin acceso; solo un superusuario cambia los permisos de ese perfil.
+            if (!$this->esSuperusuario($usuario)) {
+                $this->exigirNoProtegido($perfil);
+            }
             $this->perfilModelo->guardarPermisos($perfilId, array_map('intval', $_POST['menu_ids'] ?? []), (int) $usuario['id']);
             $this->sesion->guardarMensaje('success', 'Permisos guardados', 'La asignacion fue actualizada correctamente.');
         } catch (Throwable $excepcion) {
