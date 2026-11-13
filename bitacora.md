@@ -4,6 +4,10 @@ Una entrada por tarea terminada (ver [reglas.md](reglas.md)). Lo más reciente a
 
 ## 2026-11-13
 
+- **Usuarios: un no superusuario no podía crear ni editar usuarios** — `ff8a72c`
+  Causa real del aviso "datos incompletos": el JS detectaba el bloque de varias empresas con `!document.querySelector('.asignaciones-multiples')?.classList.contains('d-none')`; ese bloque solo existe para el superusuario, así que para los demás daba `!undefined` = true, validaba cero asignaciones y rechazaba siempre. Ahora solo cuenta como visible si existe y no está oculto.
+  Archivo: `publico/js/sistema.js`.
+
 - **Usuarios: el aviso de datos incompletos dice qué falta** — `f33cdc6`
   Al crear/editar usuario el aviso era genérico ("Seleccione empresa, perfil, nombre y correo valido") y parecía pedir la empresa aunque esta ya va sola cuando el usuario tiene una sola empresa; lo que faltaba era el nombre. Ahora lista solo lo que falta (ej. "Falta nombre.") y lleva el cursor a ese campo.
   Archivo: `publico/js/sistema.js`.
