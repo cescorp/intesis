@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Intesis\Controladores;
 
+use Intesis\Modelos\ArchivoModelo;
 use Intesis\Modelos\FacturaModelo;
 use Intesis\Modelos\FormaPagoModelo;
 use Intesis\Modelos\MensajeSistemaModelo;
@@ -13,6 +14,7 @@ use Intesis\Nucleo\ControladorComun;
 use Intesis\Nucleo\RegistroErrores;
 use Intesis\Nucleo\Sesion;
 use Intesis\Nucleo\Vista;
+use Intesis\Servicios\AlmacenArchivosServicio;
 use Intesis\Servicios\FacturacionElectronicaServicio;
 use Intesis\Servicios\GeneradorPdf;
 use Throwable;
@@ -31,9 +33,17 @@ final class FacturaControlador
         private RegistroErrores                 $registroErrores,
         private GeneradorPdf                    $generadorPdf,
         private FacturacionElectronicaServicio  $facturacionServicio,
-        private FormaPagoModelo                 $formaPagoModelo
+        private FormaPagoModelo                 $formaPagoModelo,
+        private AlmacenArchivosServicio         $almacenArchivos,
+        private ArchivoModelo                   $archivoModelo
     ) {
     }
+
+    /** Entidad con la que se registran los adjuntos de facturas/notas de venta en sis_archivos. */
+    private const TABLA_ADJUNTOS = 'VEN_DOCUMENTO';
+
+    /** Limite por archivo para adjuntos de facturas (el servicio nunca acepta mas de 80 MB). */
+    private const ADJUNTO_MAX_MB = 80;
 
     public function pdf(): void
     {
@@ -473,6 +483,112 @@ final class FacturaControlador
     }
 
     // =========================================================================
+    // ADJUNTOS DE FACTURAS (los archivos se guardan con AlmacenArchivosServicio)
+    // =========================================================================
+
+    public function adjuntosListar(): void
+    {
+        $usuario = $this->exigirSesionJson();
+        $this->exigirPermisoJson('/ventas/facturas/adjuntos/ver');
+        try {
+            $factura = $this->obtenerFacturaParaAdjuntos((int) ($_GET['factura_id'] ?? 0), $usuario);
+            $this->responderJson(true, 'OK', '', [
+                'adjuntos' => $this->archivoModelo->listar((int) $factura['sis_empresa_id'], self::TABLA_ADJUNTOS, (int) $factura['ven_documento_id']),
+                'max_mb'   => self::ADJUNTO_MAX_MB,
+            ]);
+        } catch (Throwable $excepcion) {
+            $this->responderJson(false, 'ERROR_VALIDACION', $excepcion->getMessage());
+        }
+    }
+
+    /** Recibe un archivo por peticion: el navegador los envia uno a uno para mostrar el % de cada uno. */
+    public function adjuntoSubir(): void
+    {
+        $usuario = $this->exigirSesionJson();
+        $this->exigirPermisoJson('/ventas/facturas/adjuntos/subir');
+        try {
+            $factura = $this->obtenerFacturaParaAdjuntos((int) ($_POST['factura_id'] ?? 0), $usuario);
+            $adjunto = $this->almacenArchivos->guardar(
+                $_FILES['archivo'] ?? [],
+                (int) $factura['sis_empresa_id'],
+                self::TABLA_ADJUNTOS,
+                (int) $factura['ven_documento_id'],
+                (int) $usuario['id'],
+                AlmacenArchivosServicio::TIPOS_PDF_E_IMAGENES,
+                self::ADJUNTO_MAX_MB
+            );
+            $this->responderJson(true, 'OK', 'Adjunto subido.', ['adjunto' => $adjunto]);
+        } catch (Throwable $excepcion) {
+            $this->registrarErrorCrud('SUBIR ADJUNTO FACTURA', $excepcion);
+            $this->responderJson(false, 'ERROR_VALIDACION', $excepcion->getMessage());
+        }
+    }
+
+    public function adjuntoVer(): void
+    {
+        $usuario = $this->exigirSesion();
+        $this->exigirPermiso('/ventas/facturas/adjuntos/ver');
+        try {
+            $this->almacenArchivos->servir($this->obtenerAdjuntoPermitido((int) ($_GET['archivo_id'] ?? 0), $usuario));
+        } catch (Throwable $excepcion) {
+            $this->registrarErrorCrud('VER ADJUNTO FACTURA', $excepcion);
+            http_response_code(404);
+            echo 'Adjunto no encontrado.';
+            exit;
+        }
+    }
+
+    public function adjuntoRenombrar(): void
+    {
+        $usuario = $this->exigirSesionJson();
+        $this->exigirPermisoJson('/ventas/facturas/adjuntos/editar');
+        try {
+            $adjunto = $this->obtenerAdjuntoPermitido((int) ($_POST['archivo_id'] ?? 0), $usuario);
+            $nombre  = mb_substr(trim((string) ($_POST['nombre'] ?? '')), 0, 150);
+            if ($nombre === '') {
+                throw new \InvalidArgumentException('El nombre es obligatorio.');
+            }
+            $this->archivoModelo->renombrar((int) $adjunto['sis_archivos_id'], $nombre, (int) $usuario['id']);
+            $this->responderJson(true, 'OK', 'Nombre actualizado.', ['nombre' => $nombre]);
+        } catch (Throwable $excepcion) {
+            $this->registrarErrorCrud('RENOMBRAR ADJUNTO FACTURA', $excepcion);
+            $this->responderJson(false, 'ERROR_VALIDACION', $excepcion->getMessage());
+        }
+    }
+
+    public function adjuntoEliminar(): void
+    {
+        $usuario = $this->exigirSesionJson();
+        $this->exigirPermisoJson('/ventas/facturas/adjuntos/eliminar');
+        try {
+            $adjunto = $this->obtenerAdjuntoPermitido((int) ($_POST['archivo_id'] ?? 0), $usuario);
+            $this->archivoModelo->eliminarLogico((int) $adjunto['sis_archivos_id'], (int) $usuario['id']);
+            $this->responderJson(true, 'OK', 'Adjunto eliminado.');
+        } catch (Throwable $excepcion) {
+            $this->registrarErrorCrud('ELIMINAR ADJUNTO FACTURA', $excepcion);
+            $this->responderJson(false, 'ERROR_VALIDACION', $excepcion->getMessage());
+        }
+    }
+
+    private function obtenerFacturaParaAdjuntos(int $facturaId, array $usuario): array
+    {
+        $factura = $facturaId > 0 ? $this->facturaModelo->buscar($facturaId, (int) $usuario['empresa_id']) : null;
+        if (!$factura) {
+            throw new \InvalidArgumentException('La factura no existe o no pertenece a su empresa.');
+        }
+        return $factura;
+    }
+
+    private function obtenerAdjuntoPermitido(int $archivoId, array $usuario): array
+    {
+        $adjunto = $archivoId > 0 ? $this->archivoModelo->buscar($archivoId, (int) $usuario['empresa_id'], self::TABLA_ADJUNTOS) : null;
+        if (!$adjunto) {
+            throw new \InvalidArgumentException('Adjunto no encontrado.');
+        }
+        return $adjunto;
+    }
+
+    // =========================================================================
     // MINI-CRUD ENTIDADES BANCARIAS (boton "+" junto al combo Entidad bancaria)
     // =========================================================================
 
@@ -761,6 +877,10 @@ final class FacturaControlador
             'crear'  => $this->menuModelo->tienePermiso($eId, $pId, '/ventas/facturas/crear'),
             'editar' => $this->menuModelo->tienePermiso($eId, $pId, '/ventas/facturas/editar'),
             'anular' => $this->menuModelo->tienePermiso($eId, $pId, '/ventas/facturas/anular'),
+            'adjuntos_ver'      => $this->menuModelo->tienePermiso($eId, $pId, '/ventas/facturas/adjuntos/ver'),
+            'adjuntos_subir'    => $this->menuModelo->tienePermiso($eId, $pId, '/ventas/facturas/adjuntos/subir'),
+            'adjuntos_editar'   => $this->menuModelo->tienePermiso($eId, $pId, '/ventas/facturas/adjuntos/editar'),
+            'adjuntos_eliminar' => $this->menuModelo->tienePermiso($eId, $pId, '/ventas/facturas/adjuntos/eliminar'),
         ];
     }
 

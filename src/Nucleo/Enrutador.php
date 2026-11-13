@@ -923,6 +923,27 @@ final class Enrutador
             return;
         }
 
+        if ($metodo === 'GET' && $ruta === '/ventas/facturas/adjuntos') {
+            $this->facturaControlador->adjuntosListar();
+            return;
+        }
+        if ($metodo === 'POST' && $ruta === '/ventas/facturas/adjuntos/subir') {
+            $this->facturaControlador->adjuntoSubir();
+            return;
+        }
+        if ($metodo === 'GET' && $ruta === '/ventas/facturas/adjuntos/ver') {
+            $this->facturaControlador->adjuntoVer();
+            return;
+        }
+        if ($metodo === 'POST' && $ruta === '/ventas/facturas/adjuntos/editar') {
+            $this->facturaControlador->adjuntoRenombrar();
+            return;
+        }
+        if ($metodo === 'POST' && $ruta === '/ventas/facturas/adjuntos/eliminar') {
+            $this->facturaControlador->adjuntoEliminar();
+            return;
+        }
+
         if ($metodo === 'GET' && $ruta === '/ventas/entidades-bancarias') {
             $this->facturaControlador->entidadesBancariasListar();
             return;

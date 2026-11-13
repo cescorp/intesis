@@ -115,6 +115,17 @@ $msgAnular    = $msgs['CONFIRMAR_ANULAR_FACTURA'] ?? null;
                                class="btn btn-sm btn-outline-secondary" title="PDF" target="_blank">
                                 <i class="bi bi-file-earmark-pdf"></i>
                             </a>
+                            <?php if ($permisos['adjuntos_ver'] ?? false): ?>
+                            <?php $totalAdjuntos = (int) ($fac['adjuntos_total'] ?? 0); ?>
+                            <button type="button"
+                                class="btn btn-sm btn-outline-secondary btn-adjuntos-factura position-relative"
+                                data-id="<?= $fac['ven_documento_id'] ?>"
+                                data-numero="<?= htmlspecialchars($fac['ven_documento_numero']) ?>"
+                                title="Adjuntos">
+                                <i class="bi bi-paperclip"></i>
+                                <span class="contador-adjuntos<?= $totalAdjuntos ? '' : ' d-none' ?>"><?= $totalAdjuntos ?></span>
+                            </button>
+                            <?php endif; ?>
                             <?php if ($esFacturaVenta): ?>
                                 <?php if ($estadoCod === 'CREADA'): ?>
                                 <button type="button"
@@ -181,10 +192,90 @@ $msgAnular    = $msgs['CONFIRMAR_ANULAR_FACTURA'] ?? null;
     </div>
 </div>
 
+<!-- Modal Adjuntos -->
+<div class="modal fade modal-intesis" id="modalAdjuntos" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <div>
+                    <p class="modal-etiqueta mb-0">Ventas</p>
+                    <h2 class="modal-title h6 mb-0">Adjuntos de la factura <span id="lblAdjNumero" class="font-monospace text-muted ms-1"></span></h2>
+                </div>
+                <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div class="row g-0 adjuntos-cuerpo">
+                    <div class="col-lg-5 p-3 adjuntos-lateral">
+                        <?php if ($permisos['adjuntos_subir'] ?? false): ?>
+                        <label class="zona-adjuntos" id="zonaAdjuntos">
+                            <input type="file" id="inpAdjuntos" multiple hidden
+                                accept="application/pdf,image/jpeg,image/png,image/webp,image/gif">
+                            <i class="bi bi-cloud-arrow-up"></i>
+                            <span class="fw-semibold">Arrastre archivos aquí</span>
+                            <span class="small">o <u>seleccione desde su equipo</u></span>
+                            <span class="small text-muted">PDF o imágenes (JPG, PNG, WEBP, GIF), hasta <span id="lblAdjMax">80</span> MB cada uno</span>
+                        </label>
+                        <?php endif; ?>
+                        <div id="colaAdjuntos" class="mt-2"></div>
+                        <div id="listaAdjuntos" class="mt-2"></div>
+                    </div>
+                    <div class="col-lg-7 visor-adjuntos" id="visorAdjuntos">
+                        <p class="text-muted small m-0">Elija un adjunto de la lista para verlo aquí.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Adjuntos: el unico acento es la zona de arrastre y la fila elegida (color corporativo) */
+.btn-adjuntos-factura .contador-adjuntos {
+    position: absolute; top: -6px; right: -6px; min-width: 16px; height: 16px; padding: 0 4px;
+    border-radius: 8px; background: #1f6f68; color: #fff; font-size: .62rem; line-height: 16px;
+}
+.adjuntos-cuerpo { min-height: 65vh; }
+.adjuntos-lateral { border-right: 1px solid #dee2e6; max-height: 75vh; overflow-y: auto; }
+.zona-adjuntos {
+    display: flex; flex-direction: column; align-items: center; gap: .15rem; margin: 0;
+    padding: 1.1rem .75rem; text-align: center; cursor: pointer; border-radius: 6px;
+    border: 2px dashed #1f6f68; color: #1f6f68; background: #fff; transition: background-color .15s;
+}
+.zona-adjuntos .bi { font-size: 1.6rem; }
+.zona-adjuntos:hover, .zona-adjuntos.arrastrando { background: #e6f1f0; }
+.zona-adjuntos:focus-within { outline: 2px solid #1f6f68; outline-offset: 2px; }
+.adjunto-cola { font-size: .8rem; padding: .35rem 0; }
+.adjunto-cola .progress { height: 4px; }
+.adjunto-fila {
+    display: flex; align-items: center; gap: .5rem; padding: .35rem .4rem;
+    border-left: 3px solid transparent; border-radius: 4px; cursor: pointer;
+}
+.adjunto-fila:hover { background: #f4f6f6; }
+.adjunto-fila.activa { border-left-color: #1f6f68; background: #e6f1f0; }
+.adjunto-fila input { font-size: .82rem; }
+.adjunto-fila .tamano { font-size: .72rem; color: #6c757d; white-space: nowrap; }
+.visor-adjuntos {
+    display: flex; align-items: center; justify-content: center;
+    background: #eef1f1; min-height: 65vh; padding: .75rem;
+}
+.visor-adjuntos iframe { width: 100%; height: 72vh; border: 0; background: #fff; }
+.visor-adjuntos img { max-width: 100%; max-height: 72vh; object-fit: contain; box-shadow: 0 1px 4px rgba(0,0,0,.15); }
+@media (max-width: 991.98px) {
+    .adjuntos-lateral { border-right: 0; border-bottom: 1px solid #dee2e6; max-height: none; }
+    .visor-adjuntos, .adjuntos-cuerpo { min-height: 50vh; }
+}
+@media (prefers-reduced-motion: reduce) { .zona-adjuntos { transition: none; } }
+</style>
+
 <script>
 (function () {
     'use strict';
     const appUrl = <?= json_encode(rtrim($configuracion->obtener('APP_URL', ''), '/')) ?>;
+    const permisosAdjuntos = <?= json_encode([
+        'subir'    => (bool) ($permisos['adjuntos_subir'] ?? false),
+        'editar'   => (bool) ($permisos['adjuntos_editar'] ?? false),
+        'eliminar' => (bool) ($permisos['adjuntos_eliminar'] ?? false),
+    ]) ?>;
     const msgAnular = <?= json_encode($msgAnular ?? ['sis_mensaje_errores_titulo' => 'Anular factura', 'sis_mensaje_errores_mensaje' => '¿Desea anular esta factura?', 'sis_mensaje_errores_icono' => 'warning']) ?>;
 
     try {
@@ -420,6 +511,219 @@ $msgAnular    = $msgs['CONFIRMAR_ANULAR_FACTURA'] ?? null;
     function escHtml(str) {
         return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
+
+    // ── Adjuntos ─────────────────────────────────────────────────────────────
+    // Los archivos se suben de uno en uno con XMLHttpRequest porque fetch() no informa
+    // el avance de la subida y se necesita mostrar el % de cada archivo.
+    const MIMES_ADJUNTOS = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    const adj = { facturaId: 0, boton: null, lista: [], activoId: 0, maxMb: 80, cola: Promise.resolve() };
+    const q = (sel) => document.querySelector(sel);
+
+    function tamanoLegible(bytes) {
+        const b = Number(bytes) || 0;
+        if (b >= 1048576) return (b / 1048576).toFixed(1) + ' MB';
+        return Math.max(1, Math.round(b / 1024)) + ' KB';
+    }
+
+    function urlAdjunto(id) {
+        return appUrl + '/ventas/facturas/adjuntos/ver?archivo_id=' + encodeURIComponent(id);
+    }
+
+    function actualizarContador() {
+        const span = adj.boton?.querySelector('.contador-adjuntos');
+        if (!span) return;
+        span.textContent = adj.lista.length;
+        span.classList.toggle('d-none', adj.lista.length === 0);
+    }
+
+    function renderListaAdjuntos() {
+        const cont = q('#listaAdjuntos');
+        if (!adj.lista.length) {
+            cont.innerHTML = '<p class="text-muted small mb-0">Esta factura no tiene adjuntos.</p>';
+            return;
+        }
+        cont.innerHTML = adj.lista.map(a => `
+            <div class="adjunto-fila${a.sis_archivos_id === adj.activoId ? ' activa' : ''}" data-id="${a.sis_archivos_id}">
+                <i class="bi ${a.sis_archivos_mime === 'application/pdf' ? 'bi-file-earmark-pdf text-danger' : 'bi-file-earmark-image text-primary'}"></i>
+                <input type="text" class="form-control form-control-sm adj-nombre" maxlength="150"
+                    value="${escHtml(a.sis_archivos_nombre)}" aria-label="Nombre del adjunto" ${permisosAdjuntos.editar ? '' : 'readonly'}>
+                <span class="tamano">${tamanoLegible(a.sis_archivos_tamano)}</span>
+                ${permisosAdjuntos.eliminar ? '<button type="button" class="btn btn-sm btn-outline-danger adj-eliminar" title="Eliminar adjunto"><i class="bi bi-trash"></i></button>' : ''}
+            </div>`).join('');
+    }
+
+    function mostrarEnVisor(id) {
+        const a = adj.lista.find(x => x.sis_archivos_id === id);
+        const visor = q('#visorAdjuntos');
+        adj.activoId = a ? id : 0;
+        renderListaAdjuntos();
+        visor.innerHTML = htmlVisor(a);
+    }
+
+    function htmlVisor(a) {
+        if (!a) return '<p class="text-muted small m-0">Elija un adjunto de la lista para verlo aquí.</p>';
+        return a.sis_archivos_mime === 'application/pdf'
+            ? `<iframe src="${urlAdjunto(a.sis_archivos_id)}" title="${escHtml(a.sis_archivos_nombre)}"></iframe>`
+            : `<img src="${urlAdjunto(a.sis_archivos_id)}" alt="${escHtml(a.sis_archivos_nombre)}">`;
+    }
+
+    async function cargarAdjuntos() {
+        q('#listaAdjuntos').innerHTML = '<p class="text-muted small mb-0"><span class="spinner-border spinner-border-sm me-1"></span>Cargando adjuntos...</p>';
+        try {
+            const resp = await fetch(appUrl + '/ventas/facturas/adjuntos?factura_id=' + adj.facturaId);
+            const json = await resp.json();
+            if (!json.ok) throw new Error(json.mensaje);
+            adj.lista  = (json.data.adjuntos || []).map(a => ({ ...a, sis_archivos_id: Number(a.sis_archivos_id) }));
+            adj.maxMb  = Number(json.data.max_mb) || 80;
+            if (q('#lblAdjMax')) q('#lblAdjMax').textContent = adj.maxMb;
+            mostrarEnVisor(adj.lista[0]?.sis_archivos_id || 0);
+            actualizarContador();
+        } catch (error) {
+            q('#listaAdjuntos').innerHTML = `<p class="text-danger small mb-0">${escHtml(error.message || 'No se pudieron cargar los adjuntos.')}</p>`;
+        }
+    }
+
+    /** Fila de progreso de un archivo; devuelve funciones para actualizarla. */
+    function crearFilaCola(nombre) {
+        const fila = document.createElement('div');
+        fila.className = 'adjunto-cola';
+        fila.innerHTML = `
+            <div class="d-flex justify-content-between gap-2">
+                <span class="text-truncate">${escHtml(nombre)}</span>
+                <span class="adj-estado text-muted">En espera</span>
+            </div>
+            <div class="progress mt-1"><div class="progress-bar" style="width:0%;background:#1f6f68"></div></div>`;
+        q('#colaAdjuntos').appendChild(fila);
+        return {
+            avance(pct) {
+                fila.querySelector('.progress-bar').style.width = pct + '%';
+                fila.querySelector('.adj-estado').textContent = pct < 100 ? `Procesando ${pct}%` : 'Guardando...';
+            },
+            error(mensaje) {
+                fila.querySelector('.progress').remove();
+                const estado = fila.querySelector('.adj-estado');
+                estado.className = 'adj-estado text-danger';
+                estado.textContent = 'No se subió';
+                fila.insertAdjacentHTML('beforeend', `<div class="text-danger small">${escHtml(mensaje)} <button type="button" class="btn btn-link btn-sm p-0 align-baseline adj-cerrar-error">Quitar</button></div>`);
+            },
+            quitar() { fila.remove(); },
+        };
+    }
+
+    function subirArchivo(archivo, filaCola) {
+        return new Promise((resolver) => {
+            const datos = new FormData();
+            datos.append('factura_id', adj.facturaId);
+            datos.append('archivo', archivo);
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', appUrl + '/ventas/facturas/adjuntos/subir');
+            xhr.upload.onprogress = (e) => { if (e.lengthComputable) filaCola.avance(Math.round(e.loaded * 100 / e.total)); };
+            xhr.onload = () => {
+                let json = null;
+                try { json = JSON.parse(xhr.responseText); } catch { /* respuesta no JSON: error del servidor */ }
+                if (json?.ok) {
+                    adj.lista.push({ ...json.data.adjunto, sis_archivos_id: Number(json.data.adjunto.sis_archivos_id) });
+                    filaCola.quitar();
+                    mostrarEnVisor(Number(json.data.adjunto.sis_archivos_id));
+                    actualizarContador();
+                } else {
+                    filaCola.error(json?.mensaje || 'El servidor rechazó el archivo (puede superar el límite de subida).');
+                }
+                resolver();
+            };
+            xhr.onerror = () => { filaCola.error('Sin conexión con el servidor.'); resolver(); };
+            xhr.send(datos);
+        });
+    }
+
+    /** Valida tipo y tamaño antes de subir (el servidor vuelve a validarlo) y encola las subidas. */
+    function agregarArchivos(archivos) {
+        [...archivos].forEach(archivo => {
+            const fila = crearFilaCola(archivo.name);
+            if (!MIMES_ADJUNTOS.includes(archivo.type)) {
+                fila.error('Tipo no permitido. Solo PDF e imágenes (JPG, PNG, WEBP, GIF).');
+                return;
+            }
+            if (archivo.size > adj.maxMb * 1048576) {
+                fila.error(`Supera el máximo de ${adj.maxMb} MB.`);
+                return;
+            }
+            adj.cola = adj.cola.then(() => subirArchivo(archivo, fila));
+        });
+    }
+
+    document.addEventListener('click', (e) => {
+        const btn = e.target.closest('.btn-adjuntos-factura');
+        if (!btn) return;
+        adj.facturaId = parseInt(btn.dataset.id);
+        adj.boton = btn;
+        adj.lista = [];
+        q('#lblAdjNumero').textContent = btn.dataset.numero;
+        q('#colaAdjuntos').innerHTML = '';
+        bootstrap.Modal.getOrCreateInstance(q('#modalAdjuntos')).show();
+        cargarAdjuntos();
+    });
+
+    const zona = q('#zonaAdjuntos');
+    if (zona) {
+        q('#inpAdjuntos').addEventListener('change', (e) => { agregarArchivos(e.target.files); e.target.value = ''; });
+        ['dragenter', 'dragover'].forEach(ev => zona.addEventListener(ev, (e) => { e.preventDefault(); zona.classList.add('arrastrando'); }));
+        ['dragleave', 'drop'].forEach(ev => zona.addEventListener(ev, (e) => { e.preventDefault(); zona.classList.remove('arrastrando'); }));
+        zona.addEventListener('drop', (e) => agregarArchivos(e.dataTransfer.files));
+    }
+
+    q('#colaAdjuntos').addEventListener('click', (e) => {
+        if (e.target.closest('.adj-cerrar-error')) e.target.closest('.adjunto-cola').remove();
+    });
+
+    q('#listaAdjuntos').addEventListener('click', async (e) => {
+        const fila = e.target.closest('.adjunto-fila');
+        if (!fila) return;
+        const id = Number(fila.dataset.id);
+        if (e.target.closest('.adj-eliminar')) {
+            const conf = await Swal.fire({
+                icon: 'warning', title: '¿Eliminar adjunto?', text: 'Dejará de aparecer en esta factura.',
+                showCancelButton: true, confirmButtonText: 'Eliminar', cancelButtonText: 'Cancelar', confirmButtonColor: '#dc3545',
+            });
+            if (!conf.isConfirmed) return;
+            const datos = new FormData();
+            datos.append('archivo_id', id);
+            const json = await (await fetch(appUrl + '/ventas/facturas/adjuntos/eliminar', { method: 'POST', body: datos })).json();
+            if (!json.ok) { Swal.fire({ icon: 'error', title: 'No se pudo eliminar', text: json.mensaje }); return; }
+            adj.lista = adj.lista.filter(a => a.sis_archivos_id !== id);
+            mostrarEnVisor(adj.activoId === id ? (adj.lista[0]?.sis_archivos_id || 0) : adj.activoId);
+            actualizarContador();
+            return;
+        }
+        if (id !== adj.activoId && !e.target.closest('.adj-nombre')) mostrarEnVisor(id);
+    });
+
+    // El nombre se guarda al salir del campo (o con Enter) solo si cambio
+    q('#listaAdjuntos').addEventListener('change', async (e) => {
+        if (!e.target.matches('.adj-nombre')) return;
+        const id = Number(e.target.closest('.adjunto-fila').dataset.id);
+        const a = adj.lista.find(x => x.sis_archivos_id === id);
+        const nombre = e.target.value.trim();
+        if (!a || !nombre) { e.target.value = a?.sis_archivos_nombre || ''; return; }
+        const datos = new FormData();
+        datos.append('archivo_id', id);
+        datos.append('nombre', nombre);
+        const json = await (await fetch(appUrl + '/ventas/facturas/adjuntos/editar', { method: 'POST', body: datos })).json();
+        if (!json.ok) { Swal.fire({ icon: 'error', title: 'No se pudo renombrar', text: json.mensaje }); e.target.value = a.sis_archivos_nombre; return; }
+        a.sis_archivos_nombre = json.data.nombre;
+    });
+    q('#listaAdjuntos').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && e.target.matches('.adj-nombre')) { e.preventDefault(); e.target.blur(); }
+    });
+    q('#listaAdjuntos').addEventListener('focusin', (e) => {
+        const fila = e.target.closest('.adjunto-fila');
+        if (fila && e.target.matches('.adj-nombre') && Number(fila.dataset.id) !== adj.activoId) {
+            // Ver el adjunto al editar su nombre sin redibujar la lista (perderia el foco)
+            adj.activoId = Number(fila.dataset.id);
+            q('#listaAdjuntos').querySelectorAll('.adjunto-fila').forEach(f => f.classList.toggle('activa', f === fila));
+            q('#visorAdjuntos').innerHTML = htmlVisor(adj.lista.find(x => x.sis_archivos_id === adj.activoId));
+        }
+    });
 })();
 </script>
 

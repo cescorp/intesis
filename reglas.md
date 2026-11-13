@@ -15,3 +15,11 @@ Toda pantalla o modal nuevo o rediseñado usa la skill de diseño web (`frontend
 
 ## 4. Sin parches
 Corregir la causa raíz, no el síntoma. Si una función compartida falla, se arregla en la función, no en cada lugar que la llama. Nada de valores quemados ni condiciones especiales para "que funcione".
+
+## 5. Adjuntos y archivos
+Todo archivo que suba un usuario se guarda con `AlmacenArchivosServicio::guardar()` (`src/Servicios/AlmacenArchivosServicio.php`) y se registra en `sis_archivos` (entidad = `tabla` + `id_padre`). No se escribe `move_uploaded_file` ni SQL de `sis_archivos` en otros lugares.
+- Ubicación central: `almacenamiento/archivos/adjuntos/empresa_{id}/{tabla}/{año}/{mes}/{código-único}.{ext}`.
+- Límite por archivo: cada módulo lo pasa por parámetro; el máximo absoluto es **80 MB** (`AlmacenArchivosServicio::MAX_MB`).
+- El tipo se valida por el contenido real del archivo, no por la extensión.
+- Eliminar es lógico (`sis_archivos_estado = 0`); el archivo físico se conserva.
+- Excepción histórica: la galería de productos sigue en `almacenamiento/archivos/productos/` con su propio controlador.

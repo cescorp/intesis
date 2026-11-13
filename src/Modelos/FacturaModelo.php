@@ -34,7 +34,10 @@ final class FacturaModelo
                    es.sis_estado_codigo,
                    es.sis_estado_nombre,
                    e.sis_empresa_nombre_comercial,
-                   fp.ven_forma_pago_nombre
+                   fp.ven_forma_pago_nombre,
+                   (SELECT count(*) FROM sis_archivos a
+                     WHERE a.sis_empresa_id = d.sis_empresa_id AND a.sis_archivos_tabla = 'VEN_DOCUMENTO'
+                       AND a.sis_archivos_id_padre = d.ven_documento_id AND a.sis_archivos_estado = 1) AS adjuntos_total
             FROM ven_documento d
             INNER JOIN ven_cliente c         ON c.ven_cliente_id         = d.ven_cliente_id
             INNER JOIN sis_tipo_documento td ON td.sis_tipo_documento_id = d.sis_tipo_documento_id
