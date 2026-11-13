@@ -4,6 +4,10 @@ Una entrada por tarea terminada (ver [reglas.md](reglas.md)). Lo más reciente a
 
 ## 2026-11-12
 
+- **Nueva factura: foco a Cantidad, Enter a Precio y sin productos duplicados** — `eefd542`
+  Al cargar un producto (Enter con coincidencia exacta o clic en el modal) el foco va a Cantidad; Enter en Cantidad pasa a Precio. Si el producto ya está en otra línea se suma 1 a esa línea, la actual queda vacía y el foco va a la existente (`cargarProductoEnFila()`).
+  Archivo: `src/Vistas/ventas/factura_form.php`.
+
 - **Nueva factura / nota de venta: cantidades enteras** — `3c9584b`
   El input de Cantidad solo acepta enteros (min 1, bloquea `.`/`,`) y el backend rechaza cantidades con decimales en vez de redondearlas (`FacturaControlador::validarLineas()`).
   Archivos: `src/Vistas/ventas/factura_form.php`, `src/Controladores/FacturaControlador.php`.
