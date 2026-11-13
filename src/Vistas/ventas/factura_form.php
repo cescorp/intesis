@@ -1408,10 +1408,18 @@ function construirFormasPago(total) {
     return { ok: true, formas: [{ forma_pago_id: fpId, monto: parseFloat(total.toFixed(2)), nombre, comprobante, dias, entidad_id }] };
 }
 
+// Lineas que se envian al guardar. Una linea sin producto y sin codigo escrito es la
+// fila en blanco que queda lista para el siguiente producto: se ignora. Si tiene codigo
+// escrito pero no se eligio producto, se envia para que el backend avise del olvido.
+function filasAGuardar() {
+    return [...document.querySelectorAll('#cuerpoDetalle tr')].filter(tr =>
+        tr.querySelector('.inp-producto-id').value || tr.querySelector('.inp-codigo').value.trim());
+}
+
 function construirPayload() {
     const clienteId = parseInt(q('#cliente_id').value || 0);
     if (!clienteId) return null;
-    const filas = document.querySelectorAll('#cuerpoDetalle tr');
+    const filas = filasAGuardar();
     if (!filas.length) return null;
 
     let base0 = 0, baseIva = 0, totalIva = 0;
@@ -1492,8 +1500,7 @@ q('#btnGuardar').addEventListener('click', async () => {
         q('#ruc_input').focus();
         return;
     }
-    const filas = document.querySelectorAll('#cuerpoDetalle tr');
-    if (!filas.length) {
+    if (!filasAGuardar().length) {
         Swal.fire({ title: 'Error', text: 'Agregue al menos un producto.', icon: 'warning', confirmButtonColor: '#1f6f68' });
         return;
     }
@@ -1530,8 +1537,9 @@ q('#btnGuardar').addEventListener('click', async () => {
         actualizarCambio();
         q('#cfmTitulo').textContent = 'Calculadora';
         q('#panelCalculadora').classList.remove('d-none');
+        // Se enfoca cuando el modal termino de abrirse; antes Bootstrap mueve el foco al modal
+        q('#modalConfirmacion').addEventListener('shown.bs.modal', () => q('#cfmRecibido').focus(), { once: true });
         bootstrap.Modal.getOrCreateInstance(q('#modalConfirmacion')).show();
-        setTimeout(() => q('#cfmRecibido')?.focus(), 300);
 
         q('#btnFacturar').onclick = () => ejecutarGuardar(payload);
     } else {
