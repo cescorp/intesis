@@ -475,7 +475,10 @@
             const nombre = document.getElementById('usuario_nombre').value.trim();
             const correo = document.getElementById('usuario_correo').value.trim();
             const claveVisible = !document.querySelector('.campos-clave-crear')?.classList.contains('d-none');
-            const asignacionMultipleVisible = !document.querySelector('.asignaciones-multiples')?.classList.contains('d-none');
+            // El bloque de varias empresas solo existe para el superusuario: si no esta en la
+            // pagina no cuenta como visible (antes !undefined daba true y rechazaba siempre).
+            const bloqueMultiple = document.querySelector('.asignaciones-multiples');
+            const asignacionMultipleVisible = !!bloqueMultiple && !bloqueMultiple.classList.contains('d-none');
             const clave = document.getElementById('usuario_clave').value;
             const confirmarClave = document.getElementById('usuario_confirmar_clave').value;
 
