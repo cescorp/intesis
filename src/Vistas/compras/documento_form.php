@@ -174,7 +174,12 @@ $editDescuentoPct   = ($modoEditar && $editSubtotal > 0) ? round($editDescuentoV
                             <th style="width:70px" class="text-center">Cant.</th>
                             <th style="width:96px">Costo</th>
                             <th style="width:100px">IVA</th>
-                            <th style="width:72px" class="text-center">% PVP</th>
+                            <th style="width:100px" class="text-center">% PVP
+                                <div class="input-group input-group-sm mt-1">
+                                    <input type="number" class="form-control form-control-sm text-center px-1" id="pvpPctTodos" min="0" step="0.01" placeholder="%" title="Aplicar % PVP a todas las lineas">
+                                    <button type="button" class="btn btn-outline-secondary px-1" id="btnPvpPctTodos" title="Aplicar a todas las lineas"><i class="bi bi-check-lg"></i></button>
+                                </div>
+                            </th>
                             <th style="width:96px">PVP</th>
                             <th style="width:88px" class="text-end">Total</th>
                             <th style="width:32px"></th>
@@ -436,7 +441,7 @@ function crearFila(datos) {
       <td><input type="text"   class="form-control form-control-sm inp-cod-interno" placeholder="Codigo"      autocomplete="off" value="${esc(datos.codigo_interno||'')}"></td>
       <td><input type="text"   class="form-control form-control-sm inp-descripcion" value="${esc(datos.producto_nombre||'')}" disabled></td>
       <td><select class="form-control form-control-sm inp-marca" name="lineas[${idx}][marca_id]">${opcionesMarca(parseInt(datos.marca_id) || 0)}</select></td>
-      <td class="text-center"><input type="number" class="form-control form-control-sm text-center inp-cantidad" name="lineas[${idx}][cantidad]" value="${datos.cantidad}" min="1" step="1"></td>
+      <td class="text-center"><input type="number" class="form-control form-control-sm text-center inp-cantidad" name="lineas[${idx}][cantidad]" value="${datos.cantidad ?? 1}" min="1" step="1"></td>
       <td><input type="number" class="form-control form-control-sm inp-costo"       name="lineas[${idx}][costo]"     value="${parseFloat(datos.costo||0).toFixed(2)}"    min="0"       step="0.01"></td>
       <td>
         <select class="form-control form-control-sm inp-iva" name="lineas[${idx}][iva_id]">
@@ -568,6 +573,20 @@ cuerpoDetalle.addEventListener('change', (e) => {
 });
 
 q('#btnAgregarLinea').addEventListener('click', () => crearFila({}));
+
+/* ── % PVP para todas las lineas (reusa el recalculo del evento input) ────── */
+function aplicarPvpPctTodos() {
+    const pct = q('#pvpPctTodos').value;
+    if (pct === '') return;
+    cuerpoDetalle.querySelectorAll('.inp-pvp-pct').forEach(inp => {
+        inp.value = parseFloat(pct).toFixed(2);
+        inp.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+}
+q('#btnPvpPctTodos').addEventListener('click', aplicarPvpPctTodos);
+q('#pvpPctTodos').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); aplicarPvpPctTodos(); }
+});
 
 q('#inp_descuento_pct').addEventListener('input', calcularTotales);
 
