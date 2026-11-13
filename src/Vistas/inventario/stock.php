@@ -1,9 +1,14 @@
 <?php
-$claseCuerpo = 'layout-fixed sidebar-expand-lg bg-body-tertiary dashboard-intesis';
+$embebido = !empty($embebido);
+$claseCuerpo = $embebido ? 'bg-body-tertiary stock-embebido' : 'layout-fixed sidebar-expand-lg bg-body-tertiary dashboard-intesis';
 require $configuracion->raiz() . '/src/Vistas/plantillas/encabezado.php';
 $appNombre = $configuracion->obtener('APP_NOMBRE', 'INTESIS');
 $appUrl = rtrim($configuracion->obtener('APP_URL', ''), '/');
 ?>
+<?php if ($embebido): ?>
+<!-- Consulta F2: solo la tabla, sin menu ni cabecera (ver sistema.js "Consulta de stock F2") -->
+<div class="container-fluid p-2">
+<?php else: ?>
 <div class="app-wrapper">
     <nav class="app-header navbar navbar-expand navbar-intesis">
         <div class="container-fluid">
@@ -24,6 +29,7 @@ $appUrl = rtrim($configuracion->obtener('APP_URL', ''), '/');
     <main class="app-main">
         <div class="app-content">
             <div class="container-fluid">
+<?php endif; ?>
                 <section class="panel-crud">
                     <div class="panel-crud-cabecera gap-2 flex-wrap">
                         <?php if ($esSuperusuario): ?>
@@ -81,10 +87,14 @@ $appUrl = rtrim($configuracion->obtener('APP_URL', ''), '/');
                         </table>
                     </div>
                 </section>
+<?php if ($embebido): ?>
+</div>
+<?php else: ?>
             </div>
         </div>
     </main>
 </div>
+<?php endif; ?>
 
 <div class="modal fade modal-intesis" id="modalGaleriaProducto" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">

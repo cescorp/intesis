@@ -1377,3 +1377,20 @@ body {
 #tablaLineasMovimiento.modo-transferencia .td-bodega-linea {
     display: none;
 }
+
+/* Consulta de stock F2 (sistema.js): capa por encima de modales (1055) y SweetAlert (1060) */
+.consulta-stock-capa {
+    position: fixed; inset: 0; z-index: 2000; background: rgba(15, 30, 29, .45);
+    display: flex; align-items: center; justify-content: center; padding: 2vh 2vw;
+}
+.consulta-stock-capa[hidden] { display: none; }
+.consulta-stock-ventana {
+    display: flex; flex-direction: column; width: 100%; height: 100%;
+    background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 10px 40px rgba(0, 0, 0, .3);
+}
+.consulta-stock-cabecera {
+    display: flex; align-items: center; gap: .5rem; padding: .5rem .75rem;
+    border-bottom: 3px solid #1f6f68; color: #1f6f68;
+}
+.consulta-stock-ventana iframe { flex: 1; width: 100%; border: 0; }
+.consulta-stock-aviso { margin: auto; color: #6c757d; }
