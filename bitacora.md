@@ -4,6 +4,10 @@ Una entrada por tarea terminada (ver [reglas.md](reglas.md)). Lo más reciente a
 
 ## 2026-11-12
 
+- **Adjuntos en facturas y servicio global de archivos** — `17e045e`
+  `AlmacenArchivosServicio` (+ `ArchivoModelo`) es el punto único para subir/ver/eliminar adjuntos: valida el tipo real (finfo), límite por parámetro con máximo 80 MB, guarda en `almacenamiento/archivos/adjuntos/empresa_{id}/{tabla}/{año}/{mes}/` con nombre único y registra en `sis_archivos`. En Facturas: botón 📎 con contador y modal con arrastrar/soltar varios archivos, % por archivo, lista con nombre editable y visor PDF/imagen. Regla 5 en `reglas.md`.
+  Migración: `20261112_1400_adjuntos.sql` (columnas nombre/mime/tamaño en `sis_archivos` + permisos `/ventas/facturas/adjuntos/*`).
+
 - **Nueva factura: no vender más del stock de la bodega de la venta** — `d5363db`
   En la línea, la cantidad se corrige al máximo disponible con aviso "Máx. N disponible"; producto sin stock en la bodega no se carga. Sin bodega asignada: aviso "No tiene bodega asignada" y detalle bloqueado; el backend ya no usa en silencio la primera bodega de la empresa (solo el superusuario). Corregido: con "vender de todas las bodegas" se validaba contra el stock total pero se descontaba de una sola bodega, que podía quedar en negativo; ahora siempre se valida contra la bodega de la que se descuenta.
   Archivos: `src/Vistas/ventas/factura_form.php`, `src/Controladores/FacturaControlador.php`, `src/Modelos/FacturaModelo.php`.

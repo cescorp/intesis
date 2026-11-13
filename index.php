@@ -38,6 +38,7 @@ require_once __DIR__ . '/src/Modelos/ClienteModelo.php';
 require_once __DIR__ . '/src/Modelos/ProformaModelo.php';
 require_once __DIR__ . '/src/Modelos/FacturaModelo.php';
 require_once __DIR__ . '/src/Modelos/FormaPagoModelo.php';
+require_once __DIR__ . '/src/Modelos/ArchivoModelo.php';
 if (is_file(__DIR__ . '/vendor/autoload.php')) {
     require_once __DIR__ . '/vendor/autoload.php';
 }
@@ -53,6 +54,7 @@ require_once __DIR__ . '/src/Servicios/SriSoapServicio.php';
 require_once __DIR__ . '/src/Servicios/SriEmailServicio.php';
 require_once __DIR__ . '/src/Servicios/FacturacionElectronicaServicio.php';
 require_once __DIR__ . '/src/Servicios/LicenciaCifradoServicio.php';
+require_once __DIR__ . '/src/Servicios/AlmacenArchivosServicio.php';
 // PdfSri se carga solo cuando se usa (require_once en DocumentoCompraControlador::generarPdf)
 require_once __DIR__ . '/src/Controladores/AutenticacionControlador.php';
 require_once __DIR__ . '/src/Controladores/PanelControlador.php';

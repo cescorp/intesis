@@ -48,6 +48,7 @@ use Intesis\Modelos\ClienteModelo;
 use Intesis\Modelos\ProformaModelo;
 use Intesis\Modelos\FacturaModelo;
 use Intesis\Modelos\FormaPagoModelo;
+use Intesis\Modelos\ArchivoModelo;
 use Intesis\Modelos\LicenciaModelo;
 use Intesis\Modelos\TipoDocumentoModelo;
 use Intesis\Modelos\UsuarioEmpresaModelo;
@@ -57,6 +58,7 @@ use Intesis\Servicios\AutenticacionServicio;
 use Intesis\Servicios\FacturacionElectronicaServicio;
 use Intesis\Servicios\GeneradorPdf;
 use Intesis\Servicios\LicenciaCifradoServicio;
+use Intesis\Servicios\AlmacenArchivosServicio;
 use Intesis\Servicios\SriClaveAccesoServicio;
 use Intesis\Servicios\SriEmailServicio;
 use Intesis\Servicios\SriFirmadorServicio;
@@ -135,6 +137,8 @@ final class Aplicacion
 
         $licenciaModelo = new LicenciaModelo($conexion);
         $licenciaCifradoServicio = new LicenciaCifradoServicio($configuracion);
+        $archivoModelo = new ArchivoModelo($conexion);
+        $almacenArchivosServicio = new AlmacenArchivosServicio($configuracion, $archivoModelo);
 
         $this->enrutador = new Enrutador(
             new AutenticacionControlador($vista, $sesion, $autenticacionServicio, $configuracion, $bodegaModelo),
@@ -157,7 +161,7 @@ final class Aplicacion
             new DocumentoCompraControlador($vista, $sesion, $documentoCompraModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores, $sriXmlServicio, $sriImportacionModelo, $marcaModelo, $categoriaModelo, $productoModelo),
             new ClienteControlador($vista, $sesion, $clienteModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores, $facturaModelo, $proformaModelo),
             new ProformaControlador($vista, $sesion, $proformaModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores, $generadorPdf),
-            new FacturaControlador($vista, $sesion, $facturaModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores, $generadorPdf, $facturacionElectronicaServicio, $formaPagoModelo),
+            new FacturaControlador($vista, $sesion, $facturaModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores, $generadorPdf, $facturacionElectronicaServicio, $formaPagoModelo, $almacenArchivosServicio, $archivoModelo),
             new LicenciaControlador($vista, $sesion, $licenciaModelo, $menuModelo, $mensajeSistemaModelo, $configuracion, $registroErrores, $licenciaCifradoServicio),
             $configuracion,
             $vista,
