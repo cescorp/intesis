@@ -70,7 +70,10 @@ final class FacturaModelo
         $sentencia = $this->pdo()->prepare("
             SELECT d.ven_documento_id, d.ven_documento_numero, d.ven_documento_fecha_emision,
                    d.ven_documento_valor_total, td.sis_tipo_documento_codigo AS tipo_codigo,
-                   es.sis_estado_codigo, es.sis_estado_nombre
+                   es.sis_estado_codigo, es.sis_estado_nombre,
+                   (SELECT count(*) FROM sis_archivos a
+                     WHERE a.sis_empresa_id = d.sis_empresa_id AND a.sis_archivos_tabla = 'VEN_DOCUMENTO'
+                       AND a.sis_archivos_id_padre = d.ven_documento_id AND a.sis_archivos_estado = 1) AS adjuntos_total
             FROM ven_documento d
             INNER JOIN sis_tipo_documento td ON td.sis_tipo_documento_id = d.sis_tipo_documento_id
             INNER JOIN sis_estado es         ON es.sis_estado_id         = d.sis_estado_id

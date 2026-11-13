@@ -489,7 +489,9 @@ final class FacturaControlador
     public function adjuntosListar(): void
     {
         $usuario = $this->exigirSesionJson();
-        $this->exigirPermisoJson('/ventas/facturas/adjuntos/ver');
+        if (!$this->puedeConsultarAdjuntos($usuario)) {
+            $this->exigirPermisoJson('/ventas/facturas/adjuntos/ver');
+        }
         try {
             $factura = $this->obtenerFacturaParaAdjuntos((int) ($_GET['factura_id'] ?? 0), $usuario);
             $this->responderJson(true, 'OK', '', [
@@ -527,7 +529,9 @@ final class FacturaControlador
     public function adjuntoVer(): void
     {
         $usuario = $this->exigirSesion();
-        $this->exigirPermiso('/ventas/facturas/adjuntos/ver');
+        if (!$this->puedeConsultarAdjuntos($usuario)) {
+            $this->exigirPermiso('/ventas/facturas/adjuntos/ver');
+        }
         try {
             $this->almacenArchivos->servir($this->obtenerAdjuntoPermitido((int) ($_GET['archivo_id'] ?? 0), $usuario));
         } catch (Throwable $excepcion) {
@@ -568,6 +572,15 @@ final class FacturaControlador
             $this->registrarErrorCrud('ELIMINAR ADJUNTO FACTURA', $excepcion);
             $this->responderJson(false, 'ERROR_VALIDACION', $excepcion->getMessage());
         }
+    }
+
+    /**
+     * Ver adjuntos (solo consulta) tambien se permite a quien puede ver Clientes:
+     * el Historial de ventas del cliente los muestra sin requerir el permiso de Facturas.
+     */
+    private function puedeConsultarAdjuntos(array $usuario): bool
+    {
+        return $this->menuModelo->tienePermiso((int) $usuario['empresa_id'], (int) $usuario['perfil_id'], '/ventas/clientes/ver');
     }
 
     private function obtenerFacturaParaAdjuntos(int $facturaId, array $usuario): array

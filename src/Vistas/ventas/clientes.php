@@ -240,6 +240,57 @@ $tiposId   = [
     </div>
 </div>
 
+<!-- MODAL ADJUNTOS DEL HISTORIAL (solo consulta) -->
+<div class="modal fade modal-intesis" id="modalAdjuntosHistorial" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <div>
+                    <p class="modal-etiqueta mb-0">Ventas</p>
+                    <h2 class="modal-title h6 mb-0">Adjuntos <span id="lblAdjHistorialNumero" class="font-monospace text-muted ms-1"></span></h2>
+                </div>
+                <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div class="row g-0 adjuntos-cuerpo">
+                    <div class="col-lg-5 p-3 adjuntos-lateral" id="listaAdjuntosHistorial"></div>
+                    <div class="col-lg-7 visor-adjuntos" id="visorAdjuntosHistorial"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Mismo aspecto que los adjuntos de Facturas (src/Vistas/ventas/facturas.php) */
+.btn-adjuntos-historial .contador-adjuntos {
+    position: absolute; top: -6px; right: -6px; min-width: 16px; height: 16px; padding: 0 4px;
+    border-radius: 8px; background: #1f6f68; color: #fff; font-size: .62rem; line-height: 16px;
+}
+#modalAdjuntosHistorial { z-index: 1065; }
+.modal-backdrop.fondo-adjuntos-historial { z-index: 1060; }
+.adjuntos-cuerpo { min-height: 65vh; }
+.adjuntos-lateral { border-right: 1px solid #dee2e6; max-height: 75vh; overflow-y: auto; }
+.adjunto-fila {
+    display: flex; align-items: center; gap: .5rem; padding: .45rem .4rem;
+    border-left: 3px solid transparent; border-radius: 4px; cursor: pointer;
+}
+.adjunto-fila:hover { background: #f4f6f6; }
+.adjunto-fila:focus-visible { outline: 2px solid #1f6f68; outline-offset: 1px; }
+.adjunto-fila.activa { border-left-color: #1f6f68; background: #e6f1f0; }
+.adjunto-fila .tamano { font-size: .72rem; color: #6c757d; white-space: nowrap; }
+.visor-adjuntos {
+    display: flex; align-items: center; justify-content: center;
+    background: #eef1f1; min-height: 65vh; padding: .75rem;
+}
+.visor-adjuntos iframe { width: 100%; height: 72vh; border: 0; background: #fff; }
+.visor-adjuntos img { max-width: 100%; max-height: 72vh; object-fit: contain; box-shadow: 0 1px 4px rgba(0,0,0,.15); }
+@media (max-width: 991.98px) {
+    .adjuntos-lateral { border-right: 0; border-bottom: 1px solid #dee2e6; max-height: none; }
+    .visor-adjuntos, .adjuntos-cuerpo { min-height: 50vh; }
+}
+</style>
+
 <?php if (!empty($mensaje)): ?><script>window.INTESIS_MENSAJE = <?= json_encode($mensaje, JSON_UNESCAPED_UNICODE) ?>;</script><?php endif; ?>
 <script>window.INTESIS_MENSAJES = <?= json_encode($mensajesSistema ?? [], JSON_UNESCAPED_UNICODE) ?>;</script>
 <script>
@@ -368,7 +419,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 <td>${esc(d.ven_documento_fecha_emision)}</td>
                 <td class="text-end">$ ${fmt2(d.ven_documento_valor_total)}</td>
                 <td><span class="badge estado-badge ${claseEstado(d.sis_estado_codigo)}">${esc(d.sis_estado_nombre)}</span></td>
-                <td class="text-end">
+                <td class="text-end text-nowrap">
+                    ${clave === 'proformas' ? '' : `
+                    <button type="button" class="btn btn-sm btn-outline-secondary btn-adjuntos-historial position-relative"
+                        data-id="${d.ven_documento_id}" data-numero="${esc(d.ven_documento_numero)}" title="Adjuntos">
+                        <i class="bi bi-paperclip"></i>
+                        ${Number(d.adjuntos_total) ? `<span class="contador-adjuntos">${Number(d.adjuntos_total)}</span>` : ''}
+                    </button>`}
                     <a href="${appUrl}${cfg.pdfUrl}?id=${d.ven_documento_id}" class="btn btn-sm btn-outline-secondary" title="Ver PDF" target="_blank">
                         <i class="bi bi-file-earmark-pdf"></i>
                     </a>
@@ -465,6 +522,71 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById(id)?.addEventListener('change', refiltrar);
     });
     document.getElementById('btnFiltrarHistorial')?.addEventListener('click', refiltrar);
+
+    // ── Adjuntos (solo consulta: sin subir, renombrar ni eliminar) ──────────
+    // Reutiliza las rutas de Facturas; el backend permite ver adjuntos a quien ve Clientes.
+    const modalAdj = document.getElementById('modalAdjuntosHistorial');
+    let adjLista = [];
+
+    const urlAdjunto = (id) => appUrl + '/ventas/facturas/adjuntos/ver?archivo_id=' + encodeURIComponent(id);
+    const tamanoLegible = (bytes) => {
+        const b = Number(bytes) || 0;
+        return b >= 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB';
+    };
+
+    function mostrarAdjunto(id) {
+        const a = adjLista.find(x => x.sis_archivos_id === id);
+        q('#listaAdjuntosHistorial').innerHTML = adjLista.length ? adjLista.map(x => `
+            <div class="adjunto-fila${x.sis_archivos_id === id ? ' activa' : ''}" data-id="${x.sis_archivos_id}" tabindex="0">
+                <i class="bi ${x.sis_archivos_mime === 'application/pdf' ? 'bi-file-earmark-pdf text-danger' : 'bi-file-earmark-image text-primary'}"></i>
+                <span class="flex-grow-1 text-truncate small">${esc(x.sis_archivos_nombre)}</span>
+                <span class="tamano">${tamanoLegible(x.sis_archivos_tamano)}</span>
+            </div>`).join('') : '<p class="text-muted small mb-0">Este documento no tiene adjuntos.</p>';
+        q('#visorAdjuntosHistorial').innerHTML = !a
+            ? '<p class="text-muted small m-0">Elija un adjunto de la lista para verlo aquí.</p>'
+            : (a.sis_archivos_mime === 'application/pdf'
+                ? `<iframe src="${urlAdjunto(a.sis_archivos_id)}" title="${esc(a.sis_archivos_nombre)}"></iframe>`
+                : `<img src="${urlAdjunto(a.sis_archivos_id)}" alt="${esc(a.sis_archivos_nombre)}">`);
+    }
+
+    modal.addEventListener('click', async (e) => {
+        const btn = e.target.closest('.btn-adjuntos-historial');
+        if (!btn) return;
+        q('#lblAdjHistorialNumero').textContent = btn.dataset.numero || '';
+        adjLista = [];
+        q('#visorAdjuntosHistorial').innerHTML = '';
+        q('#listaAdjuntosHistorial').innerHTML = '<p class="text-muted small mb-0"><span class="spinner-border spinner-border-sm me-1"></span>Cargando adjuntos...</p>';
+        bootstrap.Modal.getOrCreateInstance(modalAdj).show();
+        try {
+            const json = await (await fetch(appUrl + '/ventas/facturas/adjuntos?factura_id=' + encodeURIComponent(btn.dataset.id))).json();
+            if (!json.ok) throw new Error(json.mensaje);
+            adjLista = (json.data.adjuntos || []).map(a => ({ ...a, sis_archivos_id: Number(a.sis_archivos_id) }));
+            mostrarAdjunto(adjLista[0]?.sis_archivos_id || 0);
+        } catch (error) {
+            q('#listaAdjuntosHistorial').innerHTML = `<p class="text-danger small mb-0">${esc(error.message || 'No se pudieron cargar los adjuntos.')}</p>`;
+        }
+    });
+
+    q('#listaAdjuntosHistorial').addEventListener('click', (e) => {
+        const fila = e.target.closest('.adjunto-fila');
+        if (fila) mostrarAdjunto(Number(fila.dataset.id));
+    });
+    q('#listaAdjuntosHistorial').addEventListener('keydown', (e) => {
+        const fila = e.target.closest('.adjunto-fila');
+        if (fila && e.key === 'Enter') mostrarAdjunto(Number(fila.dataset.id));
+    });
+
+    // Modal sobre modal: el fondo del segundo debe quedar por encima del Historial
+    modalAdj.addEventListener('show.bs.modal', () => {
+        setTimeout(() => {
+            const fondos = document.querySelectorAll('.modal-backdrop');
+            fondos[fondos.length - 1]?.classList.add('fondo-adjuntos-historial');
+        });
+    });
+    modalAdj.addEventListener('hidden.bs.modal', () => {
+        q('#visorAdjuntosHistorial').innerHTML = '';
+        if (modal.classList.contains('show')) document.body.classList.add('modal-open');
+    });
 });
 </script>
 <?php require $configuracion->raiz() . '/src/Vistas/plantillas/pie.php'; ?>
