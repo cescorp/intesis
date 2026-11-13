@@ -215,6 +215,9 @@ $msgAnular    = $msgs['CONFIRMAR_ANULAR_FACTURA'] ?? null;
                             <span class="small">o <u>seleccione desde su equipo</u></span>
                             <span class="small text-muted">PDF o imágenes (JPG, PNG, WEBP, GIF), hasta <span id="lblAdjMax">80</span> MB cada uno</span>
                         </label>
+                        <button type="button" class="btn btn-sm btn-secundario btn-tomar-foto solo-tactil" id="btnFotoAdjunto">
+                            <i class="bi bi-camera"></i> Tomar foto
+                        </button>
                         <?php endif; ?>
                         <div id="colaAdjuntos" class="mt-2"></div>
                         <div id="listaAdjuntos" class="mt-2"></div>
@@ -594,7 +597,10 @@ $msgAnular    = $msgs['CONFIRMAR_ANULAR_FACTURA'] ?? null;
         cargarAdjuntos();
     });
 
-    if (q('#zonaAdjuntos')) IntesisSubida.conectarZona(q('#zonaAdjuntos'), q('#inpAdjuntos'), agregarArchivos);
+    if (q('#zonaAdjuntos')) {
+        IntesisSubida.conectarZona(q('#zonaAdjuntos'), q('#inpAdjuntos'), agregarArchivos);
+        IntesisSubida.conectarCamara(q('#btnFotoAdjunto'), agregarArchivos);
+    }
 
     q('#listaAdjuntos').addEventListener('click', async (e) => {
         const fila = e.target.closest('.adjunto-fila');

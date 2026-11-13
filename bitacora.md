@@ -4,6 +4,10 @@ Una entrada por tarea terminada (ver [reglas.md](reglas.md)). Lo más reciente a
 
 ## 2026-11-12
 
+- **Botón "Tomar foto" en Adjuntos de facturas y en Archivos** — `e81d355`
+  Solo en pantallas táctiles: abre la cámara trasera del celular con el input nativo (`capture="environment"`, funciona por http en la red local; `getUserMedia` exigiría HTTPS). La foto se renombra `Foto AAAA-MM-DD HH.MM.SS` y se sube por la misma cola con %. Función compartida `IntesisSubida.conectarCamara()`.
+  Archivos: `publico/js/subida-archivos.js`, `publico/css/estilos.css`, `src/Vistas/ventas/facturas.php`, `src/Vistas/archivos/index.php`.
+
 - **Galería de producto: ampliar imagen en la misma pantalla** — `d7280f2`
   Se quitó el 👁 (abría otra pestaña). Doble clic, Enter o Espacio sobre una imagen la amplía sobre la misma pantalla; ‹ › y ←/→ pasan entre imágenes; Esc, X o clic en el fondo cierran y devuelven el foco a la miniatura. El visor se inserta dentro del modal abierto para que el focus trap de Bootstrap no le quite el teclado. Aplica a Stock, F2, Kardex y Productos (función compartida `renderizarGaleriaProducto`).
   Archivos: `publico/js/sistema.js`, `publico/css/estilos.css`.
