@@ -4,7 +4,7 @@ Una entrada por tarea terminada (ver [reglas.md](reglas.md)). Lo más reciente a
 
 ## 2026-11-12
 
-- **Nueva factura / nota de venta: cantidades enteras** — `6c39dcf`
+- **Nueva factura / nota de venta: cantidades enteras** — `3c9584b`
   El input de Cantidad solo acepta enteros (min 1, bloquea `.`/`,`) y el backend rechaza cantidades con decimales en vez de redondearlas (`FacturaControlador::validarLineas()`).
   Archivos: `src/Vistas/ventas/factura_form.php`, `src/Controladores/FacturaControlador.php`.
 
