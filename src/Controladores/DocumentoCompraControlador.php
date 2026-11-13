@@ -966,6 +966,7 @@ final class DocumentoCompraControlador
             'procesar_txt' => $this->menuModelo->tienePermiso($eId, $pId, '/compras/documentos/procesar-txt'),
             'crear_categoria' => $this->menuModelo->tienePermiso($eId, $pId, '/inventario/categorias/crear'),
             'crear_marca'     => $this->menuModelo->tienePermiso($eId, $pId, '/inventario/marcas/crear'),
+            'crear_proveedor' => $this->menuModelo->tienePermiso($eId, $pId, '/compras/proveedores/crear'),
         ];
     }
 

@@ -238,6 +238,39 @@ $editDescuentoPct   = ($modoEditar && $editSubtotal > 0) ? round($editDescuentoV
                         <tbody id="cuerpoProveedoresModal"><tr><td colspan="5" class="text-center text-muted py-3">Escriba para buscar...</td></tr></tbody>
                     </table>
                 </div>
+                <?php if ($permisos['crear_proveedor'] ?? false): ?>
+                <div id="panelNuevoProveedor" class="border rounded p-2 mt-2 d-none">
+                    <div class="row g-2">
+                        <div class="col-md-4">
+                            <label class="form-label" for="npv_identificacion">Identificacion</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text" id="npv_tipo">RUC</span>
+                                <input class="form-control form-control-sm" id="npv_identificacion" readonly>
+                            </div>
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label" for="npv_razon_social">Razon social *</label>
+                            <input class="form-control form-control-sm" id="npv_razon_social" maxlength="300">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label" for="npv_nombre_comercial">Nombre proveedor <span class="text-muted fw-normal">(opcional)</span></label>
+                            <input class="form-control form-control-sm" id="npv_nombre_comercial" maxlength="300">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label" for="npv_email">Correo</label>
+                            <input class="form-control form-control-sm" id="npv_email" type="email" maxlength="100">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label" for="npv_telefono">Telefono</label>
+                            <input class="form-control form-control-sm" id="npv_telefono" maxlength="20">
+                        </div>
+                        <div class="col-12 text-end">
+                            <button type="button" class="btn btn-sm btn-secundario" id="btnCancelarNuevoProveedor">Cancelar</button>
+                            <button type="button" class="btn btn-sm btn-intesis" id="btnGuardarNuevoProveedor"><i class="bi bi-save2"></i> Guardar</button>
+                        </div>
+                    </div>
+                </div>
+                <?php endif; ?>
             </div>
         </div>
     </div>
@@ -692,11 +725,19 @@ function abrirModalProveedor(texto) {
 
 async function buscarProveedores(term) {
     const tbody = q('#cuerpoProveedoresModal');
+    q('#panelNuevoProveedor')?.classList.add('d-none');
     tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Buscando...</td></tr>';
     try {
         const json = await fetchJson(appUrl + '/compras/documentos/buscar-proveedores?q=' + encodeURIComponent(term));
         if (!json.proveedores?.length) {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">Sin resultados</td></tr>';
+            const ident = (term || '').trim();
+            // Crear solo si es RUC (13) o cedula (10) y hay permiso (panel presente)
+            const puedeCrear = q('#panelNuevoProveedor') && /^(\d{10}|\d{13})$/.test(ident);
+            tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-3">
+                Sin resultados${ident ? ` para "<strong>${esc(ident)}</strong>"` : ''}
+                ${puedeCrear ? '<button type="button" class="btn btn-sm btn-intesis ms-2" id="btnAbrirNuevoProveedor"><i class="bi bi-plus-lg me-1"></i>Crear proveedor</button>' : ''}
+            </td></tr>`;
+            q('#btnAbrirNuevoProveedor')?.addEventListener('click', () => mostrarPanelNuevoProveedor(ident));
             return;
         }
         tbody.innerHTML = json.proveedores.map((p, i) => `
@@ -713,6 +754,51 @@ async function buscarProveedores(term) {
         tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Error al buscar</td></tr>';
     }
 }
+
+/* ── Crear proveedor sin salir de la compra ──────────────────────────────── */
+function mostrarPanelNuevoProveedor(ident) {
+    q('#btnAbrirNuevoProveedor')?.classList.add('d-none');
+    q('#npv_tipo').textContent = ident.length === 13 ? 'RUC' : 'CEDULA';
+    q('#npv_identificacion').value = ident;
+    ['#npv_razon_social', '#npv_nombre_comercial', '#npv_email', '#npv_telefono'].forEach(s => q(s).value = '');
+    q('#panelNuevoProveedor').classList.remove('d-none');
+    setTimeout(() => q('#npv_razon_social')?.focus(), 50);
+}
+q('#btnCancelarNuevoProveedor')?.addEventListener('click', () => {
+    q('#panelNuevoProveedor').classList.add('d-none');
+    q('#btnAbrirNuevoProveedor')?.classList.remove('d-none');
+});
+q('#btnGuardarNuevoProveedor')?.addEventListener('click', async () => {
+    const razon = q('#npv_razon_social').value.trim();
+    if (!razon) {
+        Swal.fire({ icon: 'warning', title: 'Datos incompletos', text: 'La razon social es obligatoria.' });
+        return;
+    }
+    const btn = q('#btnGuardarNuevoProveedor');
+    btn.disabled = true;
+    try {
+        const fd = new FormData();
+        const empresaIdInput = q('input[name="empresa_id"]');
+        if (empresaIdInput) fd.append('empresa_id', empresaIdInput.value);
+        fd.append('identificacion',   q('#npv_identificacion').value);
+        fd.append('razon_social',     razon);
+        fd.append('nombre_comercial', q('#npv_nombre_comercial').value.trim());
+        fd.append('email',            q('#npv_email').value.trim());
+        fd.append('telefonos[]',      q('#npv_telefono').value.trim());
+        const resultado = await fetch(appUrl + '/compras/proveedores/crear', {
+            method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        });
+        const json = await resultado.json();
+        if (!json.ok) throw new Error(json.mensaje || 'No se pudo crear el proveedor.');
+        cargarProveedor(json.data);
+        q('#panelNuevoProveedor').classList.add('d-none');
+        bootstrap.Modal.getInstance(q('#modalBuscarProveedor'))?.hide();
+    } catch (error) {
+        Swal.fire({ icon: 'error', title: 'No se pudo crear', text: error.message || 'Revise los datos.' });
+    } finally {
+        btn.disabled = false;
+    }
+});
 
 q('#buscarProveedorInput').addEventListener('input', (e) => {
     clearTimeout(timerBuscProv);
