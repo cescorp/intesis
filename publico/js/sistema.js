@@ -2916,6 +2916,8 @@
         // Botones del footer segun estado y permisos
         const movId = String(cab.inv_movimientos_id);
 
+        // btn-activar/btn-inactivar son para iconos de tabla (solo color, sin borde ni
+        // fondo) y en el pie del modal parecian deshabilitados: aqui van botones completos.
         const botonAccion = (icono, texto, claseBtn, accion) =>
             `<button type="button" class="btn ${claseBtn} btn-detalle-accion" data-accion="${accion}" data-id="${escaparHtml(movId)}"><i class="bi ${icono}"></i> ${texto}</button>`;
 
@@ -2927,20 +2929,20 @@
                 botonesHtml += `<button type="button" class="btn btn-secundario btn-detalle-editar" data-id="${escaparHtml(movId)}" data-detalle="${escaparHtml(cab.inv_movimientos_observacion || '')}" data-bs-target="#modalEditarMovimiento" data-bs-toggle="modal"><i class="bi bi-pencil-square"></i> Editar obs.</button>`;
             }
             if (permisos.aprobar && (!esTrans || puedeRecibir)) {
-                botonesHtml += botonAccion('bi-check2-square', 'Aprobar', 'btn-activar', 'aprobar');
+                botonesHtml += botonAccion('bi-check2-square', 'Aprobar', 'btn-intesis', 'aprobar');
             }
             if (permisos.anular && (!esTrans || puedeDespachar)) {
-                botonesHtml += botonAccion('bi-x-octagon', 'Anular', 'btn-inactivar', 'anular');
+                botonesHtml += botonAccion('bi-x-octagon', 'Anular', 'btn-outline-danger', 'anular');
             }
         } else if (estado === 'EN_TRANSITO') {
             if (permisos.recibir && puedeRecibir) {
-                botonesHtml += botonAccion('bi-box-arrow-in-down', 'Recibir', 'btn-activar', 'recibir');
+                botonesHtml += botonAccion('bi-box-arrow-in-down', 'Recibir', 'btn-intesis', 'recibir');
             }
             if (permisos.anular) {
-                botonesHtml += botonAccion('bi-x-octagon', 'Anular', 'btn-inactivar', 'anular');
+                botonesHtml += botonAccion('bi-x-octagon', 'Anular', 'btn-outline-danger', 'anular');
             }
         } else if ((estado === 'PROCESADO' || estado === 'RECIBIDO') && permisos.anularProcesado && puedeAnularProcesado) {
-            botonesHtml += botonAccion('bi-x-octagon-fill', 'Anular (revertir stock)', 'btn-eliminar', 'anular-procesado');
+            botonesHtml += botonAccion('bi-x-octagon-fill', 'Anular (revertir stock)', 'btn-outline-danger', 'anular-procesado');
         }
 
         const footer = document.getElementById('detalleMovimientoFooter');
@@ -3298,3 +3300,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // Limpia la URL para que recargar la pagina no vuelva a abrir el modal
     history.replaceState(null, '', window.location.pathname);
 });
+
+/* SweetAlert sobre un modal de Bootstrap: el modal abierto tiene una "trampa de foco"
+   (escucha focusin en document) que devuelve el cursor al modal cuando el foco sale de
+   el. Como SweetAlert se dibuja fuera del modal, su campo de texto (ej. motivo de
+   anulacion) no se podia escribir. Este listener en fase de captura corta el evento
+   antes de que llegue a la trampa, solo cuando el foco va a un SweetAlert. Arregla
+   todos los Swal con input de una vez, sin tocar cada llamada. */
+window.addEventListener('focusin', (evento) => {
+    if (evento.target instanceof Element && evento.target.closest('.swal2-container')) {
+        evento.stopImmediatePropagation();
+    }
+}, true);
