@@ -824,7 +824,7 @@ function crearFila(datos) {
             const json = await fetchJson(appUrl + '/ventas/facturas/productos?q=' + encodeURIComponent(val) + bodegaParam());
             const lista = json.ok ? (json.data?.productos || []) : [];
             if (lista.length === 1) {
-                cargarProductoEnFila(tr, lista[0]);
+                enfocarCantidad(cargarProductoEnFila(tr, lista[0]));
                 filaActual = null;
             } else {
                 abrirModalCodigo(val);
@@ -939,6 +939,14 @@ cuerpoDetalle.addEventListener('click', (e) => {
     }
 });
 
+// Enter en Cantidad pasa a Precio de la misma linea
+cuerpoDetalle.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' || !e.target.matches('.inp-cantidad')) return;
+    e.preventDefault();
+    const precio = e.target.closest('tr').querySelector('.inp-precio');
+    precio?.focus();
+    precio?.select();
+});
 cuerpoDetalle.addEventListener('keydown', (e) => {
     if (e.key !== 'Enter' || !e.target.matches('.inp-precio')) return;
     e.preventDefault();
@@ -981,8 +989,32 @@ q('#btnAgregarLinea').addEventListener('click', () => crearFila({}));
 q('#inp_descuento').addEventListener('input', calcularTotales);
 
 /* ── Cargar producto en fila ────────────────────────────────────────────── */
+function enfocarCantidad(inp) {
+    if (!inp) return;
+    inp.focus();
+    inp.select();
+}
+
+/**
+ * Carga el producto en la fila y devuelve el input de Cantidad que debe recibir el foco.
+ * Un producto no se repite en dos lineas: si ya esta en otra, se suma 1 a esa linea,
+ * la fila actual queda vacia para el siguiente producto y el foco va a la existente.
+ */
 function cargarProductoEnFila(tr, prod) {
-    tr.dataset.productoId = String(prod.inv_producto_id || '');
+    const productoId = String(prod.inv_producto_id || '');
+    const existente = [...cuerpoDetalle.querySelectorAll('tr')]
+        .find(f => f !== tr && productoId !== '' && f.querySelector('.inp-producto-id')?.value === productoId);
+    if (existente) {
+        const inpCant = existente.querySelector('.inp-cantidad');
+        inpCant.value = (parseInt(inpCant.value) || 0) + 1;
+        calcularFila(existente);
+        tr.querySelector('.inp-codigo').value = '';
+        existente.classList.add('table-success');
+        setTimeout(() => existente.classList.remove('table-success'), 1200);
+        return inpCant;
+    }
+
+    tr.dataset.productoId = productoId;
     const pvp       = parseFloat(prod.pvp || 0);
     const descMax   = parseFloat(prod.descuento_max || 0);
     const precioMin = descMax > 0 ? parseFloat((pvp * (1 - descMax / 100)).toFixed(6)) : 0;
@@ -1003,6 +1035,7 @@ function cargarProductoEnFila(tr, prod) {
     tr.querySelector('.inp-stock').value             = stock;
     tr.querySelector('.inp-stock-display').textContent = Math.round(stock);
     calcularFila(tr);
+    return tr.querySelector('.inp-cantidad');
 }
 
 /* ── RUC / Cliente ──────────────────────────────────────────────────────── */
@@ -1232,8 +1265,11 @@ q('#cuerpoCodigoModal').addEventListener('click', (e) => {
     if (btnGal) { abrirGaleria(parseInt(btnGal.dataset.productoId)); return; }
     const tr = e.target.closest('tr[data-prod]');
     if (!tr || !filaActual) return;
-    try { cargarProductoEnFila(filaActual, JSON.parse(tr.dataset.prod)); } catch(ex) { console.error(ex); }
+    let inpCantidad = null;
+    try { inpCantidad = cargarProductoEnFila(filaActual, JSON.parse(tr.dataset.prod)); } catch(ex) { console.error(ex); }
     filaActual = null;
+    // El foco se mueve cuando el modal ya cerro; antes Bootstrap lo retiene dentro del modal
+    q('#modalProductosCodigo').addEventListener('hidden.bs.modal', () => enfocarCantidad(inpCantidad), { once: true });
     bootstrap.Modal.getInstance(q('#modalProductosCodigo'))?.hide();
 });
 q('#modalProductosCodigo').addEventListener('hidden.bs.modal', () => { filaActual = null; });
