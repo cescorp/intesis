@@ -4,6 +4,10 @@ Una entrada por tarea terminada (ver [reglas.md](reglas.md)). Lo más reciente a
 
 ## 2026-11-13
 
+- **Movimientos internos: el usuario de la bodega origen no veía sus transferencias** — `3e78d1d`
+  La lista, para quien no es superusuario, solo mostraba movimientos cuya bodega **destino** era del usuario. El gerente de MATRIZ no veía las transferencias MATRIZ → MACHACHI que él mismo creó y debe aprobar/despachar (ni sus ajustes de egreso). Ahora cuenta si alguna línea tiene su bodega como origen **o** destino.
+  Archivos: `src/Modelos/MovimientoInternoModelo.php`, `src/Controladores/MovimientoInternoControlador.php`.
+
 - **Aviso de secuencia faltante al abrir los documentos** — `6afac6f`
   Antes el "no hay secuencia" salía recién al guardar. Ahora Factura/Nota de venta (nueva), Proforma (nueva), Proformas › Facturar y Movimientos › Ajuste/Transferencia consultan al abrir (`GET /sistema/configuracion/secuencias/estado`, no consume número) y, si no hay secuencia activa con números libres, muestran una barra y deshabilitan el botón que crearía el documento. Con permiso de crear secuencias, "Crear secuencia" abre Tipos documento en otra pestaña con el modal "Nueva secuencia" ya abierto y prellenado (`?nueva_secuencia=ID&empresa=ID`); al volver a la pestaña se revisa sola. Función compartida `IntesisSecuencia.vigilar()`. Sin SQL pendiente.
   Archivos: `src/Modelos/SecuenciaModelo.php`, `src/Controladores/ConfiguracionControlador.php`, `src/Nucleo/Enrutador.php`, `publico/js/sistema.js`, `publico/css/estilos.css`, `src/Vistas/ventas/factura_form.php`, `src/Vistas/ventas/proforma_form.php`, `src/Vistas/ventas/proformas.php`, `src/Vistas/inventario/movimientos.php`.

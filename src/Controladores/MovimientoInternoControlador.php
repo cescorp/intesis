@@ -40,7 +40,7 @@ final class MovimientoInternoControlador
         $this->exigirPermiso('/inventario/movimientos/ver');
         $empresaId = (int) $usuario['empresa_id'];
         $superusuario = $this->esSuperusuario($usuario);
-        $bodegasDestinoPermitidas = $superusuario
+        $bodegasPermitidas = $superusuario
             ? null
             : array_map(
                 fn (array $bodega): int => (int) $bodega['inv_bodega_id'],
@@ -51,7 +51,7 @@ final class MovimientoInternoControlador
             'titulo' => 'Movimientos internos',
             'usuario' => $usuario,
             'menus' => $this->menuModelo->listarMenusPorPerfil($empresaId, (int) $usuario['perfil_id']),
-            'movimientos' => $this->movimientoInternoModelo->listar($empresaId, $bodegasDestinoPermitidas),
+            'movimientos' => $this->movimientoInternoModelo->listar($empresaId, $bodegasPermitidas),
             'transferenciasPendientes' => $this->movimientoInternoModelo->listarTransferenciasPendientes($empresaId, (int) $usuario['id'], $superusuario),
             'bodegas' => $this->movimientoInternoModelo->listarBodegasPermitidas($empresaId, (int) $usuario['id'], $superusuario),
             'bodegasDestino' => $this->movimientoInternoModelo->listarTodasBodegasActivas($empresaId),
