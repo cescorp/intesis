@@ -19,28 +19,26 @@ final class MovimientoInternoModelo
      * * LISTA MOVIMIENTOS INTERNOS DE UNA EMPRESA.
      * ***************************************************************************
      */
-    public function listar(int $empresaId, ?array $bodegasDestinoPermitidas = null): array
+    public function listar(int $empresaId, ?array $bodegasPermitidas = null): array
     {
         $filtroBodega = '';
         $parametros = ['empresa_id' => $empresaId];
-        if ($bodegasDestinoPermitidas !== null) {
-            if (!$bodegasDestinoPermitidas) {
+        if ($bodegasPermitidas !== null) {
+            if (!$bodegasPermitidas) {
                 return [];
             }
-            $marcadores = [];
-            foreach (array_values($bodegasDestinoPermitidas) as $indice => $bodegaId) {
-                $clave = "bodega_destino_{$indice}";
-                $marcadores[] = ":{$clave}";
-                $parametros[$clave] = $bodegaId;
-            }
-            /* El destino de AJUSTE vive por linea en inv_movimientos_detalle (el
-               encabezado inv_movimientos.inv_bodega_destino_id solo se llena en
-               TRANSFERENCIA), por eso se filtra contra el detalle. */
-            $filtroBodega = ' AND EXISTS (
+            // Ids enteros salidos de la BD (listarBodegasPermitidas): se pueden escribir directo.
+            $lista = implode(',', array_map('intval', $bodegasPermitidas));
+            /* El usuario ve el movimiento si toca alguna de sus bodegas como ORIGEN o
+               DESTINO. Antes solo se miraba el destino y quien despacha una transferencia
+               (bodega origen, quien la aprueba) o hace un ajuste de egreso no la veia.
+               Origen/destino viven por linea en inv_movimientos_detalle (en AJUSTE el
+               encabezado no los tiene), por eso se filtra contra el detalle. */
+            $filtroBodega = " AND EXISTS (
                 SELECT 1 FROM inv_movimientos_detalle d
                 WHERE d.inv_movimientos_id = m.inv_movimientos_id
-                  AND d.inv_bodega_destino_id IN (' . implode(',', $marcadores) . ')
-            )';
+                  AND (d.inv_bodega_origen_id IN ({$lista}) OR d.inv_bodega_destino_id IN ({$lista}))
+            )";
         }
         $sentencia = $this->conexionBaseDatos->obtener()->prepare("
             SELECT
