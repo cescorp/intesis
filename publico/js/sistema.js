@@ -1405,21 +1405,100 @@
             contenedor.innerHTML = '<div class="text-muted">Sin imagenes registradas.</div>';
             return;
         }
-        imagenes.forEach((imagen) => {
+        const soloLectura = contenedor.dataset.soloLectura === '1';
+        contenedor._imagenesGaleria = imagenes;
+        imagenes.forEach((imagen, indice) => {
             const item = document.createElement('div');
             item.className = 'galeria-producto-item';
-            const soloLectura = contenedor.dataset.soloLectura === '1';
             item.innerHTML = `
-                <img src="${imagen.url}" alt="${imagen.archivo}">
-                <div class="galeria-producto-acciones">
-                    ${soloLectura ? '' : `<button type="button" class="btn btn-accion btn-galeria-principal" data-archivo="${imagen.id}" title="Principal"><i class="bi ${imagen.principal ? 'bi-star-fill' : 'bi-star'}"></i></button>`}
-                    <a class="btn btn-accion" href="${imagen.url}" target="_blank" title="Ver"><i class="bi bi-eye"></i></a>
-                    ${soloLectura ? '' : `<button type="button" class="btn btn-accion btn-eliminar-galeria" data-archivo="${imagen.id}" title="Eliminar"><i class="bi bi-trash3"></i></button>`}
-                </div>
+                <img src="${imagen.url}" alt="${imagen.archivo}" class="galeria-ampliable" data-indice="${indice}"
+                     tabindex="0" role="button" title="Doble clic o Enter para ampliar"
+                     aria-label="Ampliar imagen ${indice + 1} de ${imagenes.length}">
+                ${soloLectura ? '' : `<div class="galeria-producto-acciones">
+                    <button type="button" class="btn btn-accion btn-galeria-principal" data-archivo="${imagen.id}" title="Principal"><i class="bi ${imagen.principal ? 'bi-star-fill' : 'bi-star'}"></i></button>
+                    <button type="button" class="btn btn-accion btn-eliminar-galeria" data-archivo="${imagen.id}" title="Eliminar"><i class="bi bi-trash3"></i></button>
+                </div>`}
             `;
             contenedor.appendChild(item);
         });
     };
+
+    /**
+     * Imagen ampliada de la galeria, sobre la misma pantalla (sin abrir otra pestaña).
+     * Se inserta dentro del modal abierto: fuera de el, el focus trap de Bootstrap le
+     * quitaria el foco y no funcionaria el teclado (Esc, flechas, Tab).
+     */
+    const visorGaleria = { imagenes: [], indice: 0, origen: null, elemento: null };
+
+    const cerrarVisorGaleria = () => {
+        visorGaleria.elemento?.remove();
+        visorGaleria.elemento = null;
+        visorGaleria.origen?.focus();
+    };
+
+    const mostrarImagenVisor = (indice) => {
+        const total = visorGaleria.imagenes.length;
+        visorGaleria.indice = (indice + total) % total;
+        const imagen = visorGaleria.imagenes[visorGaleria.indice];
+        const v = visorGaleria.elemento;
+        v.querySelector('img').src = imagen.url;
+        v.querySelector('img').alt = imagen.archivo;
+        v.querySelector('.visor-imagen-contador').textContent = `${visorGaleria.indice + 1} de ${total}`;
+    };
+
+    const abrirVisorGaleria = (miniatura) => {
+        const contenedor = miniatura.closest('#galeriaProductoContenedor');
+        visorGaleria.imagenes = contenedor?._imagenesGaleria || [];
+        if (!visorGaleria.imagenes.length) return;
+        visorGaleria.origen = miniatura;
+        const varias = visorGaleria.imagenes.length > 1;
+
+        const v = document.createElement('div');
+        v.className = 'visor-imagen';
+        v.setAttribute('role', 'dialog');
+        v.setAttribute('aria-modal', 'true');
+        v.setAttribute('aria-label', 'Imagen ampliada');
+        v.innerHTML = `
+            <button type="button" class="visor-imagen-cerrar" title="Cerrar (Esc)" aria-label="Cerrar"><i class="bi bi-x-lg"></i></button>
+            ${varias ? '<button type="button" class="visor-imagen-nav anterior" title="Anterior (←)" aria-label="Imagen anterior"><i class="bi bi-chevron-left"></i></button>' : ''}
+            <figure class="visor-imagen-figura"><img alt=""><figcaption class="visor-imagen-contador"></figcaption></figure>
+            ${varias ? '<button type="button" class="visor-imagen-nav siguiente" title="Siguiente (→)" aria-label="Imagen siguiente"><i class="bi bi-chevron-right"></i></button>' : ''}`;
+        (miniatura.closest('.modal') || document.body).appendChild(v);
+        visorGaleria.elemento = v;
+        mostrarImagenVisor(Number(miniatura.dataset.indice) || 0);
+
+        v.addEventListener('click', (e) => {
+            if (e.target.closest('.visor-imagen-cerrar') || e.target === v) cerrarVisorGaleria();
+            else if (e.target.closest('.anterior')) mostrarImagenVisor(visorGaleria.indice - 1);
+            else if (e.target.closest('.siguiente')) mostrarImagenVisor(visorGaleria.indice + 1);
+        });
+        v.addEventListener('keydown', (e) => {
+            // Se detiene aqui para que Esc no cierre tambien el modal de la galeria
+            if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); cerrarVisorGaleria(); return; }
+            if (e.key === 'ArrowLeft' && varias) { e.preventDefault(); mostrarImagenVisor(visorGaleria.indice - 1); return; }
+            if (e.key === 'ArrowRight' && varias) { e.preventDefault(); mostrarImagenVisor(visorGaleria.indice + 1); return; }
+            if (e.key === 'Tab') {
+                // Tab recorre solo los botones del visor
+                const botones = [...v.querySelectorAll('button')];
+                const i = botones.indexOf(document.activeElement);
+                e.preventDefault();
+                botones[(i + (e.shiftKey ? -1 : 1) + botones.length) % botones.length].focus();
+            }
+        });
+        v.querySelector('.visor-imagen-cerrar').focus();
+    };
+
+    document.addEventListener('dblclick', (e) => {
+        const miniatura = e.target.closest('.galeria-ampliable');
+        if (miniatura) abrirVisorGaleria(miniatura);
+    });
+    document.addEventListener('keydown', (e) => {
+        const miniatura = e.target.closest?.('.galeria-ampliable');
+        if (miniatura && (e.key === 'Enter' || e.key === ' ')) {
+            e.preventDefault();
+            abrirVisorGaleria(miniatura);
+        }
+    });
 
     const cargarGaleriaProducto = async (productoId) => {
         if (!productoId) return;
