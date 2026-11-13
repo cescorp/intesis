@@ -12,6 +12,7 @@ use Intesis\Nucleo\ControladorComun;
 use Intesis\Nucleo\RegistroErrores;
 use Intesis\Nucleo\Sesion;
 use Intesis\Nucleo\Vista;
+use Intesis\Servicios\ValidadorIdentificacion;
 use Throwable;
 
 final class ProveedorControlador
@@ -103,6 +104,9 @@ final class ProveedorControlador
      */
     private function guardar(bool $editar): void
     {
+        if (!$editar && strtolower((string) ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')) === 'xmlhttprequest') {
+            $this->crearAjax();
+        }
         $usuario = $this->exigirSesion();
         $this->exigirPermiso($editar ? '/compras/proveedores/editar' : '/compras/proveedores/crear');
         try {
@@ -119,6 +123,39 @@ final class ProveedorControlador
             $this->sesion->guardarMensaje('error', 'No se pudo guardar', $excepcion->getMessage());
         }
         $this->redirigir('/compras/proveedores');
+    }
+
+    /**
+     * ***************************************************************************
+     * * CREA PROVEEDOR DESDE OTRA PANTALLA (EJ. NUEVA COMPRA) Y RESPONDE JSON.
+     * * TIPO SE DEDUCE DEL LARGO: 13 DIGITOS = RUC, 10 = CEDULA.
+     * ***************************************************************************
+     */
+    private function crearAjax(): never
+    {
+        $usuario = $this->exigirSesionJson();
+        $this->exigirPermisoJson('/compras/proveedores/crear');
+        try {
+            $datos = $this->normalizarDatos($usuario);
+            $id    = $datos['identificacion'];
+            if (preg_match('/^\d{13}$/', $id) && ValidadorIdentificacion::validarRuc($id)) {
+                $datos['tipo_identificacion'] = 'RUC';
+            } elseif (preg_match('/^\d{10}$/', $id) && ValidadorIdentificacion::validarCedula($id)) {
+                $datos['tipo_identificacion'] = 'CEDULA';
+            } else {
+                throw new \InvalidArgumentException('Identificacion invalida: debe ser un RUC (13 digitos) o cedula (10 digitos) valido.');
+            }
+            $this->validarDatos($datos);
+            $proveedorId = $this->proveedorModelo->crear($datos, (int) $usuario['id']);
+            $this->responderJson(true, 'OK', 'Proveedor creado', [
+                'com_proveedor_id'             => $proveedorId,
+                'com_proveedor_identificacion' => $id,
+                'com_proveedor_razon_social'   => $datos['razon_social'],
+            ]);
+        } catch (Throwable $excepcion) {
+            $this->registrarErrorCrud('CREAR PROVEEDOR AJAX', $excepcion);
+            $this->responderJson(false, 'ERROR', $excepcion->getMessage());
+        }
     }
 
     /**
