@@ -4,6 +4,10 @@ Una entrada por tarea terminada (ver [reglas.md](reglas.md)). Lo más reciente a
 
 ## 2026-11-12
 
+- **Clientes › Historial de ventas: adjuntos en solo consulta** — `a94c044`
+  En Facturas y Notas de Venta, botón 📎 con contador que abre la lista y el visor PDF/imagen, sin subir, renombrar ni eliminar (Proformas no tiene adjuntos). Reutiliza `/ventas/facturas/adjuntos` y `/ventas/facturas/adjuntos/ver`: ahora también los permite quien tiene `/ventas/clientes/ver` (`FacturaControlador::puedeConsultarAdjuntos()`). `listarPorCliente()` devuelve `adjuntos_total`. Sin migración.
+  Archivos: `src/Vistas/ventas/clientes.php`, `src/Controladores/FacturaControlador.php`, `src/Modelos/FacturaModelo.php`.
+
 - **Adjuntos en facturas y servicio global de archivos** — `17e045e`
   `AlmacenArchivosServicio` (+ `ArchivoModelo`) es el punto único para subir/ver/eliminar adjuntos: valida el tipo real (finfo), límite por parámetro con máximo 80 MB, guarda en `almacenamiento/archivos/adjuntos/empresa_{id}/{tabla}/{año}/{mes}/` con nombre único y registra en `sis_archivos`. En Facturas: botón 📎 con contador y modal con arrastrar/soltar varios archivos, % por archivo, lista con nombre editable y visor PDF/imagen. Regla 5 en `reglas.md`.
   Migración: `20261112_1400_adjuntos.sql` (columnas nombre/mime/tamaño en `sis_archivos` + permisos `/ventas/facturas/adjuntos/*`).
