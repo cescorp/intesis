@@ -32,13 +32,18 @@ $appUrl    = rtrim($configuracion->obtener('APP_URL', ''), '/');
 
             <div class="gestor-centro">
                 <?php if ($permisos['subir']): ?>
-                <label class="zona-subida d-none" id="zonaSubida">
-                    <input type="file" id="inpArchivos" multiple hidden>
-                    <i class="bi bi-cloud-arrow-up"></i>
-                    <span class="fw-semibold">Arrastre archivos aquí</span>
-                    <span class="small">o <u>seleccione desde su equipo</u></span>
-                    <span class="small text-muted">Cualquier tipo excepto ejecutables, hasta <?= (int) $maxMb ?> MB cada uno. Un archivo con el mismo nombre se guarda como versión nueva.</span>
-                </label>
+                <div class="d-none" id="areaSubida">
+                    <label class="zona-subida" id="zonaSubida">
+                        <input type="file" id="inpArchivos" multiple hidden>
+                        <i class="bi bi-cloud-arrow-up"></i>
+                        <span class="fw-semibold">Arrastre archivos aquí</span>
+                        <span class="small">o <u>seleccione desde su equipo</u></span>
+                        <span class="small text-muted">Cualquier tipo excepto ejecutables, hasta <?= (int) $maxMb ?> MB cada uno. Un archivo con el mismo nombre se guarda como versión nueva.</span>
+                    </label>
+                    <button type="button" class="btn btn-sm btn-secundario btn-tomar-foto solo-tactil" id="btnFotoArchivo">
+                        <i class="bi bi-camera"></i> Tomar foto
+                    </button>
+                </div>
                 <?php endif; ?>
                 <div id="colaSubida"></div>
                 <div class="table-responsive">
@@ -298,7 +303,7 @@ $appUrl    = rtrim($configuracion->obtener('APP_URL', ''), '/');
     function renderBarra() {
         const propia = ubicacionEsPropia();
         q('#btnNuevaCarpeta')?.classList.toggle('d-none', !propia);
-        q('#zonaSubida')?.classList.toggle('d-none', !propia);
+        q('#areaSubida')?.classList.toggle('d-none', !propia);
         q('#btnCompartirCarpeta')?.classList.toggle('d-none', !(propia && estado.ubicacion.tipo === 'carpeta'));
         q('#buscarArchivo').value = '';
     }
@@ -487,14 +492,14 @@ $appUrl    = rtrim($configuracion->obtener('APP_URL', ''), '/');
 
     // ── Subida ───────────────────────────────────────────────────────────────
     if (q('#zonaSubida')) {
-        IntesisSubida.conectarZona(q('#zonaSubida'), q('#inpArchivos'), (archivos) => {
-            IntesisSubida.subirArchivos(archivos, {
-                url: appUrl + '/archivos/subir',
-                campos: { carpeta_id: estado.ubicacion.tipo === 'carpeta' ? estado.ubicacion.id : 0 },
-                contenedorCola: q('#colaSubida'),
-                reglas: { maxMb, mimes: null, extensionesBloqueadas },
-            }).then(recargar);
-        });
+        const subir = (archivos) => IntesisSubida.subirArchivos(archivos, {
+            url: appUrl + '/archivos/subir',
+            campos: { carpeta_id: estado.ubicacion.tipo === 'carpeta' ? estado.ubicacion.id : 0 },
+            contenedorCola: q('#colaSubida'),
+            reglas: { maxMb, mimes: null, extensionesBloqueadas },
+        }).then(recargar);
+        IntesisSubida.conectarZona(q('#zonaSubida'), q('#inpArchivos'), subir);
+        IntesisSubida.conectarCamara(q('#btnFotoArchivo'), subir);
     }
 
     // ── Compartir ────────────────────────────────────────────────────────────

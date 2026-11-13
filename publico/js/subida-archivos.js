@@ -116,5 +116,36 @@ window.IntesisSubida = (function () {
         zona.addEventListener('drop', (e) => alElegir(e.dataTransfer.files));
     }
 
-    return { esc, tamanoLegible, subirArchivos, conectarZona };
+    /**
+     * Boton "Tomar foto": en el celular abre la camara trasera (atributo capture).
+     * Se usa el input nativo y no getUserMedia porque este ultimo exige HTTPS y el
+     * sistema se usa por http en la red local. En PC el boton se oculta por CSS
+     * (.solo-tactil), porque ahi capture se ignora y solo abriria el selector.
+     */
+    function conectarCamara(boton, alElegir) {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.setAttribute('capture', 'environment');
+        input.hidden = true;
+        boton.after(input);
+        boton.addEventListener('click', () => input.click());
+        input.addEventListener('change', () => {
+            // La camara entrega nombres como image.jpg o IMG_1234.jpg: se renombra con fecha y hora
+            // para que se entienda en la lista y no se confunda con otra foto (en Archivos el mismo
+            // nombre crearia una version nueva).
+            const fotos = [...input.files].map((f, i) => new File([f], nombreFoto(f, i), { type: f.type, lastModified: f.lastModified }));
+            input.value = '';
+            if (fotos.length) alElegir(fotos);
+        });
+    }
+
+    function nombreFoto(archivo, indice) {
+        const d = new Date();
+        const dos = (n) => String(n).padStart(2, '0');
+        const extension = (archivo.name.includes('.') ? archivo.name.split('.').pop() : (archivo.type.split('/')[1] || 'jpg')).toLowerCase().replace('jpeg', 'jpg');
+        return `Foto ${d.getFullYear()}-${dos(d.getMonth() + 1)}-${dos(d.getDate())} ${dos(d.getHours())}.${dos(d.getMinutes())}.${dos(d.getSeconds())}${indice ? '-' + (indice + 1) : ''}.${extension}`;
+    }
+
+    return { esc, tamanoLegible, subirArchivos, conectarZona, conectarCamara };
 }());

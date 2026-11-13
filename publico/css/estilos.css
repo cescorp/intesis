@@ -1432,3 +1432,9 @@ body {
     .visor-imagen { gap: .25rem; padding: 3rem .25rem; }
     .visor-imagen-figura img { max-width: 80vw; }
 }
+
+/* Boton "Tomar foto" (subida-archivos.js conectarCamara): solo en pantallas tactiles,
+   donde abre la camara; en PC solo abriria el selector de archivos. */
+.solo-tactil { display: none !important; }
+@media (pointer: coarse) { .solo-tactil { display: inline-flex !important; } }
+.btn-tomar-foto { margin-top: .5rem; width: 100%; justify-content: center; gap: .4rem; }
