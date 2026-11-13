@@ -19,7 +19,9 @@ final class UsuarioEmpresaModelo
      */
     public function listar(int $empresaId, bool $verTodas): array
     {
-        $filtro = $verTodas ? '' : 'AND ue.sis_empresa_id = :empresa_id';
+        // $verTodas solo es true para el superusuario. Los demas ven unicamente su empresa
+        // y nunca a los superusuarios (no pueden administrarlos, ver UsuarioControlador).
+        $filtro = $verTodas ? '' : "AND ue.sis_empresa_id = :empresa_id AND p.sis_perfil_codigo <> 'SUPERUSUARIO'";
         $sql = "
             SELECT
                 ue.sis_usuario_empresa_id,
@@ -80,7 +82,8 @@ final class UsuarioEmpresaModelo
      */
     public function listarPerfilesActivos(bool $verTodas, int $empresaId): array
     {
-        $filtro = $verTodas ? '' : 'AND p.sis_empresa_id = :empresa_id';
+        // Solo un superusuario puede asignar el perfil SUPERUSUARIO
+        $filtro = $verTodas ? '' : "AND p.sis_empresa_id = :empresa_id AND p.sis_perfil_codigo <> 'SUPERUSUARIO'";
         $sql = "
             SELECT p.sis_perfil_id, p.sis_empresa_id, p.sis_perfil_codigo, p.sis_perfil_nombre
             FROM sis_perfil p
@@ -400,6 +403,15 @@ final class UsuarioEmpresaModelo
      * * VERIFICA QUE UN PERFIL PERTENEZCA A LA EMPRESA SELECCIONADA.
      * ***************************************************************************
      */
+    public function perfilEsSuperusuario(int $perfilId): bool
+    {
+        $sentencia = $this->conexionBaseDatos->obtener()->prepare("
+            SELECT 1 FROM sis_perfil WHERE sis_perfil_id = :perfil_id AND sis_perfil_codigo = 'SUPERUSUARIO' LIMIT 1
+        ");
+        $sentencia->execute(['perfil_id' => $perfilId]);
+        return (bool) $sentencia->fetchColumn();
+    }
+
     public function perfilPerteneceEmpresa(int $perfilId, int $empresaId): bool
     {
         $sentencia = $this->conexionBaseDatos->obtener()->prepare("

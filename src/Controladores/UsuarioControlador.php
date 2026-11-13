@@ -72,7 +72,7 @@ final class UsuarioControlador
 
         try {
             $datos = $this->normalizarDatosFormulario(true);
-            $this->validarDatos($datos, true);
+            $this->validarDatos($datos, true, $usuario);
             foreach ($datos['asignaciones'] as $asignacion) {
                 if ($this->usuarioEmpresaModelo->existeCorreoEnEmpresa($datos['correo'], (int) $asignacion['empresa_id'])) {
                     throw new \InvalidArgumentException('USUARIO_CORREO_ASIGNADO');
@@ -101,9 +101,9 @@ final class UsuarioControlador
 
         try {
             $asignacionId = (int) ($_POST['asignacion_id'] ?? 0);
-            $asignacion = $this->obtenerAsignacionValida($asignacionId);
+            $asignacion = $this->obtenerAsignacionValida($asignacionId, $usuario);
             $datos = $this->normalizarDatosFormulario(false);
-            $this->validarDatos($datos, false, (int) $asignacion['sis_usuarios_id']);
+            $this->validarDatos($datos, false, $usuario, (int) $asignacion['sis_usuarios_id']);
             foreach ($datos['asignaciones'] as $asignacionFormulario) {
                 $this->validarAlcanceEmpresa((int) $asignacionFormulario['empresa_id'], $usuario);
             }
@@ -169,7 +169,7 @@ final class UsuarioControlador
 
         try {
             $asignacionId = (int) ($_POST['asignacion_id'] ?? 0);
-            $this->obtenerAsignacionValida($asignacionId);
+            $this->obtenerAsignacionValida($asignacionId, $usuario);
             $clave = (string) ($_POST['clave'] ?? '');
             $confirmar = (string) ($_POST['confirmar_clave'] ?? '');
             if (strlen($clave) < 4 || $clave !== $confirmar) {
@@ -198,7 +198,7 @@ final class UsuarioControlador
 
         try {
             $asignacionId = (int) ($_POST['asignacion_id'] ?? 0);
-            $asignacion = $this->obtenerAsignacionValida($asignacionId);
+            $asignacion = $this->obtenerAsignacionValida($asignacionId, $usuario);
             $this->validarProteccionEstado($asignacion, $usuario, $estado);
             $this->usuarioEmpresaModelo->cambiarEstado($asignacionId, $estado, (int) $usuario['id']);
             $this->guardarMensajeCodigo($codigoExito);
@@ -275,13 +275,9 @@ final class UsuarioControlador
      * * VALIDA CAMPOS OBLIGATORIOS, CORREO GLOBAL Y CLAVE.
      * ***************************************************************************
      */
-    private function validarDatos(array $datos, bool $incluyeClave, ?int $usuarioId = null): void
+    private function validarDatos(array $datos, bool $incluyeClave, array $usuario, ?int $usuarioId = null): void
     {
-        if ($incluyeClave) {
-            $this->validarAsignaciones($datos['asignaciones'] ?? []);
-        } else {
-            $this->validarAsignaciones($datos['asignaciones'] ?? []);
-        }
+        $this->validarAsignaciones($datos['asignaciones'] ?? [], $usuario);
 
         if ($datos['nombre'] === '' || !filter_var($datos['correo'], FILTER_VALIDATE_EMAIL)) {
             throw new \InvalidArgumentException('USUARIO_DATOS_OBLIGATORIOS');
@@ -301,7 +297,7 @@ final class UsuarioControlador
      * * VALIDA DUPLICADOS Y COHERENCIA EMPRESA PERFIL EN ASIGNACIONES.
      * ***************************************************************************
      */
-    private function validarAsignaciones(array $asignaciones): void
+    private function validarAsignaciones(array $asignaciones, array $usuario): void
     {
         if (!$asignaciones) {
             throw new \InvalidArgumentException('USUARIO_DATOS_OBLIGATORIOS');
@@ -318,6 +314,11 @@ final class UsuarioControlador
 
             if (!$this->usuarioEmpresaModelo->perfilPerteneceEmpresa($perfilId, $empresaId)) {
                 throw new \InvalidArgumentException('USUARIO_DATOS_OBLIGATORIOS');
+            }
+
+            // Impide que alguien sin ese perfil cree un superusuario o se lo asigne a si mismo
+            if (!$this->esSuperusuario($usuario) && $this->usuarioEmpresaModelo->perfilEsSuperusuario($perfilId)) {
+                throw new \InvalidArgumentException('No tiene permiso para asignar el perfil de superusuario.');
             }
 
             if (!$inactiva) {
@@ -388,7 +389,7 @@ final class UsuarioControlador
      * * OBTIENE UNA ASIGNACION EXISTENTE O LANZA ERROR DE VALIDACION.
      * ***************************************************************************
      */
-    private function obtenerAsignacionValida(int $asignacionId): array
+    private function obtenerAsignacionValida(int $asignacionId, array $usuario): array
     {
         if ($asignacionId <= 0) {
             throw new \InvalidArgumentException('Asignacion de usuario no valida.');
@@ -397,6 +398,14 @@ final class UsuarioControlador
         $asignacion = $this->usuarioEmpresaModelo->buscarAsignacion($asignacionId);
         if (!$asignacion) {
             throw new \InvalidArgumentException('No se encontro la asignacion del usuario.');
+        }
+
+        // Todas las acciones sobre un usuario (editar, estado, clave) pasan por aqui: se valida
+        // que sea de la propia empresa y que un no superusuario no toque a un superusuario
+        // (si pudiera cambiarle la clave, podria entrar con sus privilegios).
+        $this->validarAlcanceEmpresa((int) $asignacion['sis_empresa_id'], $usuario);
+        if (!$this->esSuperusuario($usuario) && $asignacion['sis_perfil_codigo'] === 'SUPERUSUARIO') {
+            throw new \InvalidArgumentException('No tiene permiso para administrar a un superusuario.');
         }
 
         return $asignacion;
