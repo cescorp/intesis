@@ -484,4 +484,17 @@ $msgFacturar  = $msgs['CONFIRMAR_FACTURAR_PROFORMA'] ?? null;
     }
 })();
 </script>
+<?php if ($permisos['facturar']): ?>
+<script>
+// Facturar una proforma consume la secuencia de FACTURA_VENTA: avisar antes.
+// ponytail: consulta la empresa de la sesion; un superusuario que ve proformas de
+// varias empresas puede ver el aviso de la suya y no la de cada fila.
+document.addEventListener('DOMContentLoaded', () => IntesisSecuencia.vigilar({
+    tipo: 'FACTURA_VENTA',
+    modulo: 'VENTAS',
+    antesDe: document.querySelector('.app-content .panel-crud'),
+    botones: '.btn-facturar-proforma',
+}));
+</script>
+<?php endif; ?>
 <?php require $configuracion->raiz() . '/src/Vistas/plantillas/pie.php'; ?>

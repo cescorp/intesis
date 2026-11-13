@@ -488,6 +488,39 @@ final class ConfiguracionControlador
 
     /**
      * ***************************************************************************
+     * * JSON: ESTADO DE SECUENCIA DE UN TIPO DE DOCUMENTO PARA LA BARRA DE AVISO.
+     * ***************************************************************************
+     * GET ?tipo=FACTURA_VENTA&modulo=VENTAS[&empresa_id=N]
+     * Solo pide sesion: lo consultan Ventas e Inventario, no solo quien administra
+     * Configuracion. empresa_id solo se respeta para el superusuario (que elige empresa
+     * en la factura); los demas siempre consultan su empresa activa.
+     */
+    public function estadoSecuencia(): void
+    {
+        $usuario = $this->exigirSesionJson();
+        $tipo = strtoupper(trim((string) ($_GET['tipo'] ?? '')));
+        $modulo = strtoupper(trim((string) ($_GET['modulo'] ?? '')));
+        if ($tipo === '' || $modulo === '') {
+            $this->responderJson(false, 'ERROR_DATOS', 'Falta tipo o modulo.');
+        }
+        $empresaId = (int) $usuario['empresa_id'];
+        if ($this->esSuperusuario($usuario) && (int) ($_GET['empresa_id'] ?? 0) > 0) {
+            $empresaId = (int) $_GET['empresa_id'];
+        }
+
+        $estado = $this->secuenciaModelo->consultarDisponibilidad($empresaId, $tipo, $modulo);
+        // El boton "Crear secuencia" lleva a Tipos documento: hace falta ver esa pagina y crear.
+        $empresaSesion = (int) $usuario['empresa_id'];
+        $perfilId = (int) $usuario['perfil_id'];
+        $estado['puede_crear'] = $this->menuModelo->tienePermiso($empresaSesion, $perfilId, '/sistema/configuracion/tipos-documento')
+            && $this->menuModelo->tienePermiso($empresaSesion, $perfilId, '/sistema/configuracion/secuencias/crear');
+        $estado['empresa_id'] = $empresaId;
+
+        $this->responderJson(true, 'OK', '', $estado);
+    }
+
+    /**
+     * ***************************************************************************
      * * CAMBIA ESTADO LOGICO DE SECUENCIA VALIDANDO EMPRESA ACTIVA.
      * ***************************************************************************
      */

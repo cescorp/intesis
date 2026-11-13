@@ -3176,3 +3176,125 @@
         alternar();
     }, true);
 })();
+/* =============================================================================
+ * AVISO DE SECUENCIA FALTANTE EN PANTALLAS DE DOCUMENTOS
+ * -----------------------------------------------------------------------------
+ * Antes el usuario llenaba todo el documento y recien al guardar le decia que no
+ * habia secuencia. Ahora la pantalla consulta al abrir y, si no hay secuencia
+ * activa con numeros libres, muestra una barra y deshabilita los botones que
+ * crearian el documento.
+ *
+ * Uso (desde la vista):
+ *   IntesisSecuencia.vigilar({
+ *       tipo: 'FACTURA_VENTA' | () => codigo,   // codigo de sis_tipo_documento
+ *       modulo: 'VENTAS',
+ *       antesDe: elemento,                      // la barra se inserta antes de el
+ *       botones: '#btnGuardar',                 // selector; se re-evalua en cada consulta
+ *       empresa: () => id,                      // opcional (superusuario elige empresa)
+ *       reRevisarEn: ['#selTipoDoc'],           // opcional: selects que cambian tipo/empresa
+ *   });
+ *
+ * "Crear secuencia" abre Configuracion en otra pestana con el modal ya abierto.
+ * Al volver a esta pestana se consulta de nuevo y la barra desaparece sola.
+ * ========================================================================== */
+(function () {
+    const valor = (v) => (typeof v === 'function' ? v() : v);
+
+    const vigilar = (opciones) => {
+        const base = document.body.dataset.baseUrl || '';
+        const barra = document.createElement('div');
+        barra.className = 'barra-secuencia';
+        barra.setAttribute('role', 'alert');
+        barra.hidden = true;
+        opciones.antesDe.parentNode.insertBefore(barra, opciones.antesDe);
+
+        // Marca propia para no rehabilitar botones que la pantalla deshabilito por otra razon
+        const bloquear = (bloqueado) => {
+            document.querySelectorAll(opciones.botones).forEach((boton) => {
+                if (bloqueado) {
+                    boton.disabled = true;
+                    boton.dataset.bloqueoSecuencia = '1';
+                } else if (boton.dataset.bloqueoSecuencia) {
+                    boton.disabled = false;
+                    delete boton.dataset.bloqueoSecuencia;
+                }
+            });
+        };
+
+        let consultando = false;
+        const revisar = async () => {
+            if (consultando) return;
+            consultando = true;
+            try {
+                const parametros = new URLSearchParams({ tipo: valor(opciones.tipo), modulo: opciones.modulo });
+                const empresa = opciones.empresa ? parseInt(valor(opciones.empresa), 10) : 0;
+                if (empresa > 0) parametros.set('empresa_id', empresa);
+                const respuesta = await fetch(`${base}/sistema/configuracion/secuencias/estado?${parametros}`, { headers: { Accept: 'application/json' } });
+                const json = await respuesta.json();
+                // Si la consulta falla no se bloquea nada: el guardado sigue validando en el servidor
+                if (!json.ok) return;
+                const d = json.data;
+                bloquear(!d.disponible);
+                barra.hidden = d.disponible;
+                if (d.disponible) return;
+
+                const nombre = (d.tipo_nombre || '').toUpperCase();
+                const texto = d.agotada
+                    ? `La secuencia de <strong>${escapar(nombre)}</strong> llegó a su límite (${d.hasta}) y no podrá crear este documento.`
+                    : `El documento <strong>${escapar(nombre)}</strong> no tiene secuencia configurada y no podrá crear este documento.`;
+                const accion = d.puede_crear && d.tipo_id
+                    ? `<a class="btn btn-sm barra-secuencia-accion" target="_blank" rel="noopener"
+                          href="${base}/sistema/configuracion/tipos-documento?nueva_secuencia=${d.tipo_id}&empresa=${d.empresa_id}">
+                          <i class="bi bi-plus-lg"></i> Crear secuencia</a>`
+                    : '<span class="barra-secuencia-nota">Pide al administrador que la configure en Sistema › Configuración.</span>';
+                barra.innerHTML = `<i class="bi bi-exclamation-triangle-fill barra-secuencia-icono"></i>
+                    <span class="barra-secuencia-texto">${texto}</span>${accion}`;
+            } catch (e) {
+                // Red caida o sesion vencida: se deja todo como esta
+            } finally {
+                consultando = false;
+            }
+        };
+
+        (opciones.reRevisarEn || []).forEach((selector) => {
+            document.querySelector(selector)?.addEventListener('change', revisar);
+        });
+        // Al volver de la pestana de Configuracion
+        document.addEventListener('visibilitychange', () => { if (!document.hidden) revisar(); });
+        revisar();
+
+        return { revisar };
+    };
+
+    const escapar = (texto) => String(texto).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+    window.IntesisSecuencia = { vigilar };
+})();
+
+/* Configuracion > Tipos documento: si llega ?nueva_secuencia=ID[&empresa=ID] (desde la
+   barra de aviso de un documento) abre directo el modal "Nueva secuencia" prellenado. */
+document.addEventListener('DOMContentLoaded', () => {
+    const parametros = new URLSearchParams(window.location.search);
+    const tipoId = parametros.get('nueva_secuencia');
+    const modal = document.getElementById('modalSecuencia');
+    if (!tipoId || !modal || !document.getElementById('btnNuevaSecuencia') || !window.bootstrap) return;
+
+    // El manejador show.bs.modal lee dataset.modo/tipo del boton que lo abre
+    const origen = document.createElement('button');
+    origen.dataset.modo = 'crear';
+    origen.dataset.tipo = tipoId;
+    window.INTESIS_TIPO_SELECCIONADO = tipoId;
+
+    const empresa = parametros.get('empresa');
+    const selectEmpresa = document.getElementById('secuencia_empresa_id');
+    if (empresa && selectEmpresa) {
+        // show.bs.modal hace reset() del formulario; la empresa se pone despues
+        modal.addEventListener('shown.bs.modal', () => {
+            selectEmpresa.value = empresa;
+            selectEmpresa.dispatchEvent(new Event('change'));
+        }, { once: true });
+    }
+    bootstrap.Modal.getOrCreateInstance(modal).show(origen);
+    // Limpia la URL para que recargar la pagina no vuelva a abrir el modal
+    history.replaceState(null, '', window.location.pathname);
+});

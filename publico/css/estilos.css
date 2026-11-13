@@ -1452,3 +1452,35 @@ body {
 .solo-tactil { display: none !important; }
 @media (pointer: coarse) { .solo-tactil { display: inline-flex !important; } }
 .btn-tomar-foto { margin-top: .5rem; width: 100%; justify-content: center; gap: .4rem; }
+
+/* Barra de aviso de secuencia faltante (sistema.js IntesisSecuencia.vigilar).
+   Tono cobre de la marca: es un bloqueo que se resuelve, no un error. */
+.barra-secuencia {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    margin-bottom: .5rem;
+    padding: .55rem .85rem;
+    border: 1px solid rgba(193, 124, 74, .45);
+    border-left: 4px solid var(--intesis-cobre);
+    border-radius: 6px;
+    background: #fbf1e8;
+    color: #5c3a1f;
+    font-size: .86rem;
+}
+.barra-secuencia[hidden] { display: none; }
+.barra-secuencia-icono { color: var(--intesis-cobre); font-size: 1.05rem; flex-shrink: 0; }
+.barra-secuencia-texto { flex: 1; }
+.barra-secuencia-nota { font-size: .8rem; color: #7a5435; }
+.barra-secuencia-accion {
+    flex-shrink: 0;
+    border: 0;
+    background: var(--intesis-cobre);
+    color: #fff;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.barra-secuencia-accion:hover, .barra-secuencia-accion:focus-visible { background: #a6653a; color: #fff; }
+@media (max-width: 576px) {
+    .barra-secuencia { flex-wrap: wrap; }
+}

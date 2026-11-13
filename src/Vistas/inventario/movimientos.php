@@ -225,4 +225,15 @@ window.INTESIS_APP_URL = <?= json_encode($appUrl, JSON_UNESCAPED_UNICODE) ?>;
 </script>
 <?php if (!empty($mensaje)): ?><script>window.INTESIS_MENSAJE = <?= json_encode($mensaje, JSON_UNESCAPED_UNICODE) ?>;</script><?php endif; ?>
 <script>window.INTESIS_MENSAJES = <?= json_encode($mensajesSistema ?? [], JSON_UNESCAPED_UNICODE) ?>;</script>
+<script>
+// Aviso temprano por cada tipo de movimiento que el usuario puede crear.
+document.addEventListener('DOMContentLoaded', () => {
+    const panel = document.querySelector('.app-content .panel-crud');
+    ['AJUSTE', 'TRANSFERENCIA'].forEach((tipo) => {
+        const selector = `.btn-nuevo-movimiento[data-tipo="${tipo}"]`;
+        if (!document.querySelector(selector)) return; // sin permiso para ese tipo
+        IntesisSecuencia.vigilar({ tipo, modulo: 'INVENTARIO', antesDe: panel, botones: selector });
+    });
+});
+</script>
 <?php require $configuracion->raiz() . '/src/Vistas/plantillas/pie.php'; ?>

@@ -1043,4 +1043,17 @@ crearFila({});
     .formulario-compacto .row { margin-bottom: 0; }
 }
 </style>
+<?php if (!$esEdicion): ?>
+<script>
+// Aviso temprano si no hay secuencia de proforma (solo al crear: editar no consume numero).
+document.addEventListener('DOMContentLoaded', () => IntesisSecuencia.vigilar({
+    tipo: 'PROFORMA',
+    modulo: 'VENTAS',
+    empresa: () => document.getElementById('selEmpresa')?.value || 0,
+    antesDe: document.querySelector('.app-content .container-fluid > .card'),
+    botones: '#btnGuardar',
+    reRevisarEn: ['#selEmpresa'],
+}));
+</script>
+<?php endif; ?>
 <?php require $configuracion->raiz() . '/src/Vistas/plantillas/pie.php'; ?>

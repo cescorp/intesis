@@ -293,6 +293,44 @@ final class SecuenciaModelo
 
     /**
      * ***************************************************************************
+     * * CONSULTA SI UN TIPO DE DOCUMENTO TIENE SECUENCIA USABLE (SIN CONSUMIRLA).
+     * ***************************************************************************
+     * Lo usan las pantallas de documentos para avisar antes de que el usuario llene
+     * el formulario. Misma condicion que obtenerSiguiente(): secuencia ACTIVA de la
+     * empresa para ese codigo y modulo. "agotada" = existen activas pero ninguna tiene
+     * numeros libres (actual > hasta).
+     */
+    public function consultarDisponibilidad(int $empresaId, string $tipoCodigo, string $modulo): array
+    {
+        $sentencia = $this->conexionBaseDatos->obtener()->prepare("
+            SELECT td.sis_tipo_documento_id, td.sis_tipo_documento_nombre,
+                   count(s.sis_secuencias_id) AS activas,
+                   count(s.sis_secuencias_id) FILTER (WHERE s.sis_secuencias_actual <= s.sis_secuencias_hasta) AS con_numeros,
+                   max(s.sis_secuencias_hasta) AS hasta
+            FROM sis_tipo_documento td
+            LEFT JOIN sis_secuencias s ON s.sis_tipo_documento_id = td.sis_tipo_documento_id
+                AND s.sis_empresa_id = :empresa_id
+                AND s.sis_estado_id = (SELECT sis_estado_id FROM sis_estado
+                                       WHERE sis_estado_entidad = 'SIS_SECUENCIAS' AND sis_estado_codigo = 'ACTIVO' LIMIT 1)
+            WHERE td.sis_tipo_documento_codigo = :tipo_codigo
+              AND td.sis_tipo_documento_modulo = :modulo
+            GROUP BY td.sis_tipo_documento_id, td.sis_tipo_documento_nombre
+            LIMIT 1
+        ");
+        $sentencia->execute(['empresa_id' => $empresaId, 'tipo_codigo' => $tipoCodigo, 'modulo' => $modulo]);
+        $fila = $sentencia->fetch();
+
+        return [
+            'tipo_id' => $fila ? (int) $fila['sis_tipo_documento_id'] : 0,
+            'tipo_nombre' => $fila ? (string) $fila['sis_tipo_documento_nombre'] : $tipoCodigo,
+            'disponible' => $fila && (int) $fila['con_numeros'] > 0,
+            'agotada' => $fila && (int) $fila['activas'] > 0 && (int) $fila['con_numeros'] === 0,
+            'hasta' => $fila ? (int) $fila['hasta'] : 0,
+        ];
+    }
+
+    /**
+     * ***************************************************************************
      * * VERIFICA CLAVE REPETIDA DE SECUENCIA POR EMPRESA Y PUNTO.
      * ***************************************************************************
      */

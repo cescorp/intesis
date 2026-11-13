@@ -4,6 +4,10 @@ Una entrada por tarea terminada (ver [reglas.md](reglas.md)). Lo más reciente a
 
 ## 2026-11-13
 
+- **Aviso de secuencia faltante al abrir los documentos** — `6afac6f`
+  Antes el "no hay secuencia" salía recién al guardar. Ahora Factura/Nota de venta (nueva), Proforma (nueva), Proformas › Facturar y Movimientos › Ajuste/Transferencia consultan al abrir (`GET /sistema/configuracion/secuencias/estado`, no consume número) y, si no hay secuencia activa con números libres, muestran una barra y deshabilitan el botón que crearía el documento. Con permiso de crear secuencias, "Crear secuencia" abre Tipos documento en otra pestaña con el modal "Nueva secuencia" ya abierto y prellenado (`?nueva_secuencia=ID&empresa=ID`); al volver a la pestaña se revisa sola. Función compartida `IntesisSecuencia.vigilar()`. Sin SQL pendiente.
+  Archivos: `src/Modelos/SecuenciaModelo.php`, `src/Controladores/ConfiguracionControlador.php`, `src/Nucleo/Enrutador.php`, `publico/js/sistema.js`, `publico/css/estilos.css`, `src/Vistas/ventas/factura_form.php`, `src/Vistas/ventas/proforma_form.php`, `src/Vistas/ventas/proformas.php`, `src/Vistas/inventario/movimientos.php`.
+
 - **Usuarios: un no superusuario no podía crear ni editar usuarios** — `ff8a72c`
   Causa real del aviso "datos incompletos": el JS detectaba el bloque de varias empresas con `!document.querySelector('.asignaciones-multiples')?.classList.contains('d-none')`; ese bloque solo existe para el superusuario, así que para los demás daba `!undefined` = true, validaba cero asignaciones y rechazaba siempre. Ahora solo cuenta como visible si existe y no está oculto.
   Archivo: `publico/js/sistema.js`.
