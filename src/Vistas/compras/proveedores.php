@@ -27,8 +27,8 @@ $tiposId   = ['RUC' => 'RUC', 'CEDULA' => 'Cedula', 'PASAPORTE' => 'Pasaporte'];
                     <?php if ($esSuperusuario): ?><th>Empresa</th><?php endif; ?>
                     <th>Identificacion</th>
                     <th>Razon social</th>
-                    <?php if ($esSuperusuario): ?><th>Nombre comercial</th><?php endif; ?>
-                    <th>Telefono</th>
+                    <?php if ($esSuperusuario): ?><th>Nombre proveedor</th><?php endif; ?>
+                    <th>Telefonos</th>
                     <th>Correo</th>
                     <th>Estado</th>
                     <th class="text-end">Acciones</th>
@@ -40,7 +40,7 @@ $tiposId   = ['RUC' => 'RUC', 'CEDULA' => 'Cedula', 'PASAPORTE' => 'Pasaporte'];
                     <td><?= htmlspecialchars($prov['com_proveedor_identificacion']) ?></td>
                     <td><?= htmlspecialchars($prov['com_proveedor_razon_social']) ?></td>
                     <?php if ($esSuperusuario): ?><td><?= htmlspecialchars((string) ($prov['com_proveedor_nombre_comercial'] ?? '')) ?></td><?php endif; ?>
-                    <td><?= htmlspecialchars((string) ($prov['com_proveedor_telefono'] ?? '')) ?></td>
+                    <td><?= nl2br(htmlspecialchars(str_replace(', ', "\n", (string) ($prov['com_proveedor_telefono'] ?? '')))) ?></td>
                     <td><?= htmlspecialchars((string) ($prov['com_proveedor_email']    ?? '')) ?></td>
                     <td><span class="badge estado-badge estado-<?= strtolower((string) $prov['sis_estado_codigo']) ?>"><?= htmlspecialchars($prov['sis_estado_nombre']) ?></span></td>
                     <td class="text-end acciones-tabla">
@@ -108,7 +108,7 @@ $tiposId   = ['RUC' => 'RUC', 'CEDULA' => 'Cedula', 'PASAPORTE' => 'Pasaporte'];
             <div class="modal-body formulario-compacto">
                 <div class="row g-2">
                     <?php if ($esSuperusuario): ?>
-                    <div class="col-12">
+                    <div class="col-md-4">
                         <label class="form-label" for="prov_empresa_id">Empresa</label>
                         <select class="form-control form-control-sm" id="prov_empresa_id" name="empresa_id" required>
                             <option value="">Seleccione</option>
@@ -127,29 +127,29 @@ $tiposId   = ['RUC' => 'RUC', 'CEDULA' => 'Cedula', 'PASAPORTE' => 'Pasaporte'];
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <div class="col-md-8">
+                    <div class="col-md-4">
                         <label class="form-label" for="prov_identificacion">Numero de identificacion</label>
                         <input class="form-control form-control-sm" id="prov_identificacion" name="identificacion" maxlength="20" required>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <label class="form-label" for="prov_razon_social">Razon social</label>
                         <input class="form-control form-control-sm" id="prov_razon_social" name="razon_social" maxlength="300" required>
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label" for="prov_nombre_comercial">Nombre comercial</label>
-                        <input class="form-control form-control-sm" id="prov_nombre_comercial" name="nombre_comercial" maxlength="300">
-                    </div>
                     <div class="col-md-4">
-                        <label class="form-label" for="prov_telefono">Telefono</label>
-                        <input class="form-control form-control-sm" id="prov_telefono" name="telefono" maxlength="20">
+                        <label class="form-label" for="prov_nombre_comercial">Nombre proveedor <span class="text-muted fw-normal">(opcional)</span></label>
+                        <input class="form-control form-control-sm" id="prov_nombre_comercial" name="nombre_comercial" maxlength="300">
                     </div>
                     <div class="col-md-4">
                         <label class="form-label" for="prov_email">Correo</label>
                         <input class="form-control form-control-sm" id="prov_email" name="email" type="email" maxlength="100">
                     </div>
                     <div class="col-md-4">
+                        <label class="form-label">Telefonos</label>
+                        <div id="prov_telefonos"></div>
+                    </div>
+                    <div class="col-12">
                         <label class="form-label" for="prov_direccion">Direccion</label>
-                        <input class="form-control form-control-sm" id="prov_direccion" name="direccion" maxlength="300">
+                        <textarea class="form-control form-control-sm" id="prov_direccion" name="direccion" maxlength="300" rows="2"></textarea>
                     </div>
                 </div>
             </div>
@@ -175,10 +175,37 @@ $tiposId   = ['RUC' => 'RUC', 'CEDULA' => 'Cedula', 'PASAPORTE' => 'Pasaporte'];
         'prov_identificacion',
         'prov_razon_social',
         'prov_nombre_comercial',
-        'prov_telefono',
         'prov_email',
         'prov_direccion',
     ];
+
+    // Telefonos: se guardan en una sola columna separados por coma.
+    const contTelefonos = document.getElementById('prov_telefonos');
+    const filaTelefono = (valor, primera, soloLectura) => {
+        const fila = document.createElement('div');
+        fila.className = 'input-group input-group-sm' + (primera ? '' : ' mt-1');
+        fila.innerHTML = '<input class="form-control form-control-sm" name="telefonos[]" maxlength="20">'
+            + (soloLectura ? '' : (primera
+                ? '<button type="button" class="btn btn-outline-secondary btn-tel-agregar" title="Agregar telefono"><i class="bi bi-plus-lg"></i></button>'
+                : '<button type="button" class="btn btn-outline-danger btn-tel-quitar" title="Quitar telefono"><i class="bi bi-trash"></i></button>'));
+        const input = fila.querySelector('input');
+        input.value = valor || '';
+        input.disabled = soloLectura;
+        contTelefonos.appendChild(fila);
+        return input;
+    };
+    const cargarTelefonos = (texto, soloLectura) => {
+        contTelefonos.innerHTML = '';
+        const lista = (texto || '').split(',').map(t => t.trim()).filter(Boolean);
+        if (!lista.length) lista.push('');
+        lista.forEach((t, i) => filaTelefono(t, i === 0, soloLectura));
+    };
+    contTelefonos.addEventListener('click', function (e) {
+        if (e.target.closest('.btn-tel-agregar')) filaTelefono('', false, false).focus();
+        const quitar = e.target.closest('.btn-tel-quitar');
+        if (quitar) quitar.closest('.input-group').remove();
+    });
+    cargarTelefonos('', false);
 
     modal.addEventListener('show.bs.modal', function (evento) {
         const boton = evento.relatedTarget;
@@ -212,13 +239,14 @@ $tiposId   = ['RUC' => 'RUC', 'CEDULA' => 'Cedula', 'PASAPORTE' => 'Pasaporte'];
             setVal('prov_identificacion',      boton.dataset.identificacion);
             setVal('prov_razon_social',        boton.dataset.razon);
             setVal('prov_nombre_comercial',    boton.dataset.nombreComercial);
-            setVal('prov_telefono',            boton.dataset.telefono);
             setVal('prov_email',               boton.dataset.email);
             setVal('prov_direccion',           boton.dataset.direccion);
+            cargarTelefonos(boton.dataset.telefono, ver);
             setDis(ver);
         } else {
             form.reset();
             document.getElementById('proveedor_id').value = '';
+            cargarTelefonos('', false);
             setDis(false);
         }
     });
@@ -226,6 +254,7 @@ $tiposId   = ['RUC' => 'RUC', 'CEDULA' => 'Cedula', 'PASAPORTE' => 'Pasaporte'];
     modal.addEventListener('hidden.bs.modal', function () {
         document.getElementById('formularioProveedor').reset();
         document.getElementById('proveedor_id').value = '';
+        cargarTelefonos('', false);
         camposTexto.forEach(id => { const el = document.getElementById(id); if (el) el.disabled = false; });
         const emp = document.getElementById('prov_empresa_id');
         if (emp) emp.disabled = false;

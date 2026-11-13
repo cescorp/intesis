@@ -158,7 +158,11 @@ final class ProveedorControlador
             'identificacion'      => trim((string) ($_POST['identificacion'] ?? '')),
             'razon_social'        => trim((string) ($_POST['razon_social'] ?? '')),
             'nombre_comercial'    => trim((string) ($_POST['nombre_comercial'] ?? '')),
-            'telefono'            => trim((string) ($_POST['telefono']   ?? '')),
+            // Varios telefonos en una sola columna, separados por ", ".
+            'telefono'            => implode(', ', array_filter(array_map(
+                fn ($t) => trim(str_replace(',', '', (string) $t)),
+                (array) ($_POST['telefonos'] ?? [])
+            ), 'strlen')),
             'email'               => trim((string) ($_POST['email']      ?? '')),
             'direccion'           => trim((string) ($_POST['direccion']  ?? '')),
         ];
@@ -182,6 +186,9 @@ final class ProveedorControlador
         }
         if ($datos['razon_social'] === '') {
             throw new \InvalidArgumentException('La razon social es obligatoria.');
+        }
+        if (mb_strlen($datos['telefono']) > 100) {
+            throw new \InvalidArgumentException('Los telefonos superan los 100 caracteres permitidos.');
         }
         if ($this->proveedorModelo->existeIdentificacion($datos['empresa_id'], $datos['identificacion'], $proveedorId)) {
             throw new \InvalidArgumentException('Ya existe un proveedor con esa identificacion en la empresa.');
