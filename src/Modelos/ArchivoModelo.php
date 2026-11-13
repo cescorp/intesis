@@ -59,14 +59,14 @@ final class ArchivoModelo
                     sis_empresa_id, sis_archivos_archivo, sis_archivos_nombre, sis_archivos_tabla,
                     sis_archivos_id_padre, sis_archivos_estado, sis_archivos_ubicacion,
                     sis_archivos_principal, sis_archivos_orden, sis_archivos_tipo,
-                    sis_archivos_mime, sis_archivos_tamano, usuario_crea
+                    sis_archivos_mime, sis_archivos_tamano, sis_archivos_version, sis_archivos_original_id, usuario_crea
                 ) VALUES (
                     :empresa_id, :archivo, :nombre, :tabla,
                     :id_padre, 1, :ubicacion,
                     FALSE,
                     (SELECT COALESCE(MAX(sis_archivos_orden), 0) + 1 FROM sis_archivos
                       WHERE sis_empresa_id = :empresa_id2 AND sis_archivos_tabla = :tabla2 AND sis_archivos_id_padre = :id_padre2),
-                    :tipo, :mime, :tamano, :usuario
+                    :tipo, :mime, :tamano, :version, :original_id, :usuario
                 )
                 RETURNING sis_archivos_id
             ");
@@ -82,6 +82,8 @@ final class ArchivoModelo
             $sentencia->bindValue(':tipo', $datos['tipo']);
             $sentencia->bindValue(':mime', $datos['mime']);
             $sentencia->bindValue(':tamano', $datos['tamano'], PDO::PARAM_INT);
+            $sentencia->bindValue(':version', $datos['version'] ?? 1, PDO::PARAM_INT);
+            $sentencia->bindValue(':original_id', $datos['original_id'] ?? null, ($datos['original_id'] ?? null) === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
             $sentencia->bindValue(':usuario', $usuarioId, PDO::PARAM_INT);
             $sentencia->execute();
             $id = (int) $sentencia->fetchColumn();
