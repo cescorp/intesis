@@ -245,7 +245,7 @@ $editDescuentoPct   = ($modoEditar && $editSubtotal > 0) ? round($editDescuentoV
                             <label class="form-label" for="npv_identificacion">Identificacion</label>
                             <div class="input-group input-group-sm">
                                 <span class="input-group-text" id="npv_tipo">RUC</span>
-                                <input class="form-control form-control-sm" id="npv_identificacion" readonly>
+                                <input class="form-control form-control-sm" id="npv_identificacion" maxlength="13" inputmode="numeric">
                             </div>
                         </div>
                         <div class="col-md-8">
@@ -725,7 +725,7 @@ function abrirModalProveedor(texto) {
 
 async function buscarProveedores(term) {
     const tbody = q('#cuerpoProveedoresModal');
-    q('#panelNuevoProveedor')?.classList.add('d-none');
+    ocultarPanelNuevoProveedor();
     tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Buscando...</td></tr>';
     try {
         const json = await fetchJson(appUrl + '/compras/documentos/buscar-proveedores?q=' + encodeURIComponent(term));
@@ -757,17 +757,27 @@ async function buscarProveedores(term) {
 
 /* ── Crear proveedor sin salir de la compra ──────────────────────────────── */
 function mostrarPanelNuevoProveedor(ident) {
-    q('#btnAbrirNuevoProveedor')?.classList.add('d-none');
-    q('#npv_tipo').textContent = ident.length === 13 ? 'RUC' : 'CEDULA';
+    q('#cuerpoProveedoresModal').closest('.table-responsive').classList.add('d-none');
     q('#npv_identificacion').value = ident;
+    actualizarTipoNuevoProveedor();
     ['#npv_razon_social', '#npv_nombre_comercial', '#npv_email', '#npv_telefono'].forEach(s => q(s).value = '');
     q('#panelNuevoProveedor').classList.remove('d-none');
     setTimeout(() => q('#npv_razon_social')?.focus(), 50);
 }
-q('#btnCancelarNuevoProveedor')?.addEventListener('click', () => {
-    q('#panelNuevoProveedor').classList.add('d-none');
-    q('#btnAbrirNuevoProveedor')?.classList.remove('d-none');
+function ocultarPanelNuevoProveedor() {
+    q('#panelNuevoProveedor')?.classList.add('d-none');
+    q('#cuerpoProveedoresModal').closest('.table-responsive').classList.remove('d-none');
+}
+// Tipo segun largo: 13 = RUC, 10 = CEDULA (el backend vuelve a validar)
+function actualizarTipoNuevoProveedor() {
+    const v = q('#npv_identificacion').value.trim();
+    q('#npv_tipo').textContent = v.length === 13 ? 'RUC' : (v.length === 10 ? 'CEDULA' : 'RUC/CI');
+}
+q('#npv_identificacion')?.addEventListener('input', (e) => {
+    e.target.value = e.target.value.replace(/\D/g, '');
+    actualizarTipoNuevoProveedor();
 });
+q('#btnCancelarNuevoProveedor')?.addEventListener('click', ocultarPanelNuevoProveedor);
 q('#btnGuardarNuevoProveedor')?.addEventListener('click', async () => {
     const razon = q('#npv_razon_social').value.trim();
     if (!razon) {
@@ -791,7 +801,7 @@ q('#btnGuardarNuevoProveedor')?.addEventListener('click', async () => {
         const json = await resultado.json();
         if (!json.ok) throw new Error(json.mensaje || 'No se pudo crear el proveedor.');
         cargarProveedor(json.data);
-        q('#panelNuevoProveedor').classList.add('d-none');
+        ocultarPanelNuevoProveedor();
         bootstrap.Modal.getInstance(q('#modalBuscarProveedor'))?.hide();
     } catch (error) {
         Swal.fire({ icon: 'error', title: 'No se pudo crear', text: error.message || 'Revise los datos.' });
